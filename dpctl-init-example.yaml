@@ -1,0 +1,14 @@
+repositories:
+  dplatform: https://github.com/coreeng-dev/dplatform-envs-test
+  templates: https://github.com/coreeng-dev/software-templates-test
+
+p2p:
+  fast-feedback:
+    default-envs:
+      - gcp-dev
+  extended-test:
+    default-envs:
+      - gcp-dev
+  prod:
+    default-envs:
+      - gcp-prod
