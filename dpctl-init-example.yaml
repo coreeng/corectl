@@ -1,6 +1,6 @@
 repositories:
   dplatform: https://github.com/coreeng-dev/dplatform-envs-test
-  templates: https://github.com/coreeng-dev/software-templates-test
+  templates: https://github.com/coreeng/software-templates
 
 p2p:
   fast-feedback:
