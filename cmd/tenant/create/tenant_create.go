@@ -175,6 +175,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		Repositories:  repositories,
 		AdminGroup:    adminGroup,
 		ReadonlyGroup: readOnlyGroup,
+		CloudAccess:   make([]interface{}, 0),
 	}
 
 	result, err := createTenant(opt.Streams, cfg, &t)

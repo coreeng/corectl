@@ -24,6 +24,7 @@ type Tenant struct {
 	Repositories  []string               `yaml:"repos"`
 	AdminGroup    string                 `yaml:"adminGroup"`
 	ReadonlyGroup string                 `yaml:"readonlyGroup"`
+	CloudAccess   []interface{}          `yaml:"cloudAccess"`
 	RestFields    map[string]interface{} `yaml:",inline"`
 	path          *string                `yaml:"-"`
 }
