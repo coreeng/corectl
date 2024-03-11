@@ -1,26 +1,29 @@
-# Prerequisite
+# DPCTL - Developer Platform CTL
+A CLI tool for providing high-level interactions for fellow developers.
 
-- it's required to have ssh-agent running
+# Usage 
+
+Before start using the CLI you should initialize it.
+For the initialization you have to provide:
+- initialization file: [dpctl-init-example.yaml](dpctl-init-example.yaml)
+- your person GitHub token to perform operations on your behalf
+
+After the initialization you can start using `dpctl`. 
+
+To check for available operations run:
+```bash 
+dpctl --help
+```
+
+## Note
+At the moment the CLI expects that you use SSH as the protocol for `git remote`.
+
+Because of this it's expected that:
+- you have ssh-agent running
 ```bash
 eval $(ssh-agent)
 ```
-- it's required to have private key registered in ssh agent
+- you have private key registered in ssh agent and in GitHub
 ```bash
 ssh-add ~/.ssh/private_key
 ```
-
-# Testing
-External dependencies:
-- GitHub API
-  - Can be mocked with fake httpclient or by abstracting client with interface
-  - Can use the actual API, but need to find a way for garbage collection
-- git push
-  - there are present git server for mocking (FGS). But it may be problematic, because right now we are trying to derive
-    github org and repo name from origin url
-  - We could use real github repo
-- git local repository. operations with FS
-  - Can be mocked with virtual FS 
-  - Can use temporary folders for testing
-- template render. operations with FS
-  - API doesn't allow to mock with virtual FS
-  - Can use temporary folders for testing
