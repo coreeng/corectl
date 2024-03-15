@@ -1,4 +1,4 @@
-module github.com/coreeng/developer-platform/dpctl
+module github.com/coreeng/corectl
 
 go 1.22
 
@@ -10,6 +10,7 @@ require (
 	github.com/google/go-github/v59 v59.0.0
 	github.com/kluctl/go-jinja2 v0.0.0-20240206085301-ad6f23980236
 	github.com/mattn/go-isatty v0.0.18
+	github.com/muesli/termenv v0.15.2
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/yaml.v3 v3.0.1
@@ -43,7 +44,6 @@ require (
 	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/reflow v0.3.0 // indirect
-	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

@@ -1,0 +1,306 @@
+package create
+
+import (
+	"errors"
+	"fmt"
+	"github.com/coreeng/corectl/pkg/application"
+	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/environment"
+	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/template"
+	"github.com/coreeng/corectl/pkg/tenant"
+	"github.com/google/go-github/v59/github"
+	"github.com/spf13/cobra"
+	"slices"
+	"strings"
+)
+
+type AppCreateOpt struct {
+	Name           string
+	LocalPath      string
+	NonInteractive bool
+	FromTemplate   string
+	Tenant         string
+
+	Streams userio.IOStreams
+}
+
+func NewAppCreateCmd(cfg *config.Config) (*cobra.Command, error) {
+	var opts = AppCreateOpt{}
+	var appCreateCmd = &cobra.Command{
+		Use:   "create <app-name> [<local-path>]",
+		Short: "Create new application",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Name = args[0]
+			if len(args) > 1 {
+				opts.LocalPath = args[1]
+			} else {
+				opts.LocalPath = "./" + opts.Name
+			}
+			opts.Streams = userio.NewIOStreamsWithInteractive(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+				!opts.NonInteractive,
+			)
+			return run(&opts, cfg)
+		},
+	}
+
+	appCreateCmd.Flags().StringVarP(
+		&opts.FromTemplate,
+		"from-template",
+		"t",
+		"",
+		"Template to use to create an application",
+	)
+	appCreateCmd.Flags().StringVarP(
+		&opts.Tenant,
+		"tenant",
+		"",
+		"",
+		"Tenant to configure for P2P",
+	)
+	appCreateCmd.Flags().BoolVar(
+		&opts.NonInteractive,
+		"nonint",
+		false,
+		"Disable interactive inputs",
+	)
+
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Token,
+		appCreateCmd.Flags(),
+	)
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Organization,
+		appCreateCmd.Flags(),
+	)
+	config.RegisterStringParameterAsFlag(
+		&cfg.Repositories.CPlatform,
+		appCreateCmd.Flags(),
+	)
+	config.RegisterStringParameterAsFlag(
+		&cfg.Repositories.Templates,
+		appCreateCmd.Flags(),
+	)
+
+	return appCreateCmd, nil
+}
+
+func run(opts *AppCreateOpt, cfg *config.Config) error {
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		return err
+	}
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+		return err
+	}
+
+	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
+	if err != nil {
+		return err
+	}
+	templateInput := opts.createTemplateInput(existingTemplates)
+	fromTemplate, err := templateInput.GetValue(opts.Streams)
+	if err != nil {
+		return err
+	}
+
+	existingTenants, err := tenant.List(cfg.Repositories.CPlatform.Value)
+	if err != nil {
+		return err
+	}
+	defaultTenant := tenant.Name(cfg.Tenant.Value)
+	tenantInput := opts.createTenantInput(existingTenants, defaultTenant)
+	appTenant, err := tenantInput.GetValue(opts.Streams)
+	if err != nil {
+		return err
+	}
+
+	existingEnvs, err := environment.List(cfg.Repositories.CPlatform.Value)
+	if err != nil {
+		return err
+	}
+
+	if err = userio.ValidateFilePath(opts.LocalPath, userio.FileValidatorOptions{
+		DirsOnly:   true,
+		DirIsEmpty: true,
+	}); err != nil {
+		return err
+	}
+
+	githubClient := github.NewClient(nil).
+		WithAuthToken(cfg.GitHub.Token.Value)
+
+	createdAppResult, err := createNewApp(opts, cfg, githubClient, appTenant, fromTemplate, existingEnvs)
+	if err != nil {
+		return err
+	}
+	opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+
+	tenantUpdateResult, err := createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
+	if err != nil {
+		return err
+	}
+
+	nextStepsMessage := fmt.Sprintf(
+		nextStepsMessageTemplate,
+		tenantUpdateResult.PRUrl,
+		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+		createdAppResult.RepositoryFullname.AsString(),
+		createdAppResult.RepositoryFullname.AsString(),
+	)
+	opts.Streams.Info(nextStepsMessage)
+	return nil
+}
+
+const nextStepsMessageTemplate = `
+Note: to complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
+PR url: %s
+
+After the PR is merged, you application is ready to be deployed to the Core Platform!
+It will either happen with next commit or you can do it manually by triggering P2P workflow.
+To do it, use GitHub web-interface or GitHub CLI.
+Workflows link: %s
+GitHub CLI commands:
+  gh workflow list -R %s
+  gh workflow run <workflow-id> -R %s
+`
+
+func createNewApp(
+	opts *AppCreateOpt,
+	cfg *config.Config,
+	githubClient *github.Client,
+	appTenant *tenant.Tenant,
+	fromTemplate *template.Spec,
+	existingEnvs []environment.Environment,
+) (application.CreateResult, error) {
+	spinnerHandler := opts.Streams.Spinner("Creating new application...")
+	defer spinnerHandler.Done()
+
+	fastFeedbackEnvs := filterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
+	extendedTestEnvs := filterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
+	prodEnvs := filterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
+
+	fulfilledTemplate := template.FulfilledTemplate{
+		Spec:      fromTemplate,
+		Arguments: []template.Argument{},
+	}
+
+	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	appCreateOp := application.CreateOp{
+		Name:             opts.Name,
+		OrgName:          cfg.GitHub.Organization.Value,
+		LocalPath:        opts.LocalPath,
+		Tenant:           appTenant,
+		FastFeedbackEnvs: fastFeedbackEnvs,
+		ExtendedTestEnvs: extendedTestEnvs,
+		ProdEnvs:         prodEnvs,
+		TemplatesPath:    cfg.Repositories.Templates.Value,
+		Template:         &fulfilledTemplate,
+		GitAuth:          gitAuth,
+	}
+	if err := application.ValidateCreate(appCreateOp, githubClient); err != nil {
+		return application.CreateResult{}, err
+	}
+	createResult, err := application.Create(
+		appCreateOp,
+		githubClient,
+	)
+	return createResult, err
+}
+
+func createPRWithUpdatedReposListForTenant(
+	opts *AppCreateOpt,
+	cfg *config.Config,
+	githubClient *github.Client,
+	appTenant *tenant.Tenant,
+	createdAppResult application.CreateResult,
+) (tenant.CreateOrUpdateResult, error) {
+	spinnerHandler := opts.Streams.Spinner("Creating PR with new application for tenant...")
+	defer spinnerHandler.Done()
+
+	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
+		return tenant.CreateOrUpdateResult{}, err
+	}
+	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	tenantUpdateResult, err := tenant.CreateOrUpdate(
+		&tenant.CreateOrUpdateOp{
+			Tenant:            appTenant,
+			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
+			BranchName:        string(appTenant.Name) + "-add-repo-" + createdAppResult.RepositoryFullname.Name,
+			CommitMessage:     "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
+			PRName:            "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
+			GitAuth:           gitAuth,
+		},
+		githubClient,
+	)
+	return tenantUpdateResult, err
+}
+
+func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
+	var result []environment.Environment
+	for _, env := range envs {
+		if slices.Contains(nameFilter, string(env.Environment)) {
+			result = append(result, env)
+		}
+	}
+	return result
+}
+
+func (opts *AppCreateOpt) createTenantInput(existingTenant []tenant.Tenant, defaultTenant tenant.Name) userio.InputSourceSwitch[string, *tenant.Tenant] {
+	availableTenantNames := make([]string, len(existingTenant)+1)
+	availableTenantNames[0] = string(tenant.RootName)
+	for i, t := range existingTenant {
+		availableTenantNames[i+1] = string(t.Name)
+	}
+	return userio.InputSourceSwitch[string, *tenant.Tenant]{
+		DefaultValue: userio.AsZeroable(opts.Tenant),
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.SingleSelect{
+				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenant),
+				Items:           availableTenantNames,
+				PreselectedItem: string(defaultTenant),
+			}, nil
+		},
+		ValidateAndMap: func(inp string) (*tenant.Tenant, error) {
+			inpName := tenant.Name(strings.TrimSpace(inp))
+			tenantIndex := slices.IndexFunc(existingTenant, func(t tenant.Tenant) bool {
+				return t.Name == inpName
+			})
+			if tenantIndex < 0 {
+				return nil, errors.New("unknown tenant")
+			}
+			return &existingTenant[tenantIndex], nil
+		},
+		ErrMessage: "invalid tenant",
+	}
+}
+
+func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {
+	availableTemplateNames := make([]string, len(existingTemplates))
+	for i, t := range existingTemplates {
+		availableTemplateNames[i] = t.Name
+	}
+	return userio.InputSourceSwitch[string, *template.Spec]{
+		DefaultValue: userio.AsZeroable(opts.FromTemplate),
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.SingleSelect{
+				Prompt: "Template:",
+				Items:  availableTemplateNames,
+			}, nil
+		},
+		ValidateAndMap: func(inp string) (*template.Spec, error) {
+			inp = strings.TrimSpace(inp)
+			templateIndex := slices.IndexFunc(existingTemplates, func(spec template.Spec) bool {
+				return spec.Name == inp
+			})
+			if templateIndex < 0 {
+				return nil, errors.New("unknown template")
+			}
+			return &existingTemplates[templateIndex], nil
+		},
+		ErrMessage: "invalid template",
+	}
+}

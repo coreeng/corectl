@@ -1,29 +1,49 @@
-# DPCTL - Developer Platform CTL
+# CoreCTL - Core Platform CTL
 A CLI tool for providing high-level interactions for fellow developers.
 
 # Usage 
 
 Before start using the CLI you should initialize it.
 For the initialization you have to provide:
-- initialization file: [dpctl-init-example.yaml](dpctl-init-example.yaml)
-- your person GitHub token to perform operations on your behalf
+- initialization file: [corectl-init-example.yaml](corectl-init-example.yaml)
+- your person GitHub token to perform operations on your behalf. See more info [here](#GitHub-Access-Token)
 
-After the initialization you can start using `dpctl`. 
+To run initialization run:
+```bash
+corectl config init
+```
+It will save a few configuration options and clone configuration repositories:
+`cplatform-environments` and `software-templates`.
+
+Please note that you should periodically update local `corectl` configuration by running:
+```bash
+corectl config update
+```
+It will pull new changes for configuration repositories.
+I
+
+After the initialization you can start using `corectl`. 
 
 To check for available operations run:
 ```bash 
-dpctl --help
+corectl --help
 ```
 
-## Note
-At the moment the CLI expects that you use SSH as the protocol for `git remote`.
+# GitHub Access Token
+## Classic Personal Access Token
+Scopes required:
+- `repo`, since `corectl` needs access to read, create repositories, create PullRequests, configure environments and variables for the repositories.
+- `delete_repo`, since `corectl` may try to delete created repository during an operation undo process (in a case of failure, for example). 
+- `workflow`, since `corectl` may create workflow files when creating new applications.
 
-Because of this it's expected that:
-- you have ssh-agent running
-```bash
-eval $(ssh-agent)
-```
-- you have private key registered in ssh agent and in GitHub
-```bash
-ssh-add ~/.ssh/private_key
-```
+## Fine-grained tokens
+> **_NOTE_**: Your organization has to enable use of fine-grained tokens for this to be possible.
+
+Requirements for the token:
+- It should have access to all your organization repositories, since `corectl` might be used to create and configure new repositories.
+- Read-Write permissions for Administrations, since `corectl` might be used to create new repositories for applications.
+- Read-Write permissions for Contents, since `corectl` will try to clone repositories with configuration and might be used to update contents of the repository.
+- Read-Only permissions for Metadata, since `corectl` uses GitHub API with metadata to perform some logic (check if repository exists, for example).
+- Read-Write permissions for Workflows, since `corectl` might configure workflow files when creating new applications.
+- Read-Write permissions for Environments and Variables, since `corectl` might be used to configure P2P for repositories.
+- Read-Write permissions for Pull Requests, since `corectl` might be used to automatically generate Pull Requests with platform configuration updates.

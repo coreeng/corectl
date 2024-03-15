@@ -1,0 +1,19 @@
+tenant: tenant-name
+github:
+  token: ghp_qwerty
+  organization: coreeng-dev
+
+repositories:
+  cplatform: /path/to/cplatform-environments
+  templates: /path/to/software-templates
+
+p2p:
+  fast-feedback:
+    default-envs:
+      - gcp-dev
+  extended-test:
+    default-envs:
+      - gcp-dev
+  prod:
+    default-envs:
+      - gpc-prod
