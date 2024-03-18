@@ -1,7 +1,17 @@
 CORECTL_MAIN=./cmd/corectl
 
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
+.PHONY: test
+test:
+	go test ./...
+
+.PHONY: build
 build:
-	go build $(CORECTL_MAIN)
+	go build -o corectl $(CORECTL_MAIN)
+
 
 .PHONY: dev-env
 dev-env:
