@@ -35,6 +35,3 @@ release:
     owner: coreeng
     name: corectl
   mode: replace
-
-signs:
-  - artifacts: archive
