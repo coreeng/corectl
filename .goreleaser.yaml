@@ -34,4 +34,4 @@ release:
   github:
     owner: coreeng
     name: corectl
-  mode: replace
+  mode: append
