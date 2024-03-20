@@ -1,0 +1,15 @@
+repositories:
+  cplatform: https://github.com/coreeng-dev/cplatform-envs-test
+  templates: https://github.com/coreeng-dev/software-templates-test
+#  templates: https://github.com/coreeng/software-templates
+
+p2p:
+  fast-feedback:
+    default-envs:
+      - gcp-dev
+  extended-test:
+    default-envs:
+      - gcp-dev
+  prod:
+    default-envs:
+      - gcp-prod
