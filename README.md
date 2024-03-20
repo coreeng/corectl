@@ -33,7 +33,6 @@ corectl --help
 ## Classic Personal Access Token
 Scopes required:
 - `repo`, since `corectl` needs access to read, create repositories, create PullRequests, configure environments and variables for the repositories.
-- `delete_repo`, since `corectl` may try to delete created repository during an operation undo process (in a case of failure, for example). 
 - `workflow`, since `corectl` may create workflow files when creating new applications.
 
 ## Fine-grained tokens

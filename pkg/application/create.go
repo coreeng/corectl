@@ -81,10 +81,6 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return result, err
 	}
 	result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).Fullname
-	undoSteps.Add(func() error {
-		_, e := githubClient.Repositories.Delete(context.Background(), op.OrgName, op.Name)
-		return e
-	})
 
 	if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
 		return result, err
