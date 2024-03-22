@@ -33,6 +33,10 @@ func CreateEnvironmentForRepository(
 			Value: defaultDomain.Domain,
 		},
 		{
+			Name:  "INTERNAL_DOMAIN",
+			Value: env.InternalServices.Domain,
+		},
+		{
 			Name:  "DPLATFORM",
 			Value: string(env.Environment),
 		},

@@ -12,7 +12,8 @@ type Environment struct {
 		ProjectId     string `yaml:"projectId"`
 		ProjectNumber string `yaml:"projectNumber"`
 	} `yaml:"platform"`
-	IngressDomains []Domain `yaml:"ingressDomains"`
+	IngressDomains   []Domain `yaml:"ingressDomains"`
+	InternalServices Domain   `yaml:"internalServices"`
 }
 
 type Domain struct {
@@ -42,6 +43,7 @@ func Validate(env *Environment) error {
 	if env.Platform.ProjectNumber == "" {
 		return errors.New("projectNumber is missing")
 	}
+
 	defaultIngressDomain := env.GetDefaultIngressDomain()
 	if defaultIngressDomain == nil {
 		return errors.New("default ingress domain is not found")
@@ -51,6 +53,13 @@ func Validate(env *Environment) error {
 	}
 	if defaultIngressDomain.Domain == "" {
 		return errors.New("default ingress domain is missing")
+	}
+
+	if env.InternalServices.Name == "" {
+		return errors.New("internalServices name is missing")
+	}
+	if env.InternalServices.Domain == "" {
+		return errors.New("internalServices domain is missing")
 	}
 	return nil
 }
