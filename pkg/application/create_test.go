@@ -211,7 +211,7 @@ var _ = Describe("Create new application", func() {
 							r.Var.Value == env.GetDefaultIngressDomain().Domain
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
-						return r.Var.Name == "INTERNAL_DOMAIN" &&
+						return r.Var.Name == "INTERNAL_SERVICES_DOMAIN" &&
 							r.Var.Value == env.InternalServices.Domain
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {

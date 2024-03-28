@@ -136,7 +136,7 @@ var _ = Describe("application", Ordered, func() {
 							v.Value == env.GetDefaultIngressDomain().Domain
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
-						return v.Name == "INTERNAL_DOMAIN" &&
+						return v.Name == "INTERNAL_SERVICES_DOMAIN" &&
 							v.Value == env.InternalServices.Domain
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
