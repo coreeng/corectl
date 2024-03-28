@@ -23,6 +23,8 @@ jobs:
           go-version-file: 'go.mod'
       - name: lint
         uses: reviewdog/action-golangci-lint@v2
+        with:
+          golangci_lint_flags: --timeout 3m --verbose
       - name: test
         run: make test
   integration-test:
