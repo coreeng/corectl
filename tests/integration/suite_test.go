@@ -14,52 +14,41 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
 	// Test cases import
-	//_ "github.com/coreeng/corectl/tests/integration/application"
+	_ "github.com/coreeng/corectl/tests/integration/application"
 	_ "github.com/coreeng/corectl/tests/integration/config"
-	//_ "github.com/coreeng/corectl/tests/integration/tenant"
+	_ "github.com/coreeng/corectl/tests/integration/tenant"
 )
 
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	registerTestSuiteHandlers()
 	RunSpecs(t, "Integration Tests")
 }
 
-func registerTestSuiteHandlers() {
-	var (
-		tempDir      string
-		testRunId    string
-		gitAuth      git.AuthMethod
-		githubClient *github.Client
+var _ = BeforeSuite(func(ctx SpecContext) {
+	testRunId := randstr.String(6)
+	tempDir := GinkgoT().TempDir()
+	githubClient := testconfig.NewGitHubClient()
+	gitAuth := git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken)
+	testconfig.Cfg.CPlatformRepoFullId = prepareTestRepository(
+		ctx,
+		testdata.CPlatformEnvsPath(),
+		filepath.Join(tempDir, "cplatform-envs"),
+		"test-cplatform-envs-",
+		testRunId,
+		githubClient,
+		gitAuth,
 	)
-
-	_ = BeforeSuite(func(ctx SpecContext) {
-		testRunId = randstr.String(6)
-		tempDir = GinkgoT().TempDir()
-		githubClient = testconfig.NewGitHubClient()
-		gitAuth = git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken)
-		testconfig.Cfg.CPlatformRepoFullId = prepareTestRepository(
-			ctx,
-			testdata.CPlatformEnvsPath(),
-			filepath.Join(tempDir, "cplatform-envs"),
-			"test-cplatform-envs-",
-			testRunId,
-			githubClient,
-			gitAuth,
-		)
-		testconfig.Cfg.TemplatesRepoFullId = prepareTestRepository(
-			ctx,
-			testdata.TemplatesPath(),
-			filepath.Join(tempDir, "software-templates"),
-			"test-software-templates-",
-			testRunId,
-			githubClient,
-			gitAuth,
-		)
-	}, NodeTimeout(time.Minute))
-}
+	testconfig.Cfg.TemplatesRepoFullId = prepareTestRepository(
+		ctx,
+		testdata.TemplatesPath(),
+		filepath.Join(tempDir, "software-templates"),
+		"test-software-templates-",
+		testRunId,
+		githubClient,
+		gitAuth,
+	)
+}, NodeTimeout(time.Minute))
 
 func prepareTestRepository(
 	ctx SpecContext,

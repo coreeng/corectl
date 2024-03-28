@@ -27,8 +27,8 @@ func (c *CorectlClient) Run(args ...string) error {
 	cmd := exec.Command(c.binaryPath, args...)
 	cmd.Env = c.env
 	cmd.Dir = c.homeDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdout
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	if err := cmd.Run(); err != nil {
 		return err
 	}

@@ -28,5 +28,14 @@ func (streams IOStreams) Info(messages ...string) {
 }
 
 func (streams IOStreams) Spinner(message string) SpinnerHandler {
-	return newSpinner(message, streams)
+	if streams.IsInteractive() {
+		return newSpinner(message, streams)
+	} else {
+		streams.Info(message)
+		return dummySpinnerHandler{}
+	}
 }
+
+type dummySpinnerHandler struct{}
+
+func (dummySpinnerHandler) Done() {}
