@@ -11,8 +11,6 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
 )
@@ -66,11 +64,11 @@ cloudAccess: []
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
 		})
-		require.NoError(t, err)
+		Expect(err).NotTo(HaveOccurred())
 
 		mainBranchRefName = plumbing.NewBranchReferenceName(git.MainBranch)
 		originalMainRef, err = cplatformLocalRepo.Repository().Reference(mainBranchRefName, true)
-		require.NoError(t, err)
+		Expect(err).NotTo(HaveOccurred())
 
 		branchName = "new-tenant"
 		commitMsg = "New tenant create msg"
@@ -103,19 +101,18 @@ cloudAccess: []
 				},
 				githubClient,
 			)
-			assert.NoError(t, err)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("returns correct PR url", func() {
-			assert.Equal(t, newPrHtmlUrl, createResult.PRUrl)
+			Expect(createResult.PRUrl).To(Equal(newPrHtmlUrl))
 		})
 		It("called create PR correctly", func() {
-			if assert.Equal(t, 1, len(createPrCapture.Requests)) {
-				newPrRequest := createPrCapture.Requests[0]
-				assert.Equal(t, newPrName, *newPrRequest.Title)
-				assert.Equal(t, branchName, *newPrRequest.Head)
-				assert.Equal(t, git.MainBranch, *newPrRequest.Base)
-			}
+			Expect(createPrCapture.Requests).To(HaveLen(1))
+			newPrRequest := createPrCapture.Requests[0]
+			Expect(*newPrRequest.Title).To(Equal(newPrName))
+			Expect(*newPrRequest.Head).To(Equal(branchName))
+			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
 		})
 		It("leave local repository clean", func() {
 			localChangesPresent, err := cplatformLocalRepo.IsLocalChangesPresent()
