@@ -193,7 +193,7 @@ var _ = Describe("Create new application", func() {
 			})))
 		})
 		It("configured environments with variables", func() {
-			Expect(createEnvVarCapture.Requests).To(HaveLen(8))
+			Expect(createEnvVarCapture.Requests).To(HaveLen(10))
 			for _, env := range []environment.Environment{devEnv, prodEnv} {
 				var envRelatedRequests []httpmock.ActionEnvVariableRequest
 				for _, r := range createEnvVarCapture.Requests {
@@ -209,6 +209,10 @@ var _ = Describe("Create new application", func() {
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "BASE_DOMAIN" &&
 							r.Var.Value == env.GetDefaultIngressDomain().Domain
+					}),
+					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
+						return r.Var.Name == "INTERNAL_DOMAIN" &&
+							r.Var.Value == env.InternalServices.Domain
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "PROJECT_ID" &&

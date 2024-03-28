@@ -125,7 +125,7 @@ var _ = Describe("application", Ordered, func() {
 					&github.ListOptions{},
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(envVars.TotalCount).To(Equal(4))
+				Expect(envVars.TotalCount).To(Equal(5))
 				Expect(envVars.Variables).To(ConsistOf(
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "DPLATFORM" &&
@@ -134,6 +134,10 @@ var _ = Describe("application", Ordered, func() {
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "BASE_DOMAIN" &&
 							v.Value == env.GetDefaultIngressDomain().Domain
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "INTERNAL_DOMAIN" &&
+							v.Value == env.InternalServices.Domain
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "PROJECT_ID" &&
