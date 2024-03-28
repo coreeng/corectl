@@ -26,7 +26,7 @@ var _ = Describe("config", Ordered, func() {
 	BeforeAll(func() {
 		homeDir = t.TempDir()
 		corectl = testconfig.NewCorectlClient(homeDir)
-		testsetup.SetupGitConfigFromCurrentToOtherHomeDir(homeDir)
+		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
 	Context("init", Ordered, func() {

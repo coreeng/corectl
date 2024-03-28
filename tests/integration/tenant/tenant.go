@@ -25,7 +25,7 @@ var _ = Describe("tenant", Ordered, func() {
 		corectl = testconfig.NewCorectlClient(homeDir)
 		_, cfgDetails = testsetup.InitCorectl(corectl)
 		githubClient = testconfig.NewGitHubClient()
-		testsetup.SetupGitConfigFromCurrentToOtherHomeDir(homeDir)
+		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
 	Context("create", Ordered, func() {

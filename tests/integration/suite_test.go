@@ -4,6 +4,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
+	"github.com/coreeng/corectl/tests/integration/testsetup"
 	"github.com/google/go-github/v59/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,6 +79,7 @@ func prepareTestRepository(
 	).To(Succeed())
 	localRepo, err := git.InitLocalRepository(dest)
 	Expect(err).NotTo(HaveOccurred())
+	testsetup.SetupGitRepoConfigFromOtherRepo(".", localRepo.Repository())
 	Expect(localRepo.AddAll()).To(Succeed())
 	Expect(localRepo.Commit(&git.CommitOp{Message: "Initial commit\n[skip ci]"})).To(Succeed())
 

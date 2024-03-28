@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 )
 
-func SetupGitConfigFromCurrentToOtherHomeDir(destHomeDir string) {
+func SetupGitGlobalConfigFromCurrentToOtherHomeDir(destHomeDir string) {
 	localRepository, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{
 		DetectDotGit: true,
 	})
@@ -24,11 +24,22 @@ func SetupGitConfigFromCurrentToOtherHomeDir(destHomeDir string) {
 	saveAsNewConfig(destHomeDir, existingConfig)
 }
 
+func SetupGitRepoConfigFromOtherRepo(sourceRepoDir string, destRepo *git.Repository) {
+	sourceRepo, err := git.PlainOpenWithOptions(sourceRepoDir, &git.PlainOpenOptions{
+		DetectDotGit: true,
+	})
+	Expect(err).NotTo(HaveOccurred())
+	sourceCfg, err := sourceRepo.Config()
+	Expect(err).NotTo(HaveOccurred())
+	destCfg, err := destRepo.Config()
+	Expect(err).NotTo(HaveOccurred())
+	copyConfigData(sourceCfg, destCfg)
+	Expect(destRepo.SetConfig(destCfg)).To(Succeed())
+}
+
 func saveAsNewConfig(destHomeDir string, existingConfig *config.Config) {
 	newConfig := config.NewConfig()
-	newConfig.User = existingConfig.User
-	newConfig.Author = existingConfig.Author
-	newConfig.Committer = existingConfig.Committer
+	copyConfigData(existingConfig, newConfig)
 	marshalledCfg, err := newConfig.Marshal()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(os.WriteFile(
@@ -36,4 +47,10 @@ func saveAsNewConfig(destHomeDir string, existingConfig *config.Config) {
 		marshalledCfg,
 		0o644,
 	)).To(Succeed())
+}
+
+func copyConfigData(sourceCfg *config.Config, destCfg *config.Config) {
+	destCfg.User = sourceCfg.User
+	destCfg.Author = sourceCfg.Author
+	destCfg.Committer = sourceCfg.Committer
 }

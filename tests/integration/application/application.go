@@ -36,7 +36,7 @@ var _ = Describe("application", Ordered, func() {
 		corectl = testconfig.NewCorectlClient(homeDir)
 		cfg, cfgDetails = testsetup.InitCorectl(corectl)
 		githubClient = testconfig.NewGitHubClient()
-		testsetup.SetupGitConfigFromCurrentToOtherHomeDir(homeDir)
+		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 
 		envs, err := environment.List(cfg.Repositories.CPlatform.Value)
 		Expect(err).NotTo(HaveOccurred())
