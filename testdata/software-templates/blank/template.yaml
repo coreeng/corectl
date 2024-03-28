@@ -1,0 +1,3 @@
+name: blank
+description: Blank template with P2P related skeleton files
+skeletonPath: ./skeleton

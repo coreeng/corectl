@@ -1,6 +1,7 @@
 package template
 
 import (
+	"context"
 	"errors"
 	"gopkg.in/yaml.v3"
 	"io/fs"
@@ -10,7 +11,8 @@ import (
 
 func List(templatesPath string) ([]Spec, error) {
 	var specs []Spec
-	readNextTemplateFn := templatesIterator(templatesPath)
+	readNextTemplateFn, finishFn := templatesIterator(templatesPath)
+	defer finishFn()
 	for {
 		spec, done, err := readNextTemplateFn()
 		if err != nil {
@@ -24,7 +26,8 @@ func List(templatesPath string) ([]Spec, error) {
 }
 
 func FindByName(templatesPath string, name string) (*Spec, error) {
-	readNextTemplateFn := templatesIterator(templatesPath)
+	readNextTemplateFn, finishFn := templatesIterator(templatesPath)
+	defer finishFn()
 	for {
 		spec, done, err := readNextTemplateFn()
 		if err != nil {
@@ -39,18 +42,30 @@ func FindByName(templatesPath string, name string) (*Spec, error) {
 	}
 }
 
-func templatesIterator(templatesPath string) func() (Spec, bool, error) {
+func templatesIterator(templatesPath string) (func() (Spec, bool, error), func()) {
+	ctx, cancel := context.WithCancel(context.Background())
 	specCh := make(chan Spec)
 	errCh := make(chan error)
 	go func() {
-		if err := fs.WalkDir(os.DirFS(templatesPath), ".", func(path string, d fs.DirEntry, err error) error {
+		templatesAbsPath, err := filepath.Abs(templatesPath)
+		if err != nil {
+			cancel()
+			return
+		}
+		if err := fs.WalkDir(os.DirFS(templatesAbsPath), ".", func(path string, d fs.DirEntry, err error) error {
+			select {
+			case <-ctx.Done():
+				return fs.SkipAll
+			default:
+			}
+
 			if err != nil {
 				return err
 			}
 			if !d.IsDir() {
 				return nil
 			}
-			filename := filepath.Join(templatesPath, path, templateFilename)
+			filename := filepath.Join(templatesAbsPath, path, templateFilename)
 			_, err = os.Stat(filename)
 			if errors.Is(err, os.ErrNotExist) {
 				return nil
@@ -66,11 +81,19 @@ func templatesIterator(templatesPath string) func() (Spec, bool, error) {
 			if !t.IsValid() {
 				return nil
 			}
-			t.path = path
-			specCh <- t
-			return filepath.SkipDir
+			t.path = filepath.Join(templatesAbsPath, path)
+
+			select {
+			case <-ctx.Done():
+				return fs.SkipAll
+			case specCh <- t:
+				return filepath.SkipDir
+			}
 		}); err != nil {
-			errCh <- err
+			select {
+			case <-ctx.Done():
+			case errCh <- err:
+			}
 		}
 		close(specCh)
 		close(errCh)
@@ -83,5 +106,5 @@ func templatesIterator(templatesPath string) func() (Spec, bool, error) {
 		case err, isReceived := <-errCh:
 			return Spec{}, !isReceived, err
 		}
-	}
+	}, cancel
 }

@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"context"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/git"
 	"os"
 	"path/filepath"
@@ -31,7 +32,7 @@ func CreateOrUpdate(
 
 	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("couldn't open cplatform repository: %v", err)
 	}
 
 	if err = repository.CheckoutBranch(&git.CheckoutOp{

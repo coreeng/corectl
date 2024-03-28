@@ -1,6 +1,7 @@
 package create
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/application"
@@ -197,7 +198,6 @@ func createNewApp(
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
-		TemplatesPath:    cfg.Repositories.Templates.Value,
 		Template:         &fulfilledTemplate,
 		GitAuth:          gitAuth,
 	}
@@ -256,7 +256,7 @@ func (opts *AppCreateOpt) createTenantInput(existingTenant []tenant.Tenant, defa
 		availableTenantNames[i+1] = string(t.Name)
 	}
 	return userio.InputSourceSwitch[string, *tenant.Tenant]{
-		DefaultValue: userio.AsZeroable(opts.Tenant),
+		DefaultValue: userio.AsZeroable(cmp.Or(opts.Tenant, string(defaultTenant))),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
 				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenant),

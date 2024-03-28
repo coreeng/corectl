@@ -5,19 +5,28 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
 var (
 	ErrLocalChangesIsPresent = errors.New("local changes are present")
 )
 
-const originRemote = "origin"
+const OriginRemote = "origin"
 const MainBranch = "main"
 
 type LocalRepository struct {
 	repo     *git.Repository
 	worktree *git.Worktree
 	path     string
+}
+
+func (localRepo *LocalRepository) Repository() *git.Repository {
+	return localRepo.repo
+}
+
+func (localRepo *LocalRepository) Worktree() *git.Worktree {
+	return localRepo.worktree
 }
 
 func InitLocalRepository(path string) (*LocalRepository, error) {
@@ -69,12 +78,16 @@ type CloneOp struct {
 }
 
 func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
+	var gitAuth transport.AuthMethod
+	if op.Auth != nil {
+		gitAuth = op.Auth.toGitAuthMethod()
+	}
 	repository, err := git.PlainClone(
 		op.TargetPath,
 		false,
 		&git.CloneOptions{
 			URL:  op.URL,
-			Auth: op.Auth.toGitAuthMethod(),
+			Auth: gitAuth,
 		})
 	if err != nil {
 		return nil, err
@@ -166,10 +179,10 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 	}
 
 	branch, err := localRepo.repo.Branch(op.BranchName)
-	if errors.Is(err, git.ErrBranchNotFound) && op.CreateIfMissing {
+	if errors.Is(err, git.ErrBranchNotFound) {
 		branch = &config.Branch{
 			Name:   op.BranchName,
-			Remote: originRemote,
+			Remote: OriginRemote,
 			Merge:  branchRefName,
 		}
 		if err = localRepo.repo.CreateBranch(branch); err != nil {
@@ -186,14 +199,36 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 	return nil
 }
 
+func (localRepo *LocalRepository) CurrentBranch() (string, error) {
+	head, err := localRepo.repo.Head()
+	if err != nil {
+		return "", err
+	}
+	if head.Type() == plumbing.InvalidReference {
+		return "", errors.New("not following any specific branch")
+	}
+	headTarget := head.Name()
+	if head.Type() == plumbing.SymbolicReference {
+		headTarget = head.Target()
+	}
+	if !headTarget.IsBranch() {
+		return "", errors.New("HEAD target is not a branch")
+	}
+	return headTarget.Short(), nil
+}
+
 type PullResult struct {
 	IsUpdated bool
 }
 
 func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
+	var gitAuth transport.AuthMethod
+	if auth != nil {
+		gitAuth = auth.toGitAuthMethod()
+	}
 	err := localRepo.worktree.Pull(&git.PullOptions{
-		RemoteName: originRemote,
-		Auth:       auth.toGitAuthMethod(),
+		RemoteName: OriginRemote,
+		Auth:       gitAuth,
 	})
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return PullResult{}, err
@@ -202,8 +237,12 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
 }
 
 func (localRepo *LocalRepository) Push(auth AuthMethod) error {
+	var gitAuth transport.AuthMethod
+	if auth != nil {
+		gitAuth = auth.toGitAuthMethod()
+	}
 	if err := localRepo.repo.Push(&git.PushOptions{
-		Auth: auth.toGitAuthMethod(),
+		Auth: gitAuth,
 	}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return err
 	}
@@ -226,7 +265,9 @@ func (localRepo *LocalRepository) Commit(op *CommitOp) error {
 		}
 	}
 
-	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{})
+	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
+		AllowEmptyCommits: true,
+	})
 	if err != nil {
 		return err
 	}
@@ -235,7 +276,7 @@ func (localRepo *LocalRepository) Commit(op *CommitOp) error {
 
 func (localRepo *LocalRepository) SetRemote(url string) error {
 	_, err := localRepo.repo.CreateRemote(&config.RemoteConfig{
-		Name: originRemote,
+		Name: OriginRemote,
 		URLs: []string{url},
 	})
 	return err

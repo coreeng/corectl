@@ -6,12 +6,18 @@ lint:
 
 .PHONY: test
 test:
-	go test ./...
+	go test ./pkg/... -v
 
 .PHONY: build
 build:
 	go build -o corectl $(CORECTL_MAIN)
 
+
+.PHONY: integration-test
+integration-test: build
+	TEST_CORECTL_BINARY="$$(realpath corectl)" \
+		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
+		go test ./tests/integration/... -v
 
 .PHONY: dev-env
 dev-env:
