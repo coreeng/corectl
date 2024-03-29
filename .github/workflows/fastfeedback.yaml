@@ -43,8 +43,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - uses: fregante/setup-git-user@v2
       - name: integration-test
-        run: make integration-test
+        run: |
+          git config --global user.name "Test Bot"
+          git config --global user.email "test@bot.com"
+          make integration-test
         env:
           GITHUB_TOKEN: ${{ secrets.INTEGRATION_TEST_GH_TOKEN }}
