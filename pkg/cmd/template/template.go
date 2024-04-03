@@ -12,7 +12,7 @@ func NewTemplateCmd(cfg *config.Config) *cobra.Command {
 	templateCmd := &cobra.Command{
 		Use:     "template",
 		Aliases: []string{"templates"},
-		Short:   "Operations with tenants",
+		Short:   "Operations with templates",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Help(); err != nil {
 				return err
