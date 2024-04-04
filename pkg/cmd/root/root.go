@@ -35,6 +35,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
 	rootCmd.AddCommand(appCmd)
+	rootCmd.AddCommand(p2p.NewRepoCmd(cfg))
 
 	return rootCmd
 }
