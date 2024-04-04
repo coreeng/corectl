@@ -26,7 +26,7 @@ dev-env:
 		-v ${PWD}:/root/workspace \
 		-v ${HOME}/.ssh:/root/.ssh \
 		-v ${HOME}/.gitconfig:/root/.gitconfig \
-		-v ${GOPATH}/go:/go \
+		-v $$(go env GOPATH):/go \
 		-e TERM=${TERM} \
 		-e COLORTERM=${COLORTERM} \
 		-p 12345:12345 \

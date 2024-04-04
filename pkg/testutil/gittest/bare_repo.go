@@ -1,8 +1,8 @@
 package gittest
 
 import (
-	git2 "github.com/coreeng/corectl/pkg/git"
-	"github.com/go-git/go-git/v5"
+	"github.com/coreeng/corectl/pkg/git"
+	gitcore "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	. "github.com/onsi/gomega"
@@ -13,7 +13,7 @@ import (
 )
 
 type BareRepository struct {
-	repo *git.Repository
+	repo *gitcore.Repository
 	path string
 }
 
@@ -23,7 +23,7 @@ type CreateBareAndLocalRepoOp struct {
 	TargetLocalRepoDir string
 }
 
-func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepository, *git2.LocalRepository, error) {
+func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepository, *git.LocalRepository, error) {
 	if err := os.MkdirAll(op.TargetBareRepoDir, 0o777); err != nil {
 		return nil, nil, err
 	}
@@ -34,7 +34,7 @@ func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepositor
 	if err != nil {
 		return nil, nil, err
 	}
-	localRepo, err := git2.InitLocalRepository(op.TargetLocalRepoDir)
+	localRepo, err := git.InitLocalRepository(op.TargetLocalRepoDir)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -49,7 +49,7 @@ func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepositor
 	if err = localRepo.AddAll(); err != nil {
 		return nil, nil, err
 	}
-	if err = localRepo.Commit(&git2.CommitOp{Message: "Initial commit"}); err != nil {
+	if err = localRepo.Commit(&git.CommitOp{Message: "Initial commit"}); err != nil {
 		return nil, nil, err
 	}
 	if err = localRepo.Push(nil); err != nil {
@@ -67,10 +67,10 @@ func InitBareRepository(path string) (*BareRepository, error) {
 	if err != nil {
 		return nil, err
 	}
-	repo, err := git.PlainInitWithOptions(
+	repo, err := gitcore.PlainInitWithOptions(
 		path,
-		&git.PlainInitOptions{
-			InitOptions: git.InitOptions{DefaultBranch: plumbing.Main},
+		&gitcore.PlainInitOptions{
+			InitOptions: gitcore.InitOptions{DefaultBranch: plumbing.Main},
 			Bare:        true,
 		})
 	if err != nil {
@@ -82,7 +82,7 @@ func InitBareRepository(path string) (*BareRepository, error) {
 	}, nil
 }
 
-func (r *BareRepository) Repository() *git.Repository {
+func (r *BareRepository) Repository() *gitcore.Repository {
 	return r.repo
 }
 
@@ -90,7 +90,7 @@ func (r *BareRepository) LocalCloneUrl() string {
 	return "file://" + r.path
 }
 
-func (r *BareRepository) AssertInSyncWith(localRepo *git2.LocalRepository) {
+func (r *BareRepository) AssertInSyncWith(localRepo *git.LocalRepository) {
 	referencesFromBareRepo, err := r.repo.References()
 	Expect(err).NotTo(HaveOccurred())
 	err = referencesFromBareRepo.ForEach(func(referenceFromBareRepo *plumbing.Reference) error {
