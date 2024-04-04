@@ -1,7 +1,23 @@
 CORECTL_MAIN=./cmd/corectl
 
+.PHONY: lint
+lint:
+	golangci-lint run ./...
+
+.PHONY: test
+test:
+	go test ./pkg/... -v
+
+.PHONY: build
 build:
-	go build $(CORECTL_MAIN)
+	go build -o corectl $(CORECTL_MAIN)
+
+
+.PHONY: integration-test
+integration-test: build
+	TEST_CORECTL_BINARY="$$(realpath corectl)" \
+		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
+		go test ./tests/integration -v
 
 .PHONY: dev-env
 dev-env:
@@ -10,7 +26,7 @@ dev-env:
 		-v ${PWD}:/root/workspace \
 		-v ${HOME}/.ssh:/root/.ssh \
 		-v ${HOME}/.gitconfig:/root/.gitconfig \
-		-v ${GOPATH}/go:/go \
+		-v $$(go env GOPATH):/go \
 		-e TERM=${TERM} \
 		-e COLORTERM=${COLORTERM} \
 		-p 12345:12345 \

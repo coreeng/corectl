@@ -1,7 +1,6 @@
 repositories:
   cplatform: https://github.com/coreeng-dev/cplatform-envs-test
-  templates: https://github.com/coreeng-dev/software-templates-test
-#  templates: https://github.com/coreeng/software-templates
+  templates: https://github.com/coreeng-dev/software-templates
 
 p2p:
   fast-feedback:

@@ -78,13 +78,13 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Environments,
 		"environments",
-		nil,
+		[]string{},
 		"Environments, available to tenant",
 	)
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Repositories,
 		"repositories",
-		nil,
+		[]string{},
 		"Repositories, tenant is responsible for.",
 	)
 	tenantCreateCmd.Flags().StringVar(
@@ -104,6 +104,15 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"nonint",
 		false,
 		"Disable interactive inputs",
+	)
+
+	config.RegisterStringParameterAsFlag(
+		&cfg.Repositories.CPlatform,
+		tenantCreateCmd.Flags(),
+	)
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Token,
+		tenantCreateCmd.Flags(),
 	)
 
 	return tenantCreateCmd

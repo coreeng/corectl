@@ -1,0 +1,49 @@
+name: Fast Feedback
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: lint
+        uses: reviewdog/action-golangci-lint@v2
+        with:
+          go_version_file: 'go.mod'
+          golangci_lint_flags: --timeout 3m --verbose
+      - name: test
+        run: |
+          git config --global user.name "Test Bot"
+          git config --global user.email "test@bot.com"
+          make test
+  integration-test:
+    runs-on: ubuntu-latest
+    name: Integration Test
+    needs: [test]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: integration-test
+        run: |
+          git config --global user.name "Test Bot"
+          git config --global user.email "test@bot.com"
+          make integration-test
+        env:
+          GITHUB_TOKEN: ${{ secrets.INTEGRATION_TEST_GH_TOKEN }}

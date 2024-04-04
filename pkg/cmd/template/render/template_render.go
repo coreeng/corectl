@@ -43,7 +43,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 				Spec:      t,
 				Arguments: []template.Argument{},
 			}
-			if err := template.Render(&fulfilledT, templatesPath, targetPath); err != nil {
+			if err := template.Render(&fulfilledT, targetPath); err != nil {
 				return err
 			}
 

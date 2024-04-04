@@ -1,0 +1,27 @@
+name: Release
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Create release
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - name: go-releaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          distribution: goreleaser
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

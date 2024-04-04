@@ -68,6 +68,11 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"o",
 		"",
 		"GitHub organisation of your company.")
+	newInitCmd.Flags().StringVar(
+		&opt.Tenant,
+		"tenant",
+		"",
+		"Default tenant to be used")
 	newInitCmd.Flags().BoolVar(
 		&opt.NonInteractive,
 		"nonint",
