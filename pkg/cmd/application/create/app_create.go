@@ -229,9 +229,10 @@ func createPRWithUpdatedReposListForTenant(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
 			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
-			BranchName:        string(appTenant.Name) + "-add-repo-" + createdAppResult.RepositoryFullname.Name,
-			CommitMessage:     "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
-			PRName:            "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
+			BranchName:        fmt.Sprintf("%s-add-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name),
+			CommitMessage:     fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
+			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
+			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
 		},
 		githubClient,

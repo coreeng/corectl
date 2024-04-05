@@ -17,6 +17,7 @@ type CreateOrUpdateOp struct {
 	BranchName        string
 	CommitMessage     string
 	PRName            string
+	PRBody            string
 	GitAuth           git.AuthMethod
 }
 
@@ -81,9 +82,10 @@ func CreateOrUpdate(
 		fullname.Organization,
 		fullname.Name,
 		&github.NewPullRequest{
-			Title: &op.PRName,
-			Head:  &op.BranchName,
 			Base:  &mainBaseBranch,
+			Head:  &op.BranchName,
+			Title: &op.PRName,
+			Body:  &op.PRBody,
 		})
 	if err != nil {
 		return result, err
