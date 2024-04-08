@@ -96,7 +96,7 @@ func NewP2PUpdateCmd(cfg *config.Config) (*cobra.Command, error) {
 
 func run(opts *EnvUpdateOpts, cfg *config.Config) error {
 
-	varsToCreate := []github.ActionsVariable{
+	varsToUpdate := []github.ActionsVariable{
 		{
 			Name:  "BASE_DOMAIN",
 			Value: opts.BaseDomain,
@@ -139,13 +139,13 @@ func run(opts *EnvUpdateOpts, cfg *config.Config) error {
 		opts.Repo)
 	opts.Streams.Info("Repo: " + *repository.Name)
 
-	for i := range varsToCreate {
-		opts.Streams.Info("Adding Var: " + varsToCreate[i].Name)
+	for i := range varsToUpdate {
+		opts.Streams.Info("Updating Var: " + varsToUpdate[i].Name)
 		_, err = githubClient.Actions.CreateEnvVariable(
 			context.Background(),
 			int(repository.GetID()),
 			*environments.Name,
-			&varsToCreate[i],
+			&varsToUpdate[i],
 		)
 		if err != nil {
 			return err

@@ -59,7 +59,6 @@ func NewP2PCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 		"b",
 		"",
 		"Base Domain")
-	createEnvironmentsCmd.MarkFlagRequired("basedomain")
 
 	createEnvironmentsCmd.Flags().StringVarP(
 		&opts.InternalDomain,
@@ -67,7 +66,6 @@ func NewP2PCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 		"",
 		"",
 		"Internal Services Domain")
-	createEnvironmentsCmd.MarkFlagRequired("isdomain")
 
 	createEnvironmentsCmd.Flags().StringVarP(
 		&opts.ProjectID,
@@ -75,7 +73,6 @@ func NewP2PCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 		"i",
 		"",
 		"Project ID")
-	createEnvironmentsCmd.MarkFlagRequired("projectid")
 
 	createEnvironmentsCmd.Flags().StringVarP(
 		&opts.ProjectNumber,
@@ -83,7 +80,6 @@ func NewP2PCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 		"n",
 		"",
 		"Project Number")
-	createEnvironmentsCmd.MarkFlagRequired("projectnum")
 
 	createEnvironmentsCmd.Flags().BoolVar(
 		&opts.NonInteractive,
