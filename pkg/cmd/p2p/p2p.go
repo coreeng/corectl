@@ -1,8 +1,8 @@
 package p2p
 
 import (
-	"github.com/coreeng/corectl/pkg/cmd/p2p/create"
 	"github.com/coreeng/corectl/pkg/cmd/p2p/list"
+	sync "github.com/coreeng/corectl/pkg/cmd/p2p/sync"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
 )
@@ -19,11 +19,11 @@ func NewP2PCmd(cfg *config.Config) (*cobra.Command, error) {
 		},
 	}
 
-	createCommand, err := create.NewP2PCreateCmd(cfg)
+	syncCommand, err := sync.NewP2PSyncCmd(cfg)
 	if err != nil {
 		return nil, err
 	}
-	p2pCmd.AddCommand(createCommand)
+	p2pCmd.AddCommand(syncCommand)
 	//p2pCmd.AddCommand(update.NewP2PUpdateCmd(cfg))
 	listCommand, err := list.NewP2PListCmd(cfg)
 	if err != nil {
