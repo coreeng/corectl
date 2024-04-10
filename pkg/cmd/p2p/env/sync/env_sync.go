@@ -19,13 +19,8 @@ type EnvCreateOpts struct {
 	RepositoriesDir string
 	AppRepo         string
 	Name            string
-	BaseDomain      string
-	InternalDomain  string
 	DPlatformRepo   string
-	ProjectID       string
-	ProjectNumber   string
-
-	Streams userio.IOStreams
+	Streams         userio.IOStreams
 }
 
 func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
