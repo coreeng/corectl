@@ -38,7 +38,11 @@ func NewP2PListCmd(cfg *config.Config) (*cobra.Command, error) {
 		"r",
 		"",
 		"Application Repository")
-	listEnvironmentsCmd.MarkFlagRequired("repo")
+
+	err := listEnvironmentsCmd.MarkFlagRequired("repo")
+	if err != nil {
+		return nil, err
+	}
 	listEnvironmentsCmd.Flags().BoolVar(
 		&opts.NonInteractive,
 		"nonint",
