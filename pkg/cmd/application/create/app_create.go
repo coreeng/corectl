@@ -1,6 +1,7 @@
 package create
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/application"
@@ -197,7 +198,6 @@ func createNewApp(
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
-		TemplatesPath:    cfg.Repositories.Templates.Value,
 		Template:         &fulfilledTemplate,
 		GitAuth:          gitAuth,
 	}
@@ -229,9 +229,10 @@ func createPRWithUpdatedReposListForTenant(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
 			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
-			BranchName:        string(appTenant.Name) + "-add-repo-" + createdAppResult.RepositoryFullname.Name,
-			CommitMessage:     "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
-			PRName:            "Add new repository " + createdAppResult.RepositoryFullname.Name + " for tenant " + string(appTenant.Name),
+			BranchName:        fmt.Sprintf("%s-add-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name),
+			CommitMessage:     fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
+			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
+			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
 		},
 		githubClient,
@@ -256,7 +257,7 @@ func (opts *AppCreateOpt) createTenantInput(existingTenant []tenant.Tenant, defa
 		availableTenantNames[i+1] = string(t.Name)
 	}
 	return userio.InputSourceSwitch[string, *tenant.Tenant]{
-		DefaultValue: userio.AsZeroable(opts.Tenant),
+		DefaultValue: userio.AsZeroable(cmp.Or(opts.Tenant, string(defaultTenant))),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
 				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenant),

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-func Render(t *FulfilledTemplate, templatesPath string, targetPath string) error {
+func Render(t *FulfilledTemplate, targetPath string) error {
 	j2, err := jinja2.NewJinja2(t.Spec.Name, 1)
 	if err != nil {
 		return err
@@ -17,7 +17,7 @@ func Render(t *FulfilledTemplate, templatesPath string, targetPath string) error
 	for _, arg := range t.Arguments {
 		vars[arg.Name] = arg.Value
 	}
-	tPath := filepath.Join(templatesPath, t.Spec.path, t.Spec.SkeletonPath)
+	tPath := filepath.Join(t.Spec.path, t.Spec.SkeletonPath)
 	if err := j2.RenderDirectory(
 		tPath,
 		targetPath,

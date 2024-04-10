@@ -5,13 +5,18 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type SpinnerHandler struct {
+type SpinnerHandler interface {
+	Done()
+}
+
+type asyncSpinnerHandler struct {
 	doneChan    chan<- bool
 	quittedChan <-chan bool
 }
 
-func (sh SpinnerHandler) Done() {
+func (sh asyncSpinnerHandler) Done() {
 	sh.doneChan <- true
+	close(sh.doneChan)
 	<-sh.quittedChan
 }
 
@@ -24,13 +29,14 @@ func newSpinner(message string, streams IOStreams) SpinnerHandler {
 		doneChan: doneChan,
 		model:    m,
 	}
-	handler := SpinnerHandler{
+	handler := asyncSpinnerHandler{
 		doneChan:    doneChan,
 		quittedChan: quittedChan,
 	}
 	go func() {
 		_, _ = streams.execute(sm)
 		quittedChan <- true
+		close(quittedChan)
 	}()
 	return handler
 }
@@ -58,7 +64,7 @@ func (sm spinnerModel) Init() tea.Cmd {
 }
 
 func (sm spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if _, ok := msg.(doneMsg); ok {
+	if _, ok := msg.(doneMsg); ok || sm.done {
 		sm.quitting = true
 		return sm, tea.Quit
 	}

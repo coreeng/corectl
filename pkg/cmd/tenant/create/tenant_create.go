@@ -2,6 +2,7 @@ package create
 
 import (
 	"errors"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/environment"
@@ -78,13 +79,13 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Environments,
 		"environments",
-		nil,
+		[]string{},
 		"Environments, available to tenant",
 	)
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Repositories,
 		"repositories",
-		nil,
+		[]string{},
 		"Repositories, tenant is responsible for.",
 	)
 	tenantCreateCmd.Flags().StringVar(
@@ -104,6 +105,15 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"nonint",
 		false,
 		"Disable interactive inputs",
+	)
+
+	config.RegisterStringParameterAsFlag(
+		&cfg.Repositories.CPlatform,
+		tenantCreateCmd.Flags(),
+	)
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Token,
+		tenantCreateCmd.Flags(),
 	)
 
 	return tenantCreateCmd
@@ -206,9 +216,10 @@ func createTenant(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
 			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
-			BranchName:        "new-tenant-" + string(t.Name),
-			CommitMessage:     "Add new tenant: " + string(t.Name),
-			PRName:            "New tenant: " + string(t.Name),
+			BranchName:        fmt.Sprintf("new-tenant-%s", t.Name),
+			CommitMessage:     fmt.Sprintf("Add new tenant: %s", t.Name),
+			PRName:            fmt.Sprintf("New tenant: %s", t.Name),
+			PRBody:            fmt.Sprintf("Adds new tenant '%s'", t.Name),
 			GitAuth:           gitAuth,
 		}, githubClient,
 	)

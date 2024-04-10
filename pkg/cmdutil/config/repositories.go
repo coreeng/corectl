@@ -12,9 +12,9 @@ func ResetConfigRepositoryState(repositoryParam *Parameter[string]) (*git.LocalR
 	}
 	repo, err := git.OpenAndResetRepositoryState(repositoryParam.Value)
 	if errors.Is(err, git.ErrLocalChangesIsPresent) {
-		return nil, fmt.Errorf("local changes are present in %s. consider removing it before using corectl", repositoryParam.name)
+		return nil, fmt.Errorf("local changes are present in %s. consider removing it before using corectl. path: %s", repositoryParam.name, repositoryParam.Value)
 	} else if err != nil {
-		return nil, fmt.Errorf("couldn't reset state for %s: %v", repositoryParam.name, err)
+		return nil, fmt.Errorf("couldn't reset state for %s: %v. path: %s", repositoryParam.name, err, repositoryParam.Value)
 	}
 	return repo, nil
 }

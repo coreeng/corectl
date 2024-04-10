@@ -24,7 +24,6 @@ type CreateOp struct {
 	FastFeedbackEnvs []environment.Environment
 	ExtendedTestEnvs []environment.Environment
 	ProdEnvs         []environment.Environment
-	TemplatesPath    string
 	Template         *template.FulfilledTemplate
 	GitAuth          git.AuthMethod
 }
@@ -55,7 +54,7 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return os.RemoveAll(op.LocalPath)
 	})
 	if op.Template != nil {
-		if err = template.Render(op.Template, op.TemplatesPath, op.LocalPath); err != nil {
+		if err = template.Render(op.Template, op.LocalPath); err != nil {
 			return result, err
 		}
 		if err = localRepo.AddAll(); err != nil {
@@ -80,7 +79,8 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 	if err != nil {
 		return result, err
 	}
-	result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).Fullname
+	repoFullId := git.NewGithubRepoFullId(githubRepo)
+	result.RepositoryFullname = repoFullId.Fullname
 
 	if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
 		return result, err
@@ -89,7 +89,6 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return result, err
 	}
 
-	repoFullId := git.NewGithubRepoFullId(githubRepo)
 	if err = p2p.InitializeRepository(&p2p.InitializeOp{
 		RepositoryId:     &repoFullId,
 		Tenant:           op.Tenant,

@@ -1,0 +1,11 @@
+name: default-tenant
+parent: parent
+description: "Default tenant to use in tests"
+contactEmail: parent@prod.domain
+costCentre: cost-centre
+environments:
+  - dev
+  - prod
+adminGroup: admin-group@prod.domain
+readonlyGroup: readonly-group@prod.domain
+cloudAccess: []

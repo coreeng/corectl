@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"context"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/git"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ type CreateOrUpdateOp struct {
 	BranchName        string
 	CommitMessage     string
 	PRName            string
+	PRBody            string
 	GitAuth           git.AuthMethod
 }
 
@@ -31,7 +33,7 @@ func CreateOrUpdate(
 
 	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath)
 	if err != nil {
-		return result, err
+		return result, fmt.Errorf("couldn't open cplatform repository: %v", err)
 	}
 
 	if err = repository.CheckoutBranch(&git.CheckoutOp{
@@ -80,9 +82,10 @@ func CreateOrUpdate(
 		fullname.Organization,
 		fullname.Name,
 		&github.NewPullRequest{
-			Title: &op.PRName,
-			Head:  &op.BranchName,
 			Base:  &mainBaseBranch,
+			Head:  &op.BranchName,
+			Title: &op.PRName,
+			Body:  &op.PRBody,
 		})
 	if err != nil {
 		return result, err

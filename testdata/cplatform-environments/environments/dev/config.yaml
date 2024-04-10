@@ -1,0 +1,43 @@
+release: "0.9.0"
+
+environment: "dev"
+domain: "dev.domain"
+
+features:
+  - platform-network
+  - connected-kubernetes
+  - infra-operator
+  - multi-tenant-kubernetes-access
+  - tenants-yaml
+  - platform-ingress
+  - platform-monitoring
+
+tests:
+  functional: true
+
+platform:
+  vendor: gcp
+  projectId: "projectId-dev"
+  projectNumber: "111111111111"
+  tenantInfraFolderId: "9999999999999"
+  region: "europe-west2"
+  knowledgePlatformBaseUrl: "https://learn.dev.domain"
+
+bucket:
+  projectId: "projectId-dev"
+  name:  "bucket-name"
+  location: "europe-west2"
+
+tenantsYaml:
+  tenantsYamlPath: tenants
+
+ingressDomains:
+  - name: default
+    domain: "dev.domain"
+
+internalServices:
+  name: secure
+  domain: "internal.dev.domain"
+
+platformMonitoring:
+  slackAlertWebhook: https://hooks.slack.com/services/some-id
