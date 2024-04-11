@@ -69,7 +69,6 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	repoId := git.NewGithubRepoFullId(repository)
 	env, err := environment.GetEnvironmentByName(cfg.Repositories.CPlatform.Value, opts.Name)
 	if err != nil {
-		opts.Streams.Info(err.Error())
 		return err
 	}
 	opts.Streams.Info("Updating " + opts.Name + " environment for " + repoId.Fullname.Name)
