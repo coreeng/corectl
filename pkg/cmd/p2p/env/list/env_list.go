@@ -48,7 +48,6 @@ func NewP2PListCmd(cfg *config.Config) (*cobra.Command, error) {
 func run(opts *EnvListOpts, cfg *config.Config) error {
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
-	//repoId := git.NewGithubRepoFullId()
 	opts.Streams.Info("Retrieving Environments")
 	environments, _, err := githubClient.Repositories.ListEnvironments(
 		context.Background(),
