@@ -39,23 +39,12 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 	}
 
 	syncEnvironmentsCmd.Flags().StringVarP(
-		&opts.RepositoriesDir,
-		"repositories",
-		"r",
-		"",
-		"Directory to store platform local repositories. Default is near config file.")
-	err := syncEnvironmentsCmd.MarkFlagRequired("repositories")
-	if err != nil {
-		return nil, err
-	}
-
-	syncEnvironmentsCmd.Flags().StringVarP(
 		&opts.AppRepo,
 		"apprepo",
 		"a",
 		"",
 		"Application Repository")
-	err = syncEnvironmentsCmd.MarkFlagRequired("apprepo")
+	err := syncEnvironmentsCmd.MarkFlagRequired("apprepo")
 	if err != nil {
 		return nil, err
 	}
