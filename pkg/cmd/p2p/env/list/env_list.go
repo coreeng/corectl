@@ -10,8 +10,7 @@ import (
 )
 
 type EnvListOpts struct {
-	NonInteractive bool
-	Repo           string
+	Repo string
 
 	Streams userio.IOStreams
 }
@@ -23,10 +22,9 @@ func NewP2PListCmd(cfg *config.Config) (*cobra.Command, error) {
 		Use:   "list",
 		Short: "List Environments",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Streams = userio.NewIOStreamsWithInteractive(
+			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
-				!opts.NonInteractive,
 			)
 			return run(&opts, cfg)
 		},
@@ -43,11 +41,6 @@ func NewP2PListCmd(cfg *config.Config) (*cobra.Command, error) {
 	if err != nil {
 		return nil, err
 	}
-	listEnvironmentsCmd.Flags().BoolVar(
-		&opts.NonInteractive,
-		"nonint",
-		false,
-		"Disable interactive inputs")
 
 	return listEnvironmentsCmd, nil
 }

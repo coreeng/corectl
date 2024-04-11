@@ -9,7 +9,7 @@ import (
 	"github.com/google/go-github/v59/github"
 )
 
-func CreateEnvironmentForRepository(
+func CreateUpdateEnvironmentForRepository(
 	githubClient *github.Client,
 	repoId *git.GithubRepoFullId,
 	env *environment.Environment,

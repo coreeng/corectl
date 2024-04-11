@@ -1,11 +1,12 @@
 package p2p
 
 import (
+	"slices"
+
 	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"slices"
 )
 
 type InitializeOp struct {
@@ -54,7 +55,7 @@ func InitializeRepository(
 			continue
 		}
 		createdEnvs = append(createdEnvs, env.Environment)
-		if err := CreateEnvironmentForRepository(githubClient, op.RepositoryId, &env); err != nil {
+		if err := CreateUpdateEnvironmentForRepository(githubClient, op.RepositoryId, &env); err != nil {
 			return err
 		}
 	}

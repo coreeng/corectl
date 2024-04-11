@@ -2,6 +2,7 @@ package environment
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -37,6 +38,7 @@ func List(configRepoPath string) ([]Environment, error) {
 
 func GetEnvironmentByName(configRepoPath string, envName string) (Environment, error) {
 	var env Environment
+	var environmentFound = false
 	environments, err := List(configRepoPath)
 	if err != nil {
 		return env, err
@@ -44,8 +46,12 @@ func GetEnvironmentByName(configRepoPath string, envName string) (Environment, e
 
 	for _, env = range environments {
 		if string(env.Environment) == envName {
+			environmentFound = true
 			break
 		}
+	}
+	if !environmentFound {
+		return env, fmt.Errorf("unable to find matching environment %s, check your config.yaml", envName)
 	}
 	return env, nil
 }

@@ -13,12 +13,9 @@ import (
 )
 
 type EnvCreateOpts struct {
-	NonInteractive  bool
-	RepositoriesDir string
-	AppRepo         string
-	Name            string
-	DPlatformRepo   string
-	Streams         userio.IOStreams
+	AppRepo string
+	Name    string
+	Streams userio.IOStreams
 }
 
 func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
@@ -31,10 +28,9 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Name = args[0]
 
-			opts.Streams = userio.NewIOStreamsWithInteractive(
+			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
-				!opts.NonInteractive,
 			)
 			return run(&opts, cfg)
 		},
@@ -50,12 +46,6 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	syncEnvironmentsCmd.Flags().BoolVar(
-		&opts.NonInteractive,
-		"nonint",
-		false,
-		"Disable interactive inputs")
 
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.CPlatform,
@@ -76,18 +66,14 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	repoId := git.GithubRepoFullId{
-		Id: int(repository.GetID()),
-		Fullname: git.RepositoryFullname{
-			Organization: *repository.Owner.Login,
-			Name:         *repository.Name,
-		},
-	}
+	repoId := git.NewGithubRepoFullId(repository)
 	env, err := environment.GetEnvironmentByName(cfg.Repositories.CPlatform.Value, opts.Name)
 	if err != nil {
+		opts.Streams.Info(err.Error())
 		return err
 	}
-	err = p2p.CreateEnvironmentForRepository(
+	opts.Streams.Info("Updating " + opts.Name + " environment for " + repoId.Fullname.Name)
+	err = p2p.CreateUpdateEnvironmentForRepository(
 		githubClient,
 		&repoId,
 		&env,
