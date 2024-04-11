@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"errors"
+
 	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/google/go-github/v59/github"
@@ -50,14 +51,24 @@ func CreateEnvironmentForRepository(
 		},
 	}
 	for i := range varsToCreate {
-		_, err = githubClient.Actions.CreateEnvVariable(
+		response, err := githubClient.Actions.CreateEnvVariable(
 			context.Background(),
 			repoId.Id,
 			*repoEnv.Name,
 			&varsToCreate[i],
 		)
 		if err != nil {
-			return err
+			if response.StatusCode == 409 {
+				_, err := githubClient.Actions.UpdateEnvVariable(
+					context.Background(),
+					int(repoId.Id),
+					*repoEnv.Name,
+					&varsToCreate[i],
+				)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil

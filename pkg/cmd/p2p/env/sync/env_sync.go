@@ -6,6 +6,8 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/environment"
+	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/p2p"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -67,87 +69,31 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 
-	envs, err := environment.List(cfg.Repositories.CPlatform.Value)
-	if err != nil {
-		return err
-	}
-
-	var requestedEnv environment.Environment
-	for _, requestedEnv = range envs {
-		if string(requestedEnv.Environment) == opts.Name {
-			break
-		}
-	}
-
-	var domain environment.Domain
-	for _, domain = range requestedEnv.IngressDomains {
-		if domain.Name == "default" {
-			break
-		}
-	}
-	varsToCreate := []github.ActionsVariable{
-		{
-			Name:  "BASE_DOMAIN",
-			Value: domain.Domain,
-		},
-		{
-			Name:  "INTERNAL_SERVICES_DOMAIN",
-			Value: requestedEnv.InternalServices.Domain,
-		},
-		{
-			Name:  "DPLATFORM",
-			Value: opts.Name,
-		},
-		{
-			Name:  "PROJECT_ID",
-			Value: requestedEnv.Platform.ProjectId,
-		},
-		{
-			Name:  "PROJECT_NUMBER",
-			Value: requestedEnv.Platform.ProjectNumber,
-		},
-	}
-	_ = varsToCreate
-
-	opts.Streams.Info("Creating Environment...")
-	environments, _, err := githubClient.Repositories.CreateUpdateEnvironment(
-		context.Background(),
-		cfg.GitHub.Organization.Value,
-		opts.AppRepo,
-		opts.Name,
-		&github.CreateUpdateEnvironment{},
-	)
-	if err != nil {
-		return err
-	}
-
 	repository, _, err := githubClient.Repositories.Get(
 		context.Background(),
 		cfg.GitHub.Organization.Value,
 		opts.AppRepo)
-	opts.Streams.Info("Repo: " + *repository.Name)
-
-	for i := range varsToCreate {
-
-		response, err := githubClient.Actions.CreateEnvVariable(
-			context.Background(),
-			int(repository.GetID()),
-			*environments.Name,
-			&varsToCreate[i],
-		)
-		if err != nil {
-			if response.StatusCode == 409 {
-				// Variable exists, we need to call update.
-				_, err := githubClient.Actions.UpdateEnvVariable(
-					context.Background(),
-					int(repository.GetID()),
-					*environments.Name,
-					&varsToCreate[i])
-				if err != nil {
-					return err
-				}
-			}
-		}
+	if err != nil {
+		return err
+	}
+	repoId := git.GithubRepoFullId{
+		Id: int(repository.GetID()),
+		Fullname: git.RepositoryFullname{
+			Organization: *repository.Owner.Login,
+			Name:         *repository.Name,
+		},
+	}
+	env, err := environment.GetEnvironmentByName(cfg.Repositories.CPlatform.Value, opts.Name)
+	if err != nil {
+		return err
+	}
+	err = p2p.CreateEnvironmentForRepository(
+		githubClient,
+		&repoId,
+		&env,
+	)
+	if err != nil {
+		return err
 	}
 
 	return nil
