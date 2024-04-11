@@ -32,8 +32,8 @@ func NewP2PListCmd(cfg *config.Config) (*cobra.Command, error) {
 
 	listEnvironmentsCmd.Flags().StringVarP(
 		&opts.Repo,
-		"repo",
-		"r",
+		"apprepo",
+		"a",
 		"",
 		"Application Repository")
 
