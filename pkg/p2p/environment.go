@@ -68,6 +68,10 @@ func CreateUpdateEnvironmentForRepository(
 				if err != nil {
 					return err
 				}
+			} else if response.StatusCode == 200 {
+				return nil
+			} else {
+				return err
 			}
 		}
 	}
