@@ -2,14 +2,10 @@ package sync
 
 import (
 	"context"
-	"os"
-
-	"path/filepath"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/environment"
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -49,16 +45,6 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 		"",
 		"Directory to store platform local repositories. Default is near config file.")
 	err := syncEnvironmentsCmd.MarkFlagRequired("repositories")
-	if err != nil {
-		return nil, err
-	}
-	syncEnvironmentsCmd.Flags().StringVarP(
-		&opts.DPlatformRepo,
-		"dplatformrepo",
-		"d",
-		"",
-		"DPlatform Repository URL")
-	err = syncEnvironmentsCmd.MarkFlagRequired("dplatformrepo")
 	if err != nil {
 		return nil, err
 	}
@@ -176,44 +162,4 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	}
 
 	return nil
-}
-
-type cloneRepositoryResult struct {
-	dplatform *git.LocalRepository
-}
-
-func cloneRepository(
-	streams userio.IOStreams,
-	gitAuth git.AuthMethod,
-	githubClient *github.Client,
-	repositoryDir string,
-	dplatformRepoFullname git.RepositoryFullname,
-) (cloneRepositoryResult, error) {
-	var dplatformRepository *git.LocalRepository
-	cloneReposSpinner := streams.Spinner("Cloning Repository...")
-	defer cloneReposSpinner.Done()
-	if _, err := os.Stat(filepath.Join(repositoryDir, dplatformRepoFullname.Name)); err == nil {
-		streams.Info("Local Repository exists, resetting...")
-		dplatformRepository, err = git.OpenAndResetRepositoryState(filepath.Join(repositoryDir, dplatformRepoFullname.Name))
-	} else {
-		dplatformGitHubRepo, _, err := githubClient.Repositories.Get(
-			context.Background(),
-			dplatformRepoFullname.Organization,
-			dplatformRepoFullname.Name)
-
-		if err != nil {
-			return cloneRepositoryResult{}, err
-		}
-		dplatformRepository, err = git.CloneToLocalRepository(git.CloneOp{
-			URL:        dplatformGitHubRepo.GetCloneURL(),
-			TargetPath: filepath.Join(repositoryDir, dplatformRepoFullname.Name),
-			Auth:       gitAuth,
-		})
-		if err != nil {
-			return cloneRepositoryResult{}, err
-		}
-	}
-	return cloneRepositoryResult{
-		dplatform: dplatformRepository,
-	}, nil
 }
