@@ -1,7 +1,6 @@
 package p2penv
 
 import (
-	"github.com/coreeng/corectl/pkg/cmd/p2p/env/list"
 	sync "github.com/coreeng/corectl/pkg/cmd/p2p/env/sync"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
@@ -24,11 +23,6 @@ func NewP2PEnvCmd(cfg *config.Config) (*cobra.Command, error) {
 		return nil, err
 	}
 	p2pEnvCmd.AddCommand(syncCommand)
-	listCommand, err := list.NewP2PListCmd(cfg)
-	if err != nil {
-		return nil, err
-	}
 
-	p2pEnvCmd.AddCommand(listCommand)
 	return p2pEnvCmd, nil
 }

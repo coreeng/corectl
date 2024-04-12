@@ -51,6 +51,14 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 		&cfg.Repositories.CPlatform,
 		syncEnvironmentsCmd.Flags())
 
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Organization,
+		syncEnvironmentsCmd.Flags())
+
+	config.RegisterStringParameterAsFlag(
+		&cfg.GitHub.Token,
+		syncEnvironmentsCmd.Flags())
+
 	return syncEnvironmentsCmd, nil
 }
 
