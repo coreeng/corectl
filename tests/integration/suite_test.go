@@ -1,6 +1,11 @@
 package integration
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -10,13 +15,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
 	"github.com/thanhpk/randstr"
-	"os"
-	"path/filepath"
-	"testing"
-	"time"
+
 	// Test cases import
 	_ "github.com/coreeng/corectl/tests/integration/application"
 	_ "github.com/coreeng/corectl/tests/integration/config"
+	_ "github.com/coreeng/corectl/tests/integration/p2p"
 	_ "github.com/coreeng/corectl/tests/integration/tenant"
 )
 
