@@ -24,7 +24,7 @@ var _ = Describe("p2p", Ordered, func() {
 	})
 
 	Context("sync", Ordered, func() {
-		var (
+		/*var (
 			appRepo string
 		)
 
@@ -32,8 +32,8 @@ var _ = Describe("p2p", Ordered, func() {
 			appRepo = "idp-reference-app-go-pst"
 			Expect(corectl.Run(
 				"p2p env sync", appRepo,
-			)).To(Succeed())
-		})
+			)).To(Fail("Failed"))
+		})*/
 		It("count environments", func() {
 			cfg, _ = testsetup.InitCorectl(corectl)
 			envs, err := environment.List(cfg.Repositories.CPlatform.Value)

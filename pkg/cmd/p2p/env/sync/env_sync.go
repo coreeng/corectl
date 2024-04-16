@@ -8,13 +8,13 @@ import (
 	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
+	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
 
 type EnvCreateOpts struct {
 	AppRepo string
-	Name    string
 	Streams userio.IOStreams
 }
 
@@ -22,11 +22,11 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 
 	var opts = EnvCreateOpts{}
 	var syncEnvironmentsCmd = &cobra.Command{
-		Use:   "sync <environment> ",
-		Short: "Synchronise Environment",
+		Use:   "sync <app repository> ",
+		Short: "Synchronise Environments",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.Name = args[0]
+			opts.AppRepo = args[0]
 
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
@@ -34,17 +34,6 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 			)
 			return run(&opts, cfg)
 		},
-	}
-
-	syncEnvironmentsCmd.Flags().StringVarP(
-		&opts.AppRepo,
-		"apprepo",
-		"a",
-		"",
-		"Application Repository")
-	err := syncEnvironmentsCmd.MarkFlagRequired("apprepo")
-	if err != nil {
-		return nil, err
 	}
 
 	config.RegisterStringParameterAsFlag(
@@ -75,19 +64,34 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		return err
 	}
 	repoId := git.NewGithubRepoFullId(repository)
-	env, err := environment.GetEnvironmentByName(cfg.Repositories.CPlatform.Value, opts.Name)
+	environments, err := environment.List(cfg.Repositories.CPlatform.Value)
 	if err != nil {
 		return err
 	}
-	opts.Streams.Info("Updating " + opts.Name + " environment for " + repoId.Fullname.Name)
-	err = p2p.CreateUpdateEnvironmentForRepository(
-		githubClient,
-		&repoId,
-		&env,
-	)
+	for _, env := range environments {
+		opts.Streams.Info("Updating " + string(env.Environment) + " environment for " + repoId.Fullname.Name)
+		err = p2p.CreateUpdateEnvironmentForRepository(
+			githubClient,
+			&repoId,
+			&env,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	tenantList, err := tenant.List(cfg.Repositories.CPlatform.Value)
 	if err != nil {
 		return err
 	}
-
+	for _, tenant := range tenantList {
+		err = p2p.CreateTenantVariableFromName(
+			githubClient,
+			&repoId.Fullname,
+			string(tenant.Name),
+		)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
