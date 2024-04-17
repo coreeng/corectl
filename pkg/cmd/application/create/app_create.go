@@ -4,6 +4,9 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"github.com/coreeng/corectl/pkg/utils"
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -13,8 +16,6 @@ import (
 	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
-	"slices"
-	"strings"
 )
 
 type AppCreateOpt struct {
@@ -180,9 +181,9 @@ func createNewApp(
 	spinnerHandler := opts.Streams.Spinner("Creating new application...")
 	defer spinnerHandler.Done()
 
-	fastFeedbackEnvs := filterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
-	extendedTestEnvs := filterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
-	prodEnvs := filterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
+	fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
+	extendedTestEnvs := utils.FilterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
+	prodEnvs := utils.FilterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
 	fulfilledTemplate := template.FulfilledTemplate{
 		Spec:      fromTemplate,
@@ -238,16 +239,6 @@ func createPRWithUpdatedReposListForTenant(
 		githubClient,
 	)
 	return tenantUpdateResult, err
-}
-
-func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
-	var result []environment.Environment
-	for _, env := range envs {
-		if slices.Contains(nameFilter, string(env.Environment)) {
-			result = append(result, env)
-		}
-	}
-	return result
 }
 
 func (opts *AppCreateOpt) createTenantInput(existingTenant []tenant.Tenant, defaultTenant tenant.Name) userio.InputSourceSwitch[string, *tenant.Tenant] {

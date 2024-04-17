@@ -9,6 +9,7 @@ type Name string
 type Environment struct {
 	Environment Name `yaml:"environment"`
 	Platform    struct {
+		Vendor        string `yaml:"vendor"`
 		ProjectId     string `yaml:"projectId"`
 		ProjectNumber string `yaml:"projectNumber"`
 	} `yaml:"platform"`

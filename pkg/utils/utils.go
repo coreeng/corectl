@@ -1,4 +1,4 @@
-package p2p
+package utils
 
 import (
 	"slices"
@@ -6,7 +6,7 @@ import (
 	"github.com/coreeng/corectl/pkg/environment"
 )
 
-func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
+func FilterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
 	var result []environment.Environment
 	for _, env := range envs {
 		if slices.Contains(nameFilter, string(env.Environment)) {
