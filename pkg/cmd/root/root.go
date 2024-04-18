@@ -28,11 +28,11 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 
 	appCmd, err := application.NewAppCmd(cfg)
 	if err != nil {
-		return nil
+		panic("Unable to execute app command")
 	}
 	p2pCmd, err := p2p.NewP2PCmd(cfg)
 	if err != nil {
-		return nil
+		panic("Unable to execute p2p command")
 	}
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
