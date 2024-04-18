@@ -70,9 +70,10 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	for _, env := range environments {
-		spinnerHandler := opts.Streams.Spinner("Configuring " + string(env.Environment) + " environment.")
+	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
 		defer spinnerHandler.Done()
+	for _, env := range environments {
+		
 		err = p2p.CreateUpdateEnvironmentForRepository(
 			githubClient,
 			&repoId,
