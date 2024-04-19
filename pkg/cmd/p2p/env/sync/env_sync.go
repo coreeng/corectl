@@ -71,7 +71,18 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		return err
 	}
 	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
-		defer spinnerHandler.Done()
+	defer spinnerHandler.Done()
+
+	//Remove any existing environments as per #295
+
+	for _, env := range environments {
+		_, err = githubClient.Repositories.DeleteEnvironment(
+			context.Background(),
+			cfg.GitHub.Organization.Value,
+			opts.AppRepo,
+			string(env.Environment),
+		)
+	}
 	for _, env := range environments {
 		
 		err = p2p.CreateUpdateEnvironmentForRepository(
