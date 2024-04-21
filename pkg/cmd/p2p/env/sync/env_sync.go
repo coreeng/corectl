@@ -5,10 +5,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/environment"
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
-	"github.com/coreeng/corectl/pkg/utils"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -65,68 +62,12 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	repoId := git.NewGithubRepoFullId(repository)
-	environments, err := environment.List(cfg.Repositories.CPlatform.Value)
-	if err != nil {
-		return err
-	}
+
 	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
 	defer spinnerHandler.Done()
 
-	//Remove any existing environments as per #295
-
-	for _, env := range environments {
-		_, err = githubClient.Repositories.DeleteEnvironment(
-			context.Background(),
-			cfg.GitHub.Organization.Value,
-			opts.AppRepo,
-			string(env.Environment),
-		)
-	}
-	for _, env := range environments {
-		
-		err = p2p.CreateUpdateEnvironmentForRepository(
-			githubClient,
-			&repoId,
-			&env,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = p2p.CreateTenantVariableFromName(
-		githubClient,
-		&repoId.Fullname,
-		opts.Tenant,
-	)
+	err = p2p.SynchroniseEnvironment(githubClient, repository, cfg, opts.AppRepo, opts.Tenant)
 	if err != nil {
-		return err
-	}
-	fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
-	extendedTestEnvs := utils.FilterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
-	prodEnvs := utils.FilterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, environments)
-	if err := p2p.CreateStageRepositoryConfig(
-		githubClient,
-		&repoId.Fullname,
-		p2p.FastFeedbackVar,
-		p2p.NewStageRepositoryConfig(fastFeedbackEnvs)); err != nil {
-		return err
-	}
-
-	if err := p2p.CreateStageRepositoryConfig(
-		githubClient,
-		&repoId.Fullname,
-		p2p.ExtendedTestVar,
-		p2p.NewStageRepositoryConfig(extendedTestEnvs)); err != nil {
-		return err
-	}
-
-	if err := p2p.CreateStageRepositoryConfig(
-		githubClient,
-		&repoId.Fullname,
-		p2p.ProdVar,
-		p2p.NewStageRepositoryConfig(prodEnvs)); err != nil {
 		return err
 	}
 	return nil
