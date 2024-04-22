@@ -2,10 +2,11 @@ package sync
 
 import (
 	"context"
-
+	"errors"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/p2p"
+	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -65,10 +66,16 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 
 	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
 	defer spinnerHandler.Done()
-
-	err = p2p.SynchroniseEnvironment(githubClient, repository, cfg, opts.AppRepo, opts.Tenant)
-	if err != nil {
-		return err
+	
+	if tenant, err := tenant.FindByName(cfg.Repositories.CPlatform.Value, tenant.Name(opts.Tenant)); err == nil {
+		if tenant != nil {
+			err = p2p.SynchroniseEnvironment(githubClient, repository, cfg, tenant)
+			if err != nil {
+				return err
+			}
+		} else {
+			return errors.New("Tenant not found!")
+		}
 	}
 	return nil
 }

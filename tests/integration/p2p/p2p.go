@@ -71,13 +71,13 @@ var _ = Describe("p2p", Ordered, func() {
 			)).To(Succeed())
 		}, NodeTimeout(time.Minute))
 
-		/*AfterAll(func(ctx SpecContext) {
+		AfterAll(func(ctx SpecContext) {
 			Expect(githubClient.Repositories.Delete(
 				ctx,
 				cfg.GitHub.Organization.Value,
 				appRepo,
 			)).Error().NotTo(HaveOccurred())
-		}, NodeTimeout(time.Minute))*/
+		}, NodeTimeout(time.Minute))
 
 		It("checks repository variables", func(ctx SpecContext) {
 			_, _, err := githubClient.Actions.GetRepoVariable(

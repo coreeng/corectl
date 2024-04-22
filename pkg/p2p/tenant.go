@@ -24,28 +24,3 @@ func CreateTenantVariable(
 	return err
 
 }
-
-func CreateTenantVariableFromName(
-	githubClient *github.Client,
-	repoFullname *git.RepositoryFullname,
-	tenantName string,
-) error {
-	tenant := tenant.Tenant {
-		Name: tenant.Name(tenantName),
-	}
-
-	err := CreateTenantVariable(
-		githubClient,
-		repoFullname,
-		&tenant,
-	)
-	/*_, err := githubClient.Actions.CreateRepoVariable(
-		context.Background(),
-		repoFullname.Organization,
-		repoFullname.Name,
-		&github.ActionsVariable{
-			Name:  "TENANT_NAME",
-			Value: tenantName,
-		})*/
-	return err
-}

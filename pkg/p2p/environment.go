@@ -3,11 +3,11 @@ package p2p
 import (
 	"context"
 	"errors"
-	
+
+	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
-	tenantConfig "github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/utils"
 	"github.com/google/go-github/v59/github"
 )
@@ -16,8 +16,7 @@ func SynchroniseEnvironment(
 	githubClient *github.Client,
 	repository   *github.Repository,
 	cfg          *config.Config,
-	platformRepo string,
-	tenant       string,
+	tenant       *tenant.Tenant,
 ) error {
 	repoId := git.NewGithubRepoFullId(repository)
 	environments, err := environment.List(cfg.Repositories.CPlatform.Value)
@@ -32,23 +31,25 @@ func SynchroniseEnvironment(
 
 			_, response, err := githubClient.Repositories.GetEnvironment(
 				context.Background(),
-				cfg.GitHub.Organization.Value,
-				platformRepo,
+				repoId.Fullname.Organization,
+				repoId.Fullname.Name,
 				string(env.Environment),
 			)
 			if err != nil {
 				if response.StatusCode == 404 {
 					continue
+				} else {
+					return err
 				}
 			}
 			_, err = githubClient.Repositories.DeleteEnvironment(
 				context.Background(),
-				cfg.GitHub.Organization.Value,
-				platformRepo,
+				repoId.Fullname.Organization,
+				repoId.Fullname.Name,
 				string(env.Environment),
 			)
 			if err != nil {
-				return errors.New("Unable to delete existing environments " + string(env.Environment) + " in " + platformRepo)
+				return errors.New("Unable to delete existing environments " + string(env.Environment) + " in " + repoId.Fullname.Name)
 			}
 		}
 	}
@@ -63,24 +64,10 @@ func SynchroniseEnvironment(
 			return errors.New("Unable to create environment - " + err.Error())
 		}
 	}
-	if tcl, err := tenantConfig.List(cfg.Repositories.CPlatform.Value); err == nil {
-		for _, t := range tcl {
-			if string(t.Name) == tenant {
-				break
-			}
-		}
-
-		err = CreateTenantVariableFromName(
-			githubClient,
-			&git.RepositoryFullname {
-				Name: platformRepo, 
-				Organization: cfg.GitHub.Organization.Value,
-			},
-			tenant,
-		)
-		if err != nil {
-			return err
-		}
+	err = CreateTenantVariable(githubClient, &repoId.Fullname, tenant)
+	
+	if err != nil {
+		return err
 	}
 	
 	fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
