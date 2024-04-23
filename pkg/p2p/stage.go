@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/google/go-github/v59/github"
@@ -37,18 +38,35 @@ func CreateStageRepositoryConfig(
 	repoFullname *git.RepositoryFullname,
 	varName StageVarName,
 	config StageRepositoryConfig,
-) error {
+) error {	
 	configBytes, err := json.Marshal(config)
 	if err != nil {
 		return err
 	}
-	_, err = githubClient.Actions.CreateRepoVariable(
+	response, err := githubClient.Actions.CreateRepoVariable(
 		context.Background(),
 		repoFullname.Organization,
 		repoFullname.Name,
 		&github.ActionsVariable{
 			Name:  string(varName),
 			Value: string(configBytes),
-		})
+		},
+	)
+	if err !=nil {
+		if response.StatusCode == 409 {
+			_, err = githubClient.Actions.UpdateRepoVariable(
+				context.Background(),
+				repoFullname.Organization,
+				repoFullname.Name,
+				&github.ActionsVariable{
+					Name: string(varName),
+					Value: string(configBytes),
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return err
 }

@@ -2,9 +2,11 @@ package environment
 
 import (
 	"errors"
-	"gopkg.in/yaml.v3"
+	"fmt"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v3"
 )
 
 func List(configRepoPath string) ([]Environment, error) {
@@ -32,4 +34,24 @@ func List(configRepoPath string) ([]Environment, error) {
 		envs = append(envs, env)
 	}
 	return envs, nil
+}
+
+func GetEnvironmentByName(configRepoPath string, envName string) (Environment, error) {
+	var env Environment
+	var environmentFound = false
+	environments, err := List(configRepoPath)
+	if err != nil {
+		return env, err
+	}
+
+	for _, env = range environments {
+		if string(env.Environment) == envName {
+			environmentFound = true
+			break
+		}
+	}
+	if !environmentFound {
+		return env, fmt.Errorf("unable to find matching environment %s, check your config.yaml", envName)
+	}
+	return env, nil
 }
