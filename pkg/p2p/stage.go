@@ -43,13 +43,30 @@ func CreateStageRepositoryConfig(
 	if err != nil {
 		return err
 	}
-	_, err = githubClient.Actions.CreateRepoVariable(
+	response, err := githubClient.Actions.CreateRepoVariable(
 		context.Background(),
 		repoFullname.Organization,
 		repoFullname.Name,
 		&github.ActionsVariable{
 			Name:  string(varName),
 			Value: string(configBytes),
-		})
+		},
+	)
+	if err !=nil {
+		if response.StatusCode == 409 {
+			_, err = githubClient.Actions.UpdateRepoVariable(
+				context.Background(),
+				repoFullname.Organization,
+				repoFullname.Name,
+				&github.ActionsVariable{
+					Name: string(varName),
+					Value: string(configBytes),
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return err
 }

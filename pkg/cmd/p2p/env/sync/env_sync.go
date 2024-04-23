@@ -3,9 +3,13 @@ package sync
 import (
 	"context"
 	"errors"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/environment"
+	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
+	"github.com/coreeng/corectl/pkg/utils"
 	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
@@ -14,6 +18,7 @@ import (
 type EnvCreateOpts struct {
 	AppRepo string
 	Tenant  string
+	Clean   bool
 	Streams userio.IOStreams
 }
 
@@ -35,7 +40,12 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 			return run(&opts, cfg)
 		},
 	}
-
+	syncEnvironmentsCmd.Flags().BoolVar(
+		&opts.Clean,
+		"clean",
+		false,
+		"Clean existing environments",
+	)
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.CPlatform,
 		syncEnvironmentsCmd.Flags())
@@ -68,14 +78,44 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	defer spinnerHandler.Done()
 	
 	if tenant, err := tenant.FindByName(cfg.Repositories.CPlatform.Value, tenant.Name(opts.Tenant)); err == nil {
-		if tenant != nil {
-			err = p2p.SynchroniseEnvironment(githubClient, repository, cfg, tenant)
+		
+		if tenant == nil {
+			return errors.New("Tenant not found!")
+		} else {
+			environments, err := environment.List(cfg.Repositories.CPlatform.Value)
 			if err != nil {
 				return err
 			}
-		} else {
-			return errors.New("Tenant not found!")
+			fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
+			extendedTestEnvs := utils.FilterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
+			prodEnvs := utils.FilterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, environments)
+			repoId := git.NewGithubRepoFullId(repository)
+			op := p2p.InitializeOp{
+				RepositoryId:     &repoId,
+				Tenant:           tenant,
+				FastFeedbackEnvs: fastFeedbackEnvs,
+				ExtendedTestEnvs: extendedTestEnvs,
+				ProdEnvs:         prodEnvs,
+			}
+			if opts.Clean {
+				err = p2p.DeleteEnvironment(
+					&op,
+					githubClient, 
+				)
+				if err != nil {
+					return err
+				}
+			}
+			err = p2p.InitializeRepository(
+				&op,
+				githubClient, 
+			)
+			if err != nil {
+				return err
+			}
 		}
+	} else {
+		return err
 	}
 	return nil
 }
