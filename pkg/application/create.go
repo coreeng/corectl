@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/corectl/pkg/p2p"
 	"github.com/coreeng/corectl/pkg/template"
-	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/undo"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/developer-platform/pkg/p2p"
+	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"net/http"
 	"os"
@@ -20,7 +20,7 @@ type CreateOp struct {
 	Name             string
 	OrgName          string
 	LocalPath        string
-	Tenant           *tenant.Tenant
+	Tenant           *coretnt.Tenant
 	FastFeedbackEnvs []environment.Environment
 	ExtendedTestEnvs []environment.Environment
 	ProdEnvs         []environment.Environment
@@ -80,7 +80,7 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return result, err
 	}
 	repoFullId := git.NewGithubRepoFullId(githubRepo)
-	result.RepositoryFullname = repoFullId.Fullname
+	result.RepositoryFullname = repoFullId.RepositoryFullname
 
 	if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
 		return result, err
@@ -89,7 +89,7 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return result, err
 	}
 
-	if err = p2p.InitializeRepository(&p2p.InitializeOp{
+	if err = p2p.SynchronizeRepository(&p2p.SynchronizeOp{
 		RepositoryId:     &repoFullId,
 		Tenant:           op.Tenant,
 		FastFeedbackEnvs: op.FastFeedbackEnvs,
@@ -105,12 +105,12 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	if op.Tenant == nil {
 		return fmt.Errorf("tenant is missing")
 	}
-	if err := tenant.Validate(op.Tenant); err != nil {
+	if err := op.Tenant.Validate(); len(err) > 0 {
 		return fmt.Errorf("tenant is invalid: %v", err)
 	}
 
 	for _, env := range slices.Concat(op.FastFeedbackEnvs, op.ExtendedTestEnvs, op.ProdEnvs) {
-		if err := environment.Validate(&env); err != nil {
+		if err := env.Validate(); len(err) > 0 {
 			return fmt.Errorf("%v environment is invalid: %v", env.Environment, err)
 		}
 	}

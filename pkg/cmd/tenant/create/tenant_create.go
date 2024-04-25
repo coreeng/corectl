@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/tenant"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
-	"net/mail"
 	"slices"
 	"strings"
-	"unicode/utf8"
 )
 
 type TenantCreateOpt struct {
@@ -124,11 +123,11 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	existingTenants, err := tenant.List(cfg.Repositories.CPlatform.Value)
+	existingTenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
-	envs, err := environment.List(cfg.Repositories.CPlatform.Value)
+	envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
@@ -180,20 +179,23 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	t := tenant.Tenant{
+	t := coretnt.Tenant{
 		Name:          name,
 		Parent:        parent,
 		Description:   description,
 		ContactEmail:  contactEmail,
 		CostCentre:    costCentre,
 		Environments:  tenantEnvironments,
-		Repositories:  repositories,
+		Repos:         repositories,
 		AdminGroup:    adminGroup,
-		ReadonlyGroup: readOnlyGroup,
-		CloudAccess:   make([]interface{}, 0),
+		ReadOnlyGroup: readOnlyGroup,
+		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	result, err := createTenant(opt.Streams, cfg, &t)
+	parentTenantI := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
+		return t.Name == parent
+	})
+	result, err := createTenant(opt.Streams, cfg, &t, &existingTenants[parentTenantI])
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,8 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 func createTenant(
 	streams userio.IOStreams,
 	cfg *config.Config,
-	t *tenant.Tenant,
+	t *coretnt.Tenant,
+	parentTenant *coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
 	spinnerHandler := streams.Spinner("Creating tenant...")
 	defer spinnerHandler.Done()
@@ -215,6 +218,7 @@ func createTenant(
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
+			ParentTenant:      parentTenant,
 			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
 			BranchName:        fmt.Sprintf("new-tenant-%s", t.Name),
 			CommitMessage:     fmt.Sprintf("Add new tenant: %s", t.Name),
@@ -226,16 +230,19 @@ func createTenant(
 	return result, err
 }
 
-func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[string, tenant.Name] {
-	validateFn := func(inp string) (tenant.Name, error) {
+func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[string, string] {
+	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		name := tenant.Name(inp)
-		if err := tenant.ValidateName(name); err != nil {
+		t := &coretnt.Tenant{
+			Name: inp,
+		}
+		err := t.ValidateField("Name")
+		if err != nil {
 			return "", err
 		}
-		return name, nil
+		return inp, nil
 	}
-	return userio.InputSourceSwitch[string, tenant.Name]{
+	return userio.InputSourceSwitch[string, string]{
 		DefaultValue: userio.AsZeroable(opt.Name),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.TextInput[string]{
@@ -243,7 +250,7 @@ func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[str
 				Placeholder: "tenant-name",
 				ValidateAndMap: func(inp string) (string, error) {
 					name, err := validateFn(inp)
-					return string(name), err
+					return name, err
 				},
 			}, nil
 		},
@@ -252,13 +259,13 @@ func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[str
 	}
 }
 
-func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []tenant.Tenant) userio.InputSourceSwitch[string, tenant.Name] {
+func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
 	availableTenantNames := make([]string, len(existingTenants)+1)
-	availableTenantNames[0] = string(tenant.RootName)
+	availableTenantNames[0] = coretnt.RootName
 	for i, t := range existingTenants {
-		availableTenantNames[i+1] = string(t.Name)
+		availableTenantNames[i+1] = t.Name
 	}
-	return userio.InputSourceSwitch[string, tenant.Name]{
+	return userio.InputSourceSwitch[string, string]{
 		DefaultValue: userio.AsZeroable(opt.Parent),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
@@ -266,12 +273,12 @@ func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []tenant.Ten
 				Items:  availableTenantNames,
 			}, nil
 		},
-		ValidateAndMap: func(inp string) (tenant.Name, error) {
+		ValidateAndMap: func(inp string) (string, error) {
 			inp = strings.TrimSpace(inp)
 			if !slices.Contains(availableTenantNames, inp) {
 				return "", errors.New("unknown tenant")
 			}
-			return tenant.Name(inp), nil
+			return inp, nil
 		},
 		ErrMessage: "invalid parent tenant",
 	}
@@ -280,7 +287,11 @@ func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []tenant.Ten
 func (opt *TenantCreateOpt) createDescriptionInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		if err := tenant.ValidateDescription(inp); err != nil {
+		t := &coretnt.Tenant{
+			Description: inp,
+		}
+		err := t.ValidateField("Description")
+		if err != nil {
 			return "", err
 		}
 		return inp, nil
@@ -301,11 +312,14 @@ func (opt *TenantCreateOpt) createDescriptionInputSwitch() userio.InputSourceSwi
 func (opt *TenantCreateOpt) createContactEmailInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		_, err := mail.ParseAddress(inp)
+		t := &coretnt.Tenant{
+			ContactEmail: inp,
+		}
+		err := t.ValidateField("ContactEmail")
 		if err != nil {
 			return "", err
 		}
-		return inp, err
+		return inp, nil
 	}
 	return userio.InputSourceSwitch[string, string]{
 		DefaultValue: userio.AsZeroable(opt.ContactEmail),
@@ -323,7 +337,11 @@ func (opt *TenantCreateOpt) createContactEmailInputSwitch() userio.InputSourceSw
 func (opt *TenantCreateOpt) createCostCentreInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		if err := tenant.ValidateCostCentre(inp); err != nil {
+		t := &coretnt.Tenant{
+			CostCentre: inp,
+		}
+		err := t.ValidateField("CostCentre")
+		if err != nil {
 			return "", err
 		}
 		return inp, nil
@@ -341,12 +359,12 @@ func (opt *TenantCreateOpt) createCostCentreInputSwitch() userio.InputSourceSwit
 	}
 }
 
-func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Environment) userio.InputSourceSwitch[[]string, []environment.Name] {
+func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Environment) userio.InputSourceSwitch[[]string, []string] {
 	var envNames []string
 	for _, env := range envs {
-		envNames = append(envNames, string(env.Environment))
+		envNames = append(envNames, env.Environment)
 	}
-	return userio.InputSourceSwitch[[]string, []environment.Name]{
+	return userio.InputSourceSwitch[[]string, []string]{
 		DefaultValue: userio.AsZeroableSlice(opt.Environments),
 		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
 			return &userio.MultiSelect{
@@ -354,17 +372,17 @@ func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Env
 				Items:  envNames,
 			}, nil
 		},
-		ValidateAndMap: func(inp []string) ([]environment.Name, error) {
-			envs := make([]environment.Name, len(inp))
+		ValidateAndMap: func(inp []string) ([]string, error) {
+			envs := make([]string, len(inp))
 			for i, env := range inp {
 				env = strings.TrimSpace(env)
 				if env == "" {
 					continue
 				}
 				if !slices.Contains(envNames, env) {
-					return nil, errors.New("unknown environment")
+					return nil, fmt.Errorf("unknown environment: %s", env)
 				}
-				envs[i] = environment.Name(env)
+				envs[i] = env
 			}
 			return envs, nil
 		},
@@ -380,10 +398,14 @@ func (opt *TenantCreateOpt) createRepositoriesInputSwitch() userio.InputSourceSw
 			if repo == "" {
 				continue
 			}
-			if err := tenant.ValidateRepositoryLink(repo); err != nil {
-				return nil, err
-			}
 			filteredRepos = append(filteredRepos, repo)
+		}
+		t := &coretnt.Tenant{
+			Repos: filteredRepos,
+		}
+		err := t.ValidateField("Repos")
+		if err != nil {
+			return nil, err
 		}
 		return filteredRepos, nil
 
@@ -406,12 +428,12 @@ func (opt *TenantCreateOpt) createRepositoriesInputSwitch() userio.InputSourceSw
 func (opt *TenantCreateOpt) createAdminGroupInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		chCount := utf8.RuneCountInString(inp)
-		if chCount < 1 {
-			return "", errors.New("required")
+		t := &coretnt.Tenant{
+			AdminGroup: inp,
 		}
-		if chCount > 253 {
-			return "", errors.New("max length is 253")
+		err := t.ValidateField("AdminGroup")
+		if err != nil {
+			return "", err
 		}
 		return inp, nil
 	}
@@ -431,12 +453,12 @@ func (opt *TenantCreateOpt) createAdminGroupInputSwitch() userio.InputSourceSwit
 func (opt *TenantCreateOpt) createReadOnlyGroupInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		chCount := utf8.RuneCountInString(inp)
-		if chCount < 1 {
-			return "", errors.New("required")
+		t := &coretnt.Tenant{
+			ReadOnlyGroup: inp,
 		}
-		if chCount > 253 {
-			return "", errors.New("max length is 253")
+		err := t.ValidateField("ReadOnlyGroup")
+		if err != nil {
+			return "", err
 		}
 		return inp, nil
 	}

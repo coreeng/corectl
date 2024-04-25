@@ -18,8 +18,8 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, CorectlConf
 	initFilePath := filepath.Join(corectl.HomeDir(), "corectl-init.yaml")
 	err := testdata.RenderInitFile(
 		initFilePath,
-		testconfig.Cfg.CPlatformRepoFullId.Fullname.HttpUrl(),
-		testconfig.Cfg.TemplatesRepoFullId.Fullname.HttpUrl(),
+		testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
+		testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
 	)
 	Expect(err).NotTo(HaveOccurred())
 	err = corectl.Run(

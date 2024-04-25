@@ -4,18 +4,18 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
-	"github.com/coreeng/corectl/pkg/utils"
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
+	"slices"
+	"strings"
 )
 
 type AppCreateOpt struct {
@@ -109,18 +109,18 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	existingTenants, err := tenant.List(cfg.Repositories.CPlatform.Value)
+	existingTenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
-	defaultTenant := tenant.Name(cfg.Tenant.Value)
+	defaultTenant := cfg.Tenant.Value
 	tenantInput := opts.createTenantInput(existingTenants, defaultTenant)
 	appTenant, err := tenantInput.GetValue(opts.Streams)
 	if err != nil {
 		return err
 	}
 
-	existingEnvs, err := environment.List(cfg.Repositories.CPlatform.Value)
+	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
@@ -174,16 +174,16 @@ func createNewApp(
 	opts *AppCreateOpt,
 	cfg *config.Config,
 	githubClient *github.Client,
-	appTenant *tenant.Tenant,
+	appTenant *coretnt.Tenant,
 	fromTemplate *template.Spec,
 	existingEnvs []environment.Environment,
 ) (application.CreateResult, error) {
 	spinnerHandler := opts.Streams.Spinner("Creating new application...")
 	defer spinnerHandler.Done()
 
-	fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
-	extendedTestEnvs := utils.FilterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
-	prodEnvs := utils.FilterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
+	fastFeedbackEnvs := filterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
+	extendedTestEnvs := filterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
+	prodEnvs := filterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
 	fulfilledTemplate := template.FulfilledTemplate{
 		Spec:      fromTemplate,
@@ -212,11 +212,21 @@ func createNewApp(
 	return createResult, err
 }
 
+func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
+	var result []environment.Environment
+	for _, env := range envs {
+		if slices.Contains(nameFilter, env.Environment) {
+			result = append(result, env)
+		}
+	}
+	return result
+}
+
 func createPRWithUpdatedReposListForTenant(
 	opts *AppCreateOpt,
 	cfg *config.Config,
 	githubClient *github.Client,
-	appTenant *tenant.Tenant,
+	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (tenant.CreateOrUpdateResult, error) {
 	spinnerHandler := opts.Streams.Spinner("Creating PR with new application for tenant...")
@@ -230,9 +240,9 @@ func createPRWithUpdatedReposListForTenant(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
 			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
-			BranchName:        fmt.Sprintf("%s-add-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name),
-			CommitMessage:     fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
-			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name, appTenant.Name),
+			BranchName:        fmt.Sprintf("%s-add-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name()),
+			CommitMessage:     fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
+			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
 		},
@@ -241,24 +251,24 @@ func createPRWithUpdatedReposListForTenant(
 	return tenantUpdateResult, err
 }
 
-func (opts *AppCreateOpt) createTenantInput(existingTenant []tenant.Tenant, defaultTenant tenant.Name) userio.InputSourceSwitch[string, *tenant.Tenant] {
+func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant, defaultTenantName string) userio.InputSourceSwitch[string, *coretnt.Tenant] {
 	availableTenantNames := make([]string, len(existingTenant)+1)
-	availableTenantNames[0] = string(tenant.RootName)
+	availableTenantNames[0] = coretnt.RootName
 	for i, t := range existingTenant {
-		availableTenantNames[i+1] = string(t.Name)
+		availableTenantNames[i+1] = t.Name
 	}
-	return userio.InputSourceSwitch[string, *tenant.Tenant]{
-		DefaultValue: userio.AsZeroable(cmp.Or(opts.Tenant, string(defaultTenant))),
+	return userio.InputSourceSwitch[string, *coretnt.Tenant]{
+		DefaultValue: userio.AsZeroable(cmp.Or(opts.Tenant, defaultTenantName)),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenant),
+				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenantName),
 				Items:           availableTenantNames,
-				PreselectedItem: string(defaultTenant),
+				PreselectedItem: defaultTenantName,
 			}, nil
 		},
-		ValidateAndMap: func(inp string) (*tenant.Tenant, error) {
-			inpName := tenant.Name(strings.TrimSpace(inp))
-			tenantIndex := slices.IndexFunc(existingTenant, func(t tenant.Tenant) bool {
+		ValidateAndMap: func(inp string) (*coretnt.Tenant, error) {
+			inpName := strings.TrimSpace(inp)
+			tenantIndex := slices.IndexFunc(existingTenant, func(t coretnt.Tenant) bool {
 				return t.Name == inpName
 			})
 			if tenantIndex < 0 {

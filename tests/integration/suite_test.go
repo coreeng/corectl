@@ -91,8 +91,8 @@ func prepareTestRepository(
 	DeferCleanup(func(ctx SpecContext) {
 		_, err := githubClient.Repositories.Delete(
 			ctx,
-			repoFullId.Fullname.Organization,
-			repoFullId.Fullname.Name,
+			repoFullId.RepositoryFullname.Organization(),
+			repoFullId.RepositoryFullname.Name(),
 		)
 		Expect(err).NotTo(HaveOccurred())
 	}, NodeTimeout(time.Minute))

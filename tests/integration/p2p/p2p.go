@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
+	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/google/go-github/v59/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -33,58 +33,58 @@ var _ = Describe("p2p", Ordered, func() {
 		cfg, _ = testsetup.InitCorectl(corectl)
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
-		envs, err := environment.List(cfg.Repositories.CPlatform.Value)
+		envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(envs, func(e environment.Environment) bool {
-			return e.Environment == environment.Name(testdata.DevEnvironment())
+			return e.Environment == testdata.DevEnvironment()
 		})
 		Expect(devEnvIdx).To(BeNumerically(">=", 0))
 		devEnv = envs[devEnvIdx]
 	})
 	Context("sync", Ordered, func() {
 		var (
-			appRepo    string
-			tenant     string
-			err        error
+			appRepo string
+			tenant  string
+			err     error
 		)
 
 		BeforeAll(func(ctx SpecContext) {
 			appRepo = "new-test-repo-" + randstr.Hex(6)
-			tenant = "default-tenant"
+			tenant = testdata.DefaultTenant()
 			deleteBranchOnMerge := true
 			visibility := "private"
 			tmpRepo, _, err = githubClient.Repositories.Create(
 				ctx,
 				cfg.GitHub.Organization.Value,
 				&github.Repository{
-					Name: &appRepo,
+					Name:                &appRepo,
 					DeleteBranchOnMerge: &deleteBranchOnMerge,
-					Visibility: &visibility,
-				},				
+					Visibility:          &visibility,
+				},
 			)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(corectl.Run(
-				"p2p", "env", "sync", 
+				"p2p", "env", "sync",
 				appRepo,
 				tenant,
 			)).To(Succeed())
 		}, NodeTimeout(time.Minute))
 
-		AfterAll(func(ctx SpecContext) {
-			Expect(githubClient.Repositories.Delete(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				appRepo,
-			)).Error().NotTo(HaveOccurred())
-		}, NodeTimeout(time.Minute))
+		//AfterAll(func(ctx SpecContext) {
+		//	Expect(githubClient.Repositories.Delete(
+		//		ctx,
+		//		cfg.GitHub.Organization.Value,
+		//		appRepo,
+		//	)).Error().NotTo(HaveOccurred())
+		//}, NodeTimeout(time.Minute))
 
 		It("checks repository variables", func(ctx SpecContext) {
 			_, _, err := githubClient.Actions.GetRepoVariable(
-				ctx, 
-				cfg.GitHub.Organization.Value, 
+				ctx,
+				cfg.GitHub.Organization.Value,
 				appRepo,
-				"TENANT_NAME", 
+				"TENANT_NAME",
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -92,10 +92,10 @@ var _ = Describe("p2p", Ordered, func() {
 		It("checks repository environment", func(ctx SpecContext) {
 			for _, envVar := range envVars {
 				_, _, err := githubClient.Actions.GetEnvVariable(
-					ctx, 
-					int(tmpRepo.GetID()), 
-					string(devEnv.Environment),
-					envVar, 
+					ctx,
+					int(tmpRepo.GetID()),
+					devEnv.Environment,
+					envVar,
 				)
 				Expect(err).NotTo(HaveOccurred())
 			}

@@ -10,13 +10,13 @@ import (
 var gitRepoRegexp = regexp.MustCompile(`^.*[:/]([\w-.]+)/([\w-.]+)(\.git)?$`)
 
 type RepositoryFullname struct {
-	Organization string
-	Name         string
+	organization string
+	name         string
 }
 
 type GithubRepoFullId struct {
-	Id       int
-	Fullname RepositoryFullname
+	id int
+	RepositoryFullname
 }
 
 func DeriveRepositoryFullname(localRepo *LocalRepository) (RepositoryFullname, error) {
@@ -41,29 +41,41 @@ func DeriveRepositoryFullnameFromUrl(githubRepoUrl string) (RepositoryFullname, 
 	orgName := matches[1]
 	repoName := strings.TrimSuffix(matches[2], ".git")
 	return RepositoryFullname{
-		Organization: orgName,
-		Name:         repoName,
+		organization: orgName,
+		name:         repoName,
 	}, nil
 }
 
 func (n RepositoryFullname) AsString() string {
-	return n.Organization + "/" + n.Name
+	return n.organization + "/" + n.name
 }
 
 func (n RepositoryFullname) HttpUrl() string {
-	return "https://github.com/" + n.Organization + "/" + n.Name
+	return "https://github.com/" + n.organization + "/" + n.name
 }
 
 func (n RepositoryFullname) ActionsHttpUrl() string {
-	return "https://github.com/" + n.Organization + "/" + n.Name + "/actions"
+	return "https://github.com/" + n.organization + "/" + n.name + "/actions"
+}
+
+func (n RepositoryFullname) Organization() string {
+	return n.organization
+}
+
+func (n RepositoryFullname) Name() string {
+	return n.name
 }
 
 func NewGithubRepoFullId(repository *github.Repository) GithubRepoFullId {
 	return GithubRepoFullId{
-		Id: int(*repository.ID),
-		Fullname: RepositoryFullname{
-			Organization: *repository.Owner.Login,
-			Name:         *repository.Name,
+		id: int(*repository.ID),
+		RepositoryFullname: RepositoryFullname{
+			organization: *repository.Owner.Login,
+			name:         *repository.Name,
 		},
 	}
+}
+
+func (i GithubRepoFullId) Id() int {
+	return i.id
 }

@@ -1,11 +1,11 @@
 package tenant
 
 import (
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
+	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -16,20 +16,6 @@ import (
 )
 
 var _ = Describe("Create or Update", func() {
-	var defaultTenant = Tenant{
-		Name:         "new-tenant",
-		Parent:       "parent",
-		Description:  "Tenant description",
-		ContactEmail: "abc@abc.com",
-		CostCentre:   "cost-centre",
-		Environments: []environment.Name{
-			environment.Name(testdata.DevEnvironment()),
-			environment.Name(testdata.ProdEnvironment()),
-		},
-		Repositories:  nil,
-		AdminGroup:    "admin-group",
-		ReadonlyGroup: "readonly-group",
-	}
 	const expectedTenantFileContent = `name: new-tenant
 parent: parent
 description: Tenant description
@@ -38,7 +24,6 @@ costCentre: cost-centre
 environments:
     - dev
     - prod
-repos: []
 adminGroup: admin-group
 readonlyGroup: readonly-group
 cloudAccess: []
@@ -50,6 +35,8 @@ cloudAccess: []
 		cplatformLocalRepo  *git.LocalRepository
 		mainBranchRefName   plumbing.ReferenceName
 		originalMainRef     *plumbing.Reference
+		defaultTenant       tenant.Tenant
+		parentTenant        *tenant.Tenant
 		branchName          string
 		commitMsg           string
 		newPrName           string
@@ -65,6 +52,23 @@ cloudAccess: []
 			TargetLocalRepoDir: t.TempDir(),
 		})
 		Expect(err).NotTo(HaveOccurred())
+
+		parentTenant, err = tenant.FindByName(tenant.DirFromCPlatformPath(cplatformLocalRepo.Path()), "parent")
+		Expect(parentTenant).NotTo(BeNil())
+		Expect(err).NotTo(HaveOccurred())
+		defaultTenant = tenant.Tenant{
+			Name:         "new-tenant",
+			Parent:       parentTenant.Name,
+			Description:  "Tenant description",
+			ContactEmail: "abc@abc.com",
+			CostCentre:   "cost-centre",
+			Environments: []string{
+				testdata.DevEnvironment(),
+				testdata.ProdEnvironment(),
+			},
+			AdminGroup:    "admin-group",
+			ReadOnlyGroup: "readonly-group",
+		}
 
 		mainBranchRefName = plumbing.NewBranchReferenceName(git.MainBranch)
 		originalMainRef, err = cplatformLocalRepo.Repository().Reference(mainBranchRefName, true)
@@ -94,6 +98,7 @@ cloudAccess: []
 			createResult, err = CreateOrUpdate(
 				&CreateOrUpdateOp{
 					Tenant:            &defaultTenant,
+					ParentTenant:      parentTenant,
 					CplatformRepoPath: cplatformLocalRepo.Path(),
 					BranchName:        branchName,
 					CommitMessage:     commitMsg,
@@ -143,14 +148,14 @@ cloudAccess: []
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
 						Message:      commitMsg,
-						ChangedFiles: []string{"./tenants/tenants/new-tenant.yaml"},
+						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.yaml"},
 					},
 				},
 			})
 		})
 		It("creates the file for the new tenant with the correct content", func() {
 			Expect(cplatformLocalRepo.CheckoutBranch(&git.CheckoutOp{BranchName: branchName})).To(Succeed())
-			newTenantFile, err := os.ReadFile(filepath.Join(cplatformLocalRepo.Path(), "./tenants/tenants/new-tenant.yaml"))
+			newTenantFile, err := os.ReadFile(filepath.Join(*defaultTenant.SavedPath()))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(newTenantFile)).To(MatchYAML(expectedTenantFileContent))
 		})

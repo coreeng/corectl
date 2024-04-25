@@ -3,6 +3,7 @@ module github.com/coreeng/corectl
 go 1.22
 
 require (
+	github.com/coreeng/developer-platform/pkg v0.11.1
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.10.0

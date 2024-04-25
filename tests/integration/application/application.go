@@ -3,11 +3,11 @@ package application
 import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
+	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/google/go-github/v59/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -38,13 +38,13 @@ var _ = Describe("application", Ordered, func() {
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 
-		envs, err := environment.List(cfg.Repositories.CPlatform.Value)
+		envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(envs, func(e environment.Environment) bool {
-			return e.Environment == environment.Name(testdata.DevEnvironment())
+			return e.Environment == testdata.DevEnvironment()
 		})
 		prodEnvIdx := slices.IndexFunc(envs, func(e environment.Environment) bool {
-			return e.Environment == environment.Name(testdata.ProdEnvironment())
+			return e.Environment == testdata.ProdEnvironment()
 		})
 		Expect(devEnvIdx).To(BeNumerically(">=", 0))
 		Expect(prodEnvIdx).To(BeNumerically(">=", 0))
@@ -103,15 +103,15 @@ var _ = Describe("application", Ordered, func() {
 				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "FAST_FEEDBACK" &&
-						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", string(devEnv.Environment))
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
 				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "EXTENDED_TEST" &&
-						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", string(devEnv.Environment))
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
 				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "PROD" &&
-						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", string(prodEnv.Environment))
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", prodEnv.Environment)
 				}),
 			))
 		}, NodeTimeout(time.Minute))
@@ -121,15 +121,16 @@ var _ = Describe("application", Ordered, func() {
 				envVars, _, err := githubClient.Actions.ListEnvVariables(
 					ctx,
 					int(newAppRepoId),
-					string(env.Environment),
+					env.Environment,
 					&github.ListOptions{},
 				)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(envVars.TotalCount).To(Equal(5))
+				gcpVendor := env.Platform.(*environment.GCPVendor)
 				Expect(envVars.Variables).To(ConsistOf(
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "DPLATFORM" &&
-							v.Value == string(env.Environment)
+							v.Value == env.Environment
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "BASE_DOMAIN" &&
@@ -141,11 +142,11 @@ var _ = Describe("application", Ordered, func() {
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "PROJECT_ID" &&
-							v.Value == env.Platform.ProjectId
+							v.Value == gcpVendor.ProjectId
 					}),
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "PROJECT_NUMBER" &&
-							v.Value == env.Platform.ProjectNumber
+							v.Value == gcpVendor.ProjectNumber
 					}),
 				))
 			}
@@ -154,10 +155,10 @@ var _ = Describe("application", Ordered, func() {
 		It("created a PR with new app link for the tenant", func(ctx SpecContext) {
 			prList, _, err := githubClient.PullRequests.List(
 				ctx,
-				cfgDetails.CPlatformRepoName.Organization,
-				cfgDetails.CPlatformRepoName.Name,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization + ":" + cfg.Tenant.Value + "-add-repo-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + cfg.Tenant.Value + "-add-repo-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -171,8 +172,8 @@ var _ = Describe("application", Ordered, func() {
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
 				ctx,
-				cfgDetails.CPlatformRepoName.Organization,
-				cfgDetails.CPlatformRepoName.Name,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
 				pr.GetNumber(),
 				&github.ListOptions{},
 			)
