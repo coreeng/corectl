@@ -20,7 +20,7 @@ jobs:
           fetch-depth: 0
       - name: go-private-module-access
         run: |
-          git config --global url."https://$GH_ACCESS_TOKEN@github.com/coreeng".insteadOf "https://github.com/coreeng"
+          git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
       - name: setup-go
         uses: actions/setup-go@v5
         with:
