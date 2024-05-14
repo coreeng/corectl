@@ -105,8 +105,8 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	if op.Tenant == nil {
 		return fmt.Errorf("tenant is missing")
 	}
-	if err := op.Tenant.Validate(); len(err) > 0 {
-		return fmt.Errorf("tenant is invalid: %v", err)
+	if errs := op.Tenant.Validate(); len(errs) > 0 {
+		return fmt.Errorf("tenant is invalid: %v", errs)
 	}
 
 	for _, env := range slices.Concat(op.FastFeedbackEnvs, op.ExtendedTestEnvs, op.ProdEnvs) {

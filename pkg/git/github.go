@@ -46,7 +46,7 @@ func DeriveRepositoryFullnameFromUrl(githubRepoUrl string) (RepositoryFullname, 
 	}, nil
 }
 
-func (n RepositoryFullname) AsString() string {
+func (n RepositoryFullname) String() string {
 	return n.organization + "/" + n.name
 }
 

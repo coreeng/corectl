@@ -150,8 +150,8 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		nextStepsMessageTemplate,
 		tenantUpdateResult.PRUrl,
 		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-		createdAppResult.RepositoryFullname.AsString(),
-		createdAppResult.RepositoryFullname.AsString(),
+		createdAppResult.RepositoryFullname.String(),
+		createdAppResult.RepositoryFullname.String(),
 	)
 	opts.Streams.Info(nextStepsMessage)
 	return nil
@@ -181,9 +181,9 @@ func createNewApp(
 	spinnerHandler := opts.Streams.Spinner("Creating new application...")
 	defer spinnerHandler.Done()
 
-	fastFeedbackEnvs := filterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
-	extendedTestEnvs := filterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
-	prodEnvs := filterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
+	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
+	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
+	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
 	fulfilledTemplate := template.FulfilledTemplate{
 		Spec:      fromTemplate,
@@ -212,10 +212,10 @@ func createNewApp(
 	return createResult, err
 }
 
-func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
+func filterEnvsByNames(names []string, envs []environment.Environment) []environment.Environment {
 	var result []environment.Environment
 	for _, env := range envs {
-		if slices.Contains(nameFilter, env.Environment) {
+		if slices.Contains(names, env.Environment) {
 			result = append(result, env)
 		}
 	}

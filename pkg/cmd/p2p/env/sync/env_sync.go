@@ -77,20 +77,20 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
 	defer spinnerHandler.Done()
 
-	tenant, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)
+	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)
 	if err != nil {
 		return err
 	}
-	if tenant == nil {
+	if t == nil {
 		return fmt.Errorf("tenant not found: %s", opts.Tenant)
 	}
 	environments, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
-	fastFeedbackEnvs := filterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
-	extendedTestEnvs := filterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
-	prodEnvs := filterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, environments)
+	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
+	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
+	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, environments)
 	repoId := git.NewGithubRepoFullId(repository)
 	if opts.Clean {
 		err = p2p.CleanUpRepoEnvs(
@@ -106,7 +106,7 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	}
 	op := corep2p.SynchronizeOp{
 		RepositoryId:     &repoId,
-		Tenant:           tenant,
+		Tenant:           t,
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
@@ -120,10 +120,10 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	return nil
 }
 
-func filterEnvs(nameFilter []string, envs []environment.Environment) []environment.Environment {
+func filterEnvsByNames(names []string, envs []environment.Environment) []environment.Environment {
 	var result []environment.Environment
 	for _, env := range envs {
-		if slices.Contains(nameFilter, env.Environment) {
+		if slices.Contains(names, env.Environment) {
 			result = append(result, env)
 		}
 	}

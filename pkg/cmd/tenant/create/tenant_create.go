@@ -236,8 +236,7 @@ func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[str
 		t := &coretnt.Tenant{
 			Name: inp,
 		}
-		err := t.ValidateField("Name")
-		if err != nil {
+		if err := t.ValidateField("Name"); err != nil {
 			return "", err
 		}
 		return inp, nil
