@@ -2,13 +2,13 @@ package application
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
-	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
@@ -31,7 +31,7 @@ var _ = Describe("Create new application", func() {
 		newAppName string
 		githubOrg  string
 
-		defaultTenant *tenant.Tenant
+		defaultTenant *coretnt.Tenant
 		devEnv        environment.Environment
 		prodEnv       environment.Environment
 
@@ -64,16 +64,16 @@ var _ = Describe("Create new application", func() {
 		newAppServerRepo, err = gittest.InitBareRepository(t.TempDir())
 		Expect(err).NotTo(HaveOccurred())
 
-		defaultTenant, err = tenant.FindByName(cplatformLocalRepo.Path(), tenant.Name(testdata.DefaultTenant()))
+		defaultTenant, err = coretnt.FindByName(coretnt.DirFromCPlatformPath(cplatformLocalRepo.Path()), testdata.DefaultTenant())
 		Expect(err).NotTo(HaveOccurred())
 
-		allEnvs, err := environment.List(cplatformLocalRepo.Path())
+		allEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cplatformLocalRepo.Path()))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(allEnvs, func(e environment.Environment) bool {
-			return e.Environment == environment.Name(testdata.DevEnvironment())
+			return e.Environment == testdata.DevEnvironment()
 		})
 		prodEnvIdx := slices.IndexFunc(allEnvs, func(e environment.Environment) bool {
-			return e.Environment == environment.Name(testdata.ProdEnvironment())
+			return e.Environment == testdata.ProdEnvironment()
 		})
 		Expect(devEnvIdx).To(BeNumerically(">=", 0))
 		Expect(prodEnvIdx).To(BeNumerically(">=", 0))
@@ -144,8 +144,8 @@ var _ = Describe("Create new application", func() {
 		})
 
 		It("returns correct repository name", func() {
-			Expect(createResult.RepositoryFullname.Name).To(Equal(newAppName))
-			Expect(createResult.RepositoryFullname.Organization).To(Equal(githubOrg))
+			Expect(createResult.RepositoryFullname.Name()).To(Equal(newAppName))
+			Expect(createResult.RepositoryFullname.Organization()).To(Equal(githubOrg))
 		})
 		It("created new repo", func() {
 			Expect(createRepoCapture.Requests).To(HaveLen(1))
@@ -158,7 +158,7 @@ var _ = Describe("Create new application", func() {
 			Expect(createRepoVarCapture.Requests).To(ConsistOf(
 				Satisfy(func(v httpmock.ActionVariableRequest) bool {
 					return v.Var.Name == "TENANT_NAME" &&
-						v.Var.Value == string(defaultTenant.Name)
+						v.Var.Value == defaultTenant.Name
 				}),
 				Satisfy(func(v httpmock.ActionVariableRequest) bool {
 					return v.Var.Name == "FAST_FEEDBACK" &&
@@ -197,14 +197,15 @@ var _ = Describe("Create new application", func() {
 			for _, env := range []environment.Environment{devEnv, prodEnv} {
 				var envRelatedRequests []httpmock.ActionEnvVariableRequest
 				for _, r := range createEnvVarCapture.Requests {
-					if r.EnvName == string(env.Environment) {
+					if r.EnvName == env.Environment {
 						envRelatedRequests = append(envRelatedRequests, r)
 					}
 				}
+				gcpVendor := env.Platform.(*environment.GCPVendor)
 				Expect(envRelatedRequests).To(ConsistOf(
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "DPLATFORM" &&
-							r.Var.Value == string(env.Environment)
+							r.Var.Value == env.Environment
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "BASE_DOMAIN" &&
@@ -216,11 +217,11 @@ var _ = Describe("Create new application", func() {
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "PROJECT_ID" &&
-							r.Var.Value == env.Platform.ProjectId
+							r.Var.Value == gcpVendor.ProjectId
 					}),
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "PROJECT_NUMBER" &&
-							r.Var.Value == env.Platform.ProjectNumber
+							r.Var.Value == gcpVendor.ProjectNumber
 					}),
 				))
 				Expect(envRelatedRequests).To(HaveEach(Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {

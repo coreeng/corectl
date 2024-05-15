@@ -53,10 +53,10 @@ var _ = Describe("tenant", Ordered, func() {
 		It("created a PR in the CPlatform repository", func(ctx SpecContext) {
 			prList, _, err := githubClient.PullRequests.List(
 				ctx,
-				cfgDetails.CPlatformRepoName.Organization,
-				cfgDetails.CPlatformRepoName.Name,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization + ":" + "new-tenant-" + newTenantName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-tenant-" + newTenantName,
 					Base: git.MainBranch,
 				},
 			)
@@ -70,8 +70,8 @@ var _ = Describe("tenant", Ordered, func() {
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
 				ctx,
-				cfgDetails.CPlatformRepoName.Organization,
-				cfgDetails.CPlatformRepoName.Name,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
 				pr.GetNumber(),
 				&github.ListOptions{},
 			)
@@ -80,7 +80,7 @@ var _ = Describe("tenant", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + newTenantName + ".yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })

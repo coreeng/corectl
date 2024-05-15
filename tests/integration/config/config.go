@@ -43,9 +43,9 @@ var _ = Describe("config", Ordered, func() {
 			Expect(cfg).NotTo(BeNil())
 			Expect(cfg.IsPersisted()).To(BeTrue())
 			Expect(cfg.Repositories.CPlatform.Value).To(
-				Equal(filepath.Join(homeDir, ".config", "corectl", "repositories", cfgDetails.CPlatformRepoName.Name)))
+				Equal(filepath.Join(homeDir, ".config", "corectl", "repositories", cfgDetails.CPlatformRepoName.Name())))
 			Expect(cfg.Repositories.Templates.Value).To(
-				Equal(filepath.Join(homeDir, ".config", "corectl", "repositories", cfgDetails.TemplatesRepoName.Name)))
+				Equal(filepath.Join(homeDir, ".config", "corectl", "repositories", cfgDetails.TemplatesRepoName.Name())))
 			Expect(cfg.GitHub.Organization.Value).To(Equal(testconfig.Cfg.GitHubOrg))
 			Expect(cfg.GitHub.Token.Value).To(Equal(testconfig.Cfg.GitHubToken))
 			Expect(cfg.Tenant.Value).To(Equal(testconfig.Cfg.Tenant))

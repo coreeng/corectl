@@ -1,6 +1,8 @@
 package testconfig
 
 import (
+	"bufio"
+	"bytes"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	. "github.com/onsi/gomega"
 	"os"
@@ -27,9 +29,13 @@ func (c *CorectlClient) Run(args ...string) error {
 	cmd := exec.Command(c.binaryPath, args...)
 	cmd.Env = c.env
 	cmd.Dir = c.homeDir
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+
+	outBuf := bytes.Buffer{}
+	outWriter := bufio.NewWriter(&outBuf)
+	cmd.Stdout = outWriter
+	cmd.Stderr = outWriter
 	if err := cmd.Run(); err != nil {
+		println(outBuf.String())
 		return err
 	}
 	return nil

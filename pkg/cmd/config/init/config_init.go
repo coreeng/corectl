@@ -6,7 +6,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/corectl/pkg/tenant"
+	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -158,13 +158,13 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 	//TODO: can we fail quick if noninteractive mode is turned on and the flag is not set?
-	githubOrgInput := opt.createGitHubOrganisationInputSwitch(cplatformRepoFullName.Organization)
+	githubOrgInput := opt.createGitHubOrganisationInputSwitch(cplatformRepoFullName.Organization())
 	githubOrg, err := githubOrgInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
 	}
 
-	tenants, err := tenant.List(clonedRepositories.cplatform.Path())
+	tenants, err := tenant.List(tenant.DirFromCPlatformPath(clonedRepositories.cplatform.Path()))
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	cfg.Tenant.Value = string(tenantName)
+	cfg.Tenant.Value = tenantName
 	cfg.Repositories.CPlatform.Value = clonedRepositories.cplatform.Path()
 	cfg.Repositories.Templates.Value = clonedRepositories.templates.Path()
 	cfg.GitHub.Token.Value = githubToken
@@ -212,15 +212,15 @@ func cloneRepositories(
 	defer cloneReposSpinner.Done()
 	cplatformGitHubRepo, _, err := githubClient.Repositories.Get(
 		context.Background(),
-		cplatformRepoFullname.Organization,
-		cplatformRepoFullname.Name,
+		cplatformRepoFullname.Organization(),
+		cplatformRepoFullname.Name(),
 	)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
 	cplatformRepository, err := git.CloneToLocalRepository(git.CloneOp{
 		URL:        cplatformGitHubRepo.GetCloneURL(),
-		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name),
+		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name()),
 		Auth:       gitAuth,
 	})
 	if err != nil {
@@ -229,15 +229,15 @@ func cloneRepositories(
 
 	templatesGitHubRepo, _, err := githubClient.Repositories.Get(
 		context.Background(),
-		templatesRepoFullname.Organization,
-		templatesRepoFullname.Name,
+		templatesRepoFullname.Organization(),
+		templatesRepoFullname.Name(),
 	)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
 	templatesRepository, err := git.CloneToLocalRepository(git.CloneOp{
 		URL:        templatesGitHubRepo.GetCloneURL(),
-		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name),
+		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name()),
 		Auth:       gitAuth,
 	})
 	if err != nil {
@@ -272,34 +272,34 @@ func (opt *ConfigInitOpt) createInitFileInputSwitch() *userio.InputSourceSwitch[
 	}
 }
 
-func (opt *ConfigInitOpt) createTenantInputSwitch(availableTenants []tenant.Tenant) *userio.InputSourceSwitch[string, tenant.Name] {
+func (opt *ConfigInitOpt) createTenantInputSwitch(availableTenants []tenant.Tenant) *userio.InputSourceSwitch[string, string] {
 	validateFn := func(s string) (string, error) {
 		s = strings.TrimSpace(s)
 		for _, t := range availableTenants {
-			if string(t.Name) == s {
+			if t.Name == s {
 				return s, nil
 			}
 		}
 		return s, errors.New("unknown tenant")
 	}
-	return &userio.InputSourceSwitch[string, tenant.Name]{
+	return &userio.InputSourceSwitch[string, string]{
 		DefaultValue: userio.AsZeroable(opt.Tenant),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			items := make([]string, len(availableTenants))
 			for i, t := range availableTenants {
-				items[i] = string(t.Name)
+				items[i] = t.Name
 			}
 			return &userio.SingleSelect{
 				Prompt: "Pick your tenancy",
 				Items:  items,
 			}, nil
 		},
-		ValidateAndMap: func(s string) (tenant.Name, error) {
+		ValidateAndMap: func(s string) (string, error) {
 			s, err := validateFn(s)
 			if err != nil {
 				return "", err
 			}
-			return tenant.Name(s), nil
+			return s, nil
 		},
 		ErrMessage: "tenant is invalid",
 	}

@@ -3,6 +3,7 @@ package userio
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/developer-platform/pkg/validator"
 )
 
 var (
@@ -89,7 +90,14 @@ func (iss *InputSourceSwitch[V, T]) tryValidateAndMap(value V) (T, error) {
 
 func (iss *InputSourceSwitch[V, T]) setError(err error) {
 	if iss.ErrMessage != "" {
-		iss.err = fmt.Errorf(iss.ErrMessage+": %v", err)
+		var errReason string
+		var fieldError *validator.FieldError
+		if errors.As(err, &fieldError) {
+			errReason = fieldError.Message
+		} else {
+			errReason = err.Error()
+		}
+		iss.err = fmt.Errorf("%s: %s", iss.ErrMessage, errReason)
 	} else {
 		iss.err = err
 	}

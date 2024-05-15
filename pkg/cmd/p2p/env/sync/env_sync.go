@@ -2,15 +2,16 @@ package sync
 
 import (
 	"context"
-	"errors"
+	"fmt"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	"slices"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/environment"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
-	"github.com/coreeng/corectl/pkg/utils"
-	"github.com/coreeng/corectl/pkg/tenant"
+	corep2p "github.com/coreeng/developer-platform/pkg/p2p"
+	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -62,7 +63,6 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 }
 
 func run(opts *EnvCreateOpts, cfg *config.Config) error {
-
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 
@@ -76,46 +76,56 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 
 	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
 	defer spinnerHandler.Done()
-	
-	if tenant, err := tenant.FindByName(cfg.Repositories.CPlatform.Value, tenant.Name(opts.Tenant)); err == nil {
-		
-		if tenant == nil {
-			return errors.New("Tenant not found!")
-		} else {
-			environments, err := environment.List(cfg.Repositories.CPlatform.Value)
-			if err != nil {
-				return err
-			}
-			fastFeedbackEnvs := utils.FilterEnvs(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
-			extendedTestEnvs := utils.FilterEnvs(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
-			prodEnvs := utils.FilterEnvs(cfg.P2P.Prod.DefaultEnvs.Value, environments)
-			repoId := git.NewGithubRepoFullId(repository)
-			op := p2p.InitializeOp{
-				RepositoryId:     &repoId,
-				Tenant:           tenant,
-				FastFeedbackEnvs: fastFeedbackEnvs,
-				ExtendedTestEnvs: extendedTestEnvs,
-				ProdEnvs:         prodEnvs,
-			}
-			if opts.Clean {
-				err = p2p.DeleteEnvironment(
-					&op,
-					githubClient, 
-				)
-				if err != nil {
-					return err
-				}
-			}
-			err = p2p.InitializeRepository(
-				&op,
-				githubClient, 
-			)
-			if err != nil {
-				return err
-			}
+
+	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)
+	if err != nil {
+		return err
+	}
+	if t == nil {
+		return fmt.Errorf("tenant not found: %s", opts.Tenant)
+	}
+	environments, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+	if err != nil {
+		return err
+	}
+	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, environments)
+	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, environments)
+	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, environments)
+	repoId := git.NewGithubRepoFullId(repository)
+	if opts.Clean {
+		err = p2p.CleanUpRepoEnvs(
+			repoId,
+			fastFeedbackEnvs,
+			extendedTestEnvs,
+			prodEnvs,
+			githubClient,
+		)
+		if err != nil {
+			return err
 		}
-	} else {
+	}
+	op := corep2p.SynchronizeOp{
+		RepositoryId:     &repoId,
+		Tenant:           t,
+		FastFeedbackEnvs: fastFeedbackEnvs,
+		ExtendedTestEnvs: extendedTestEnvs,
+		ProdEnvs:         prodEnvs,
+	}
+	if err = corep2p.SynchronizeRepository(
+		&op,
+		githubClient,
+	); err != nil {
 		return err
 	}
 	return nil
+}
+
+func filterEnvsByNames(names []string, envs []environment.Environment) []environment.Environment {
+	var result []environment.Environment
+	for _, env := range envs {
+		if slices.Contains(names, env.Environment) {
+			result = append(result, env)
+		}
+	}
+	return result
 }
