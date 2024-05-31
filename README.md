@@ -1,5 +1,16 @@
 # CoreCTL - Core Platform CTL
-A CLI tool for providing high-level interactions for fellow developers.
+
+`corectl` is the CLI for CECG's [Core Platform](https://www.cecg.io/core-platform/).
+
+Core Platform is your ultimate all-in-one developer platform designed to turbocharge your software development journey from Day 1.
+
+Interested in learning more about CECG's Core Platform? Book a demo at [Core Platform](https://www.cecg.io/core-platform/.
+
+# Downloading
+
+Releases for Linux and Mac are published in [releases](https://github.com/coreeng/corectl/releases/)
+Download and unzip your platform e.g for Mac with Apple chip download `corectl_Darwin_arm64.tar.gz`
+and add to your path.
 
 # Usage 
 
@@ -30,6 +41,7 @@ corectl --help
 ```
 
 # GitHub Access Token
+
 ## Classic Personal Access Token
 Scopes required:
 - `repo`, since `corectl` needs access to read, create repositories, create PullRequests, configure environments and variables for the repositories.
