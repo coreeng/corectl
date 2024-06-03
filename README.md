@@ -4,7 +4,7 @@
 
 Core Platform is your ultimate all-in-one developer platform designed to turbocharge your software development journey from Day 1.
 
-Interested in learning more about CECG's Core Platform? Book a demo at [Core Platform](https://www.cecg.io/core-platform/.
+Interested in learning more about CECG's Core Platform? Book a demo at [Core Platform](https://www.cecg.io/core-platform/).
 
 # Downloading
 
