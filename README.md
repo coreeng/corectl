@@ -1,6 +1,6 @@
 # CoreCTL - Core Platform CTL
 
-`corectl` is the CLI for CECG's [Core Platform](https://www.cecg.io/core-platform/).
+CLI for CECG's [Core Platform](https://www.cecg.io/core-platform/).
 
 Core Platform is your ultimate all-in-one developer platform designed to turbocharge your software development journey from Day 1.
 
@@ -14,26 +14,34 @@ and add to your path.
 
 # Usage 
 
-Before start using the CLI you should initialize it.
-For the initialization you have to provide:
-- initialization file: [corectl-init-example.yaml](corectl-init-example.yaml)
-- your person GitHub token to perform operations on your behalf. See more info [here](#GitHub-Access-Token)
+## Initialization
+Before usage, you should initialize. It sets up your github integration with your developer environments. 
 
-To run initialization run:
+It requires the following:
+- **initialization file**: [init-example.yaml](examples/init.yaml)
+- **Personal GitHub token** See more info [here](#GitHub-Access-Token)
+
+To run:
 ```bash
 corectl config init
 ```
-It will save a few configuration options and clone configuration repositories:
-`cplatform-environments` and `software-templates`.
+Saves configuration options and clones repositories:
+`cplatform-environments` and `software-templates`. 
 
-Please note that you should periodically update local `corectl` configuration by running:
+`cplatform-environments` - repository that holds the configuration settings and parameters for developer platform environments.
+
+`software-templates` - repository featuring bootstrap templates designed for quick project setups.
+
+The repositories mentioned above are owned by CECG and are available for testing purposes. To gain access, you must be added to the appropriate organization and granted the necessary permissions.
+
+## Updates
+Periodically update local `corectl` configuration by running:
 ```bash
 corectl config update
 ```
-It will pull new changes for configuration repositories.
-I
+This command will fetch latest changes for configuration repositories.
 
-After the initialization you can start using `corectl`. 
+## Commands
 
 To check for available operations run:
 ```bash 
@@ -42,15 +50,17 @@ corectl --help
 
 # GitHub Access Token
 
+Github token is required to perform git operations on your behalf.
+
 ## Classic Personal Access Token
 Scopes required:
-- `repo`, since `corectl` needs access to read, create repositories, create PullRequests, configure environments and variables for the repositories.
-- `workflow`, since `corectl` may create workflow files when creating new applications.
+- `repo` -  needs access to read, create repositories, create pull requests, configure environments and variables for selected repositories.
+- `workflow` -  may create workflow files when creating new applications.
 
 ## Fine-grained tokens
 > **_NOTE_**: Your organization has to enable use of fine-grained tokens for this to be possible.
 
-Requirements for the token:
+Requirements for token:
 - It should have access to all your organization repositories, since `corectl` might be used to create and configure new repositories.
 - Read-Write permissions for Administrations, since `corectl` might be used to create new repositories for applications.
 - Read-Write permissions for Contents, since `corectl` will try to clone repositories with configuration and might be used to update contents of the repository.

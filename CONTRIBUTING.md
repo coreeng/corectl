@@ -24,3 +24,9 @@ It's recommended to use docker container for testing `corectl`, so your local fi
 ```shell
 make dev-env
 ```
+
+# Running tests
+Run tests
+```
+make tests
+```

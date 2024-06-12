@@ -3,6 +3,10 @@ package init
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -10,9 +14,6 @@ import (
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type ConfigInitOpt struct {
@@ -46,7 +47,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"file",
 		"f",
 		"",
-		"Initialization file. Please, ask platform engineer to provide it.",
+		"Initialization file. Please ask platform engineer to provide",
 	)
 	newInitCmd.Flags().StringVarP(
 		&opt.RepositoriesDir,
@@ -67,7 +68,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"github-organization",
 		"o",
 		"",
-		"GitHub organisation of your company.")
+		"GitHub Organisation of your company")
 	newInitCmd.Flags().StringVar(
 		&opt.Tenant,
 		"tenant",
@@ -77,7 +78,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		&opt.NonInteractive,
 		"nonint",
 		false,
-		"Do not try to prompt user for missing input.",
+		"Disable prompt for missing input",
 	)
 
 	return newInitCmd

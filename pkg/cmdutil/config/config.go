@@ -2,10 +2,11 @@ package config
 
 import (
 	"errors"
-	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v3"
 )
 
 type Parameter[V interface{}] struct {
@@ -171,5 +172,5 @@ func Path() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homeDir, ".config", "corectl", "corectl.yaml"), nil
+	return filepath.Join(homeDir, ".config", "corectl", "config.yaml"), nil
 }
