@@ -38,7 +38,7 @@ var _ = Describe("config", Ordered, func() {
 		})
 
 		It("created config file", func() {
-			Expect(cfg.Path()).To(Equal(filepath.Join(homeDir, ".config", "corectl", "corectl.yaml")))
+			Expect(cfg.Path()).To(Equal(filepath.Join(homeDir, ".config", "corectl", "config.yaml")))
 			Expect(cfg).NotTo(BeNil())
 			Expect(cfg.IsPersisted()).To(BeTrue())
 			Expect(cfg.Repositories.CPlatform.Value).To(
