@@ -2,11 +2,12 @@ package userio
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
-	"strings"
 )
 
 type ValidateTextAndMapFn[V interface{}] func(string) (V, error)
