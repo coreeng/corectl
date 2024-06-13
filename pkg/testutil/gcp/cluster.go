@@ -9,14 +9,21 @@ import (
 	"cloud.google.com/go/container/apiv1/containerpb"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
+<<<<<<< HEAD
 	"google.golang.org/grpc/credentials/insecure"
+=======
+>>>>>>> b8521f8 (feat(cmd): add list command)
 )
 
 type mockClusterServer struct {
 	containerpb.ClusterManagerServer
 }
 
+<<<<<<< HEAD
 func setupMockClusterServer() (option.ClientOption, error) {
+=======
+func setupClusterServer() (option.ClientOption, error) {
+>>>>>>> b8521f8 (feat(cmd): add list command)
 	srv := &mockClusterServer{}
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {

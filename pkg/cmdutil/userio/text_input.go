@@ -112,3 +112,14 @@ func (m textInputModel[V]) View() string {
 	}
 	return s.String()
 }
+
+func MaxLines(out strings.Builder) int {
+	var max int
+	for _, l := range strings.Split(out.String(), "\n") {
+		if len(l) > max {
+			max = len(l)
+		}
+	}
+
+	return max
+}
