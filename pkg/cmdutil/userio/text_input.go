@@ -113,9 +113,9 @@ func (m textInputModel[V]) View() string {
 	return s.String()
 }
 
-func MaxLines(out strings.Builder) int {
+func MaxLines(in strings.Builder) int {
 	var max int
-	for _, l := range strings.Split(out.String(), "\n") {
+	for _, l := range strings.Split(in.String(), "\n") {
 		if len(l) > max {
 			max = len(l)
 		}
