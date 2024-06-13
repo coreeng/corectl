@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -134,6 +135,7 @@ func ReadConfig(path string) (*Config, error) {
 		}
 		return nil, err
 	}
+	fmt.Println(" we get here")
 
 	if err = yaml.Unmarshal(fileContent, &config); err != nil {
 		return nil, err
