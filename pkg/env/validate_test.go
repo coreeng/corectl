@@ -40,7 +40,7 @@ func TestValidate(t *testing.T) {
 				},
 			},
 			err: true,
-			msg: "cloud platform is not supported",
+			msg: "AWS cloud platform is not supported",
 		},
 	}
 
@@ -67,13 +67,12 @@ func TestValidate(t *testing.T) {
 type mockCommand struct {
 }
 
-func (m *mockCommand) CommandOutput(c string, args ...string) ([]byte, error) {
+func (m *mockCommand) Execute(c string, args ...string) ([]byte, error) {
 	cs := []string{"-test.run=TestOutput", "--"}
 	cs = append(cs, args...)
 	cmd := exec.Command(os.Args[0], cs...)
 	cmd.Env = []string{"GO_TEST_PROCESS=1"}
-	out, err := cmd.CombinedOutput()
-	return out, err
+	return cmd.CombinedOutput()
 }
 
 func TestOutput(*testing.T) {

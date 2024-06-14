@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os/exec"
+	"strings"
 
 	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/coreeng/developer-platform/pkg/environment"
@@ -38,24 +38,9 @@ func Validate(ctx context.Context, env *environment.Environment, cmd Commander, 
 
 func platform(env *environment.Environment) error {
 	if env.Platform.Type() != environment.GCPVendorType {
-		return ErrCloudPlatformNotSupported
+		return fmt.Errorf("%s %w", strings.ToUpper(string(env.Platform.Type())), ErrCloudPlatformNotSupported)
 	}
 	return nil
-}
-
-type Commander interface {
-	CommandOutput(string, ...string) ([]byte, error)
-}
-
-type Command struct {
-}
-
-func (c *Command) CommandOutput(cmd string, args ...string) ([]byte, error) {
-	out, err := exec.Command(cmd, args...).Output()
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func depsInstalled(c Commander) error {
@@ -63,10 +48,10 @@ func depsInstalled(c Commander) error {
 		kube   = "kubectl"
 		gcloud = "gcloud"
 	)
-	if _, err := c.CommandOutput(kube); err != nil {
+	if _, err := c.Execute(kube, "help"); err != nil {
 		return fmt.Errorf("%s is not installed: %w", kube, err)
 	}
-	if _, err := c.CommandOutput(gcloud); err != nil {
+	if _, err := c.Execute(gcloud, "help"); err != nil {
 		return fmt.Errorf("%s is not installed: %w", gcloud, err)
 	}
 	return nil
