@@ -21,7 +21,7 @@ func TestAppendRow(t *testing.T) {
 			name:     "",
 			id:       "",
 			expected: `
-CLOUD PLATFORM  ID  NAME`,
+NAME  ID  CLOUD PLATFORM`,
 		},
 		{
 			title:    "GCP rows",
@@ -29,8 +29,8 @@ CLOUD PLATFORM  ID  NAME`,
 			name:     "gcpdev-1234",
 			id:       "1234",
 			expected: `
-CLOUD PLATFORM  ID           NAME 
- GCP             gcpdev-1234  1234`,
+NAME         ID    CLOUD PLATFORM 
+ gcpdev-1234  1234  GCP`,
 		},
 		{
 			title:    "AWS rows",
@@ -38,15 +38,15 @@ CLOUD PLATFORM  ID           NAME
 			name:     "awsprod-5678",
 			id:       "5678",
 			expected: `
-CLOUD PLATFORM  ID            NAME 
- AWS             awsprod-5678  5678`,
+NAME          ID    CLOUD PLATFORM 
+ awsprod-5678  5678  AWS`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			table := NewTable("Cloud Platform", "ID", "name")
-			table.AppendRow(tt.platform, tt.id, tt.name)
+			table := NewTable("Name", "ID", "Cloud Platform")
+			table.AppendRow(tt.name, tt.id, tt.platform)
 			CompareOutput(t, table.Render(), tt.expected)
 		})
 	}

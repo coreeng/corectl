@@ -27,8 +27,8 @@ func NewTable(headers ...string) TableEnv {
 	return TableEnv{table: t}
 }
 
-func (t TableEnv) AppendRow(platform, name, id string) {
-	t.table.AppendRows([]table.Row{{platform, id, name}})
+func (t TableEnv) AppendRow(name, id, platform string) {
+	t.table.AppendRows([]table.Row{{name, id, platform}})
 }
 
 func (t TableEnv) Render() string {
