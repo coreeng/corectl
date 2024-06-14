@@ -51,6 +51,7 @@ func (t TableEnv) AppendEnv(env environment.Environment) {
 		id = p.AccountId
 		platform = "AWS"
 	}
+	cluster = env.Environment
 
 	t.AppendRow(env.Environment, id, platform)
 }
