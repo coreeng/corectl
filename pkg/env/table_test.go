@@ -9,44 +9,44 @@ import (
 
 func TestAppendRow(t *testing.T) {
 	tests := []struct {
-		name     string
+		title    string
 		platform string
-		cluster  string
+		name     string
 		id       string
 		expected string
 	}{
 		{
-			name:     "No rows",
+			title:    "No rows",
 			platform: "",
-			cluster:  "",
+			name:     "",
 			id:       "",
 			expected: `
-CLOUD PLATFORM  ID  CLUSTER`,
+CLOUD PLATFORM  ID  NAME`,
 		},
 		{
-			name:     "GCP rows",
+			title:    "GCP rows",
 			platform: "GCP",
-			cluster:  "gcpdev-1234",
+			name:     "gcpdev-1234",
 			id:       "1234",
 			expected: `
-CLOUD PLATFORM  ID    CLUSTER     
- GCP             1234  gcpdev-1234`,
+CLOUD PLATFORM  ID           NAME 
+ GCP             gcpdev-1234  1234`,
 		},
 		{
-			name:     "AWS rows",
+			title:    "AWS rows",
 			platform: "AWS",
-			cluster:  "awsprod-5678",
+			name:     "awsprod-5678",
 			id:       "5678",
 			expected: `
-CLOUD PLATFORM  ID    CLUSTER      
- AWS             5678  awsprod-5678`,
+CLOUD PLATFORM  ID            NAME 
+ AWS             awsprod-5678  5678`,
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			table := NewTable("Cloud Platform", "ID", "Cluster")
-			table.AppendRow(tt.platform, tt.id, tt.cluster)
+		t.Run(tt.title, func(t *testing.T) {
+			table := NewTable("Cloud Platform", "ID", "name")
+			table.AppendRow(tt.platform, tt.id, tt.name)
 			CompareOutput(t, table.Render(), tt.expected)
 		})
 	}

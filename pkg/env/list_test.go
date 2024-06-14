@@ -1,11 +1,8 @@
 package env
 
 import (
-<<<<<<< HEAD
 	"os"
 	"strings"
-=======
->>>>>>> 1095166 (add prettier table)
 	"testing"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
