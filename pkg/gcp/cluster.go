@@ -10,8 +10,7 @@ import (
 )
 
 type Client struct {
-	clusterSvc   *container.ClusterManagerClient
-	containerSvc *googleContainer.Service
+	clusterSvc *container.ClusterManagerClient
 }
 
 // NewClient will return a client that has permissions to interact with GCP services
@@ -27,19 +26,6 @@ func NewContainerClient(ctx context.Context) (*googleContainer.Service, error) {
 	}
 	return c, nil
 }
-
-// func (c Client) GetClusterCredentials(ctx context.Context, projectID, zone, cluster string) error {
-// 	// Get the cluster
-// 	cluster, err := c.containerSvc.Projects.Zones.Clusters.Get(projectID, zone, cluster).Context(ctx).Do()
-// 	if err != nil {
-// 		log.Fatalf("Failed to get cluster: %v", err)
-// 	}
-
-// 	// Print the cluster information (or use it as needed)
-// 	fmt.Printf("Cluster Name: %s\n", cluster.Name)
-// 	fmt.Printf("Endpoint: %s\n", cluster.Endpoint)
-// 	fmt.Printf("Master Version: %s\n", cluster.CurrentMasterVersion)
-// }
 
 // NewClusterClient creates a client that can be used to interact with GKE clusters
 func NewClusterClient(ctx context.Context) (*container.ClusterManagerClient, error) {
