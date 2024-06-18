@@ -1,8 +1,6 @@
 package env
 
 import (
-	"strings"
-
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -53,15 +51,4 @@ func (t TableEnv) AppendEnv(env environment.Environment) {
 	}
 
 	t.AppendRow(env.Environment, id, platform)
-}
-
-func maxLineLength(in string) int {
-	var max int
-	for _, l := range strings.Split(in, "\n") {
-		if len(l) > max {
-			max = len(l)
-		}
-	}
-
-	return max
 }

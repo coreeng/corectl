@@ -13,8 +13,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-var localPort int
-
 type EnvConnectOpt struct {
 	Port               int
 	Environment        string
