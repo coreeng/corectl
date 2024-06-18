@@ -35,7 +35,7 @@ func (t TableEnv) Render() string {
 	return t.table.Render()
 }
 
-func AppendEnv(t TableEnv, env environment.Environment) {
+func (t TableEnv) AppendEnv(env environment.Environment) {
 	var (
 		platform string
 		id       string

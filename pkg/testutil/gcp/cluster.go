@@ -2,6 +2,7 @@ package gcp
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	container "cloud.google.com/go/container/apiv1"
@@ -19,7 +20,7 @@ func setupMockClusterServer() (option.ClientOption, error) {
 	srv := &mockClusterServer{}
 	l, err := net.Listen("tcp", "localhost:0")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create mock cluster server for test: %w", err)
 	}
 
 	gsrv := grpc.NewServer()
@@ -32,7 +33,7 @@ func setupMockClusterServer() (option.ClientOption, error) {
 
 	conn, err := grpc.NewClient(l.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create gRPC client for test: %w", err)
 	}
 
 	return option.WithGRPCConn(conn), nil

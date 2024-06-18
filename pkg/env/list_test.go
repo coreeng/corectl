@@ -50,7 +50,7 @@ NAME        ID                   CLOUD PLATFORM
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			table := NewTable(streams, "Name", "ID", "Cloud Platform")
-			AppendEnv(table, tt.env)
+			table.AppendEnv(tt.env)
 			compareOutput(t, table.Render(), tt.expected)
 		})
 	}

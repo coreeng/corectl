@@ -1,6 +1,8 @@
 package env
 
 import (
+	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
@@ -8,35 +10,54 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type ListOpt struct {
+	RepositoryLocation string
+	Streams            userio.IOStreams
+}
+
 func listCmd(cfg *config.Config) *cobra.Command {
+	var opts = ListOpt{}
 	listCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all environments",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			streams := userio.NewIOStreams(
+			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
 
-			return list(cfg, streams)
+			return list(opts, cfg)
 		},
 	}
+
+	listCmd.Flags().StringVarP(
+		&opts.RepositoryLocation,
+		"repository",
+		"r",
+		cfg.Repositories.CPlatform.Value,
+		"Repository to source environments from",
+	)
+
+	config.RegisterStringParameterAsFlag(
+		&cfg.Repositories.CPlatform,
+		listCmd.Flags(),
+	)
 
 	return listCmd
 }
 
-func list(cfg *config.Config, streams userio.IOStreams) error {
+func list(opts ListOpt, cfg *config.Config) error {
 	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
 		return err
 	}
-	existing, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+	existing, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)
 	}
 
-	table := corectlenv.NewTable(streams, "Name", "ID", "Cloud Platform")
+	table := corectlenv.NewTable(opts.Streams, "Name", "ID", "Cloud Platform")
 	for _, env := range existing {
-		corectlenv.AppendEnv(table, env)
+		table.AppendEnv(env)
 	}
 	table.Render()
 
