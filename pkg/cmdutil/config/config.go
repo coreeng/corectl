@@ -183,16 +183,3 @@ func Path() (string, error) {
 
 	return path, nil
 }
-
-func NotExist() error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	path := filepath.Join(homeDir, CORECTL_DIR, "corectl", CORECTL_CONFIG)
-
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return err
-	}
-	return nil
-}
