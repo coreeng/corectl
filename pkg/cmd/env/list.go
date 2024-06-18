@@ -2,6 +2,7 @@ package env
 
 import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/spf13/cobra"
@@ -12,14 +13,20 @@ func listCmd(cfg *config.Config) *cobra.Command {
 		Use:   "list",
 		Short: "List all environments",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return list(cfg)
+			streams := userio.NewIOStreams(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+			)
+
+			return list(cfg, streams)
 		},
 	}
+
 	return listCmd
 }
 
-func list(cfg *config.Config) error {
-	if err := config.NotExist(); err != nil {
+func list(cfg *config.Config, streams userio.IOStreams) error {
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
 		return err
 	}
 	existing, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
@@ -27,7 +34,7 @@ func list(cfg *config.Config) error {
 		return err
 	}
 
-	table := corectlenv.NewTable("Name", "ID", "Cloud Platform")
+	table := corectlenv.NewTable(streams, "Name", "ID", "Cloud Platform")
 	for _, env := range existing {
 		corectlenv.AppendEnv(table, env)
 	}

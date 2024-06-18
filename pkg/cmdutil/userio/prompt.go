@@ -2,12 +2,13 @@ package userio
 
 import (
 	"errors"
+	"io"
+	"os"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
-	"io"
-	"os"
 )
 
 var (
@@ -37,6 +38,10 @@ func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool
 
 func (streams IOStreams) IsInteractive() bool {
 	return streams.isInteractive
+}
+
+func (s IOStreams) GetOutput() io.Writer {
+	return s.out.Output()
 }
 
 func isTerminalInteractive(in io.Reader, out io.Writer) bool {
