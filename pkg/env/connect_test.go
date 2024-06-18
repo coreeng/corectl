@@ -69,8 +69,8 @@ func TestOutputSuccess(*testing.T) {
 		return
 	}
 
-	defer os.Exit(0)
 	fmt.Printf("binary exists")
+	os.Exit(0)
 }
 
 type mockCommandFail struct {
@@ -89,6 +89,6 @@ func TestOutputFail(*testing.T) {
 		return
 	}
 
-	defer os.Exit(1)
 	fmt.Printf("gcloud doesn't exist")
+	os.Exit(1)
 }

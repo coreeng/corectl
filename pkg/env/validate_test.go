@@ -2,6 +2,7 @@ package env
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,8 +18,7 @@ func TestValidate(t *testing.T) {
 	tests := []struct {
 		name string
 		env  *environment.Environment
-		err  bool
-		msg  string
+		err  error
 	}{
 		{
 			name: "GCP environment",
@@ -28,8 +28,7 @@ func TestValidate(t *testing.T) {
 					ProjectId: "gcp-predev-1234",
 				},
 			},
-			err: false,
-			msg: "",
+			err: nil,
 		},
 		{
 			name: "AWS environment",
@@ -39,8 +38,7 @@ func TestValidate(t *testing.T) {
 					AccountId: "aws-production-5678",
 				},
 			},
-			err: true,
-			msg: "AWS cloud platform is not supported",
+			err: errors.New("AWS cloud platform is not supported"),
 		},
 	}
 
@@ -56,9 +54,9 @@ func TestValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Validate(ctx, tt.env, mockCmd, client)
-			if tt.err {
+			if tt.err != nil {
 				assert.Error(t, err)
-				assert.Equal(t, tt.msg, err.Error())
+				assert.Equal(t, tt.err.Error(), err.Error())
 			}
 		})
 	}
