@@ -11,6 +11,9 @@ var kubeNamespace = "default"
 
 // Connect establishes a connection with a gke cluster via a bastion host
 func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port int) error {
+	if err := checkPlatformSupported(env); err != nil {
+		return err
+	}
 	e := env.Platform.(*environment.GCPVendor)
 	// generate credentials and update kubeconfig
 	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {

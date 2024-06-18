@@ -12,11 +12,7 @@ import (
 )
 
 func TestConnectSuccess(t *testing.T) {
-	var (
-		projectID = "gcp-project-1"
-		location  = "europe-west-2"
-		proxy     = 1234
-	)
+	var proxy = 1234
 
 	env := &environment.Environment{
 		Environment: "predev",
@@ -28,16 +24,12 @@ func TestConnectSuccess(t *testing.T) {
 		os.Stdin,
 		os.Stdout,
 	)
-	err := Connect(streams, env, mockCommandSuccess{}, projectID, location, proxy)
+	err := Connect(streams, env, mockCommandSuccess{}, proxy)
 	assert.NoError(t, err)
 }
 
 func TestConnectFail(t *testing.T) {
-	var (
-		projectID = "gcp-project-1"
-		location  = "europe-west-2"
-		proxy     = 1234
-	)
+	var proxy = 1234
 
 	env := &environment.Environment{
 		Environment: "production",
@@ -49,7 +41,7 @@ func TestConnectFail(t *testing.T) {
 		os.Stdin,
 		os.Stdout,
 	)
-	err := Connect(streams, env, mockCommandFail{}, projectID, location, proxy)
+	err := Connect(streams, env, mockCommandFail{}, proxy)
 	assert.Error(t, err)
 }
 
