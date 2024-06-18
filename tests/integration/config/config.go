@@ -1,18 +1,17 @@
 package config
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/corectl/testdata"
-	"github.com/coreeng/corectl/tests/integration/testsetup"
-	. "github.com/onsi/ginkgo/v2"
 	"os"
 	"path/filepath"
 	"time"
-)
 
-import (
+	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
+	"github.com/coreeng/corectl/tests/integration/testsetup"
+	. "github.com/onsi/ginkgo/v2"
+
 	. "github.com/onsi/gomega"
 )
 

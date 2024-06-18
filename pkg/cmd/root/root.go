@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
+	"github.com/coreeng/corectl/pkg/cmd/env"
 	"github.com/coreeng/corectl/pkg/cmd/p2p"
 	"github.com/coreeng/corectl/pkg/cmd/template"
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
@@ -34,11 +35,13 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	if err != nil {
 		panic("Unable to execute p2p command")
 	}
+	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+	rootCmd.AddCommand(p2pCmd)
+	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
-	rootCmd.AddCommand(appCmd)
-	rootCmd.AddCommand(p2pCmd)
+	rootCmd.AddCommand(env.NewEnvCmd(cfg))
 
 	return rootCmd
 }

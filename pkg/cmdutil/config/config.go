@@ -2,10 +2,16 @@ package config
 
 import (
 	"errors"
-	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v3"
+)
+
+const (
+	CORECTL_DIR    = ".config"
+	CORECTL_CONFIG = "corectl.yaml"
 )
 
 type Parameter[V interface{}] struct {
@@ -122,9 +128,10 @@ func DiscoverConfig() (*Config, error) {
 func ReadConfig(path string) (*Config, error) {
 	fileContent, err := os.ReadFile(path)
 	config := newConfig()
-	if err != nil && errors.Is(err, os.ErrNotExist) {
-		return config, nil
-	} else if err != nil {
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return config, nil
+		}
 		return nil, err
 	}
 
@@ -171,5 +178,8 @@ func Path() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(homeDir, ".config", "corectl", "corectl.yaml"), nil
+
+	path := filepath.Join(homeDir, CORECTL_DIR, "corectl", CORECTL_CONFIG)
+
+	return path, nil
 }
