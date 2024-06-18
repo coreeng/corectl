@@ -1,7 +1,6 @@
 package env
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"testing"
@@ -48,20 +47,27 @@ func TestConnectFail(t *testing.T) {
 type mockCommandSuccess struct {
 }
 
-func (m mockCommandSuccess) Execute(c string, args ...string) ([]byte, error) {
-	cs := []string{"-test.run=TestOutputSuccess", "--"}
+// helperExecProcess allows us to execute a mock exec.Command
+// this function ensures that it will only be run if
+// GO_TEST_PROCESS environment variable is present
+func helperExecProcess(fn string, args ...string) *exec.Cmd {
+	cs := []string{"-test.run=" + fn, "--"}
 	cs = append(cs, args...)
 	cmd := exec.Command(os.Args[0], cs...)
 	cmd.Env = []string{"GO_TEST_PROCESS=1"}
-	return cmd.CombinedOutput()
+
+	return cmd
 }
 
+func (m mockCommandSuccess) Execute(c string, args ...string) ([]byte, error) {
+	return helperExecProcess("TestOutputSuccess", args...).CombinedOutput()
+}
+
+// TestOutputSuccess mocks a command that returns successful command
 func TestOutputSuccess(*testing.T) {
 	if os.Getenv("GO_TEST_PROCESS") != "1" {
 		return
 	}
-
-	fmt.Printf("binary exists")
 	os.Exit(0)
 }
 
@@ -69,18 +75,13 @@ type mockCommandFail struct {
 }
 
 func (m mockCommandFail) Execute(c string, args ...string) ([]byte, error) {
-	cs := []string{"-test.run=TestOutputFail", "--"}
-	cs = append(cs, args...)
-	cmd := exec.Command(os.Args[0], cs...)
-	cmd.Env = []string{"GO_TEST_PROCESS=1"}
-	return cmd.CombinedOutput()
+	return helperExecProcess("TestOutputFail", args...).CombinedOutput()
 }
 
+// TestOutputFail mocks a command that returns a non zero exit code
 func TestOutputFail(*testing.T) {
 	if os.Getenv("GO_TEST_PROCESS") != "1" {
 		return
 	}
-
-	fmt.Printf("gcloud doesn't exist")
 	os.Exit(1)
 }
