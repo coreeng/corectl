@@ -6,6 +6,7 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
+	googleContainer "google.golang.org/api/container/v1"
 )
 
 type Client struct {
@@ -17,11 +18,20 @@ func NewClient(ctx context.Context, clusterManager *container.ClusterManagerClie
 	return &Client{clusterSvc: clusterManager}, nil
 }
 
+// NewContainerClient creates a client that can be used to fetch cluster credentials
+func NewContainerClient(ctx context.Context) (*googleContainer.Service, error) {
+	c, err := googleContainer.NewService(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("google create container client: %w", err)
+	}
+	return c, nil
+}
+
 // NewClusterClient creates a client that can be used to interact with GKE clusters
 func NewClusterClient(ctx context.Context) (*container.ClusterManagerClient, error) {
 	c, err := container.NewClusterManagerClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create google container client: %w", err)
+		return nil, fmt.Errorf("create google cluster client: %w", err)
 	}
 	return c, nil
 }

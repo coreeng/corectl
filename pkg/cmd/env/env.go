@@ -16,6 +16,7 @@ func NewEnvCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	envCmd.AddCommand(listCmd(cfg))
+	envCmd.AddCommand(connectCmd(cfg))
 
 	return envCmd
 }
