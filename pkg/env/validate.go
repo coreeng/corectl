@@ -37,7 +37,7 @@ func Validate(ctx context.Context, env *environment.Environment, cmd Commander, 
 }
 
 func depsInstalled(c Commander) error {
-	deps := []string{"kubectl", "gcloud"}
+	deps := []string{"gcloud", "kubectl"}
 
 	for _, cmd := range deps {
 		if _, err := c.Execute(cmd, "help"); err != nil {
