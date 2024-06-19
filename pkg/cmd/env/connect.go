@@ -37,17 +37,9 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
-			return connect(opts)
+			return connect(opts, cfg)
 		},
 	}
-
-	connectCmd.Flags().StringVarP(
-		&opts.RepositoryLocation,
-		"repository",
-		"r",
-		cfg.Repositories.CPlatform.Value,
-		"Repository to source environments from",
-	)
 
 	connectCmd.Flags().StringVarP(
 		&opts.Environment,
@@ -69,24 +61,25 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 		&cfg.Repositories.CPlatform,
 		connectCmd.Flags(),
 	)
+	opts.RepositoryLocation = cfg.Repositories.CPlatform.Value
 
 	return connectCmd
 }
 
-func connect(opts EnvConnectOpt) error {
+func connect(opts EnvConnectOpt, cfg *config.Config) error {
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		return err
+	}
 	envs, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 	if err != nil {
 		return err
 	}
-
-	if opts.Environment == "" {
-		inputEnv := createEnvInputSwitch(envs)
-		envOutput, err := inputEnv.GetValue(opts.Streams)
-		if err != nil {
-			return err
-		}
-		opts.Environment = envOutput
+	inputEnv := createEnvInputSwitch(opts, envs)
+	envOutput, err := inputEnv.GetValue(opts.Streams)
+	if err != nil {
+		return err
 	}
+	opts.Environment = envOutput
 
 	env, err := environment.FindByName(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation), opts.Environment)
 	if err != nil {
@@ -128,7 +121,7 @@ func setupSvc(ctx context.Context) (*gcp.Client, error) {
 	return gcpClient, nil
 }
 
-func createEnvInputSwitch(environments []environment.Environment) *userio.InputSourceSwitch[string, string] {
+func createEnvInputSwitch(opts EnvConnectOpt, environments []environment.Environment) *userio.InputSourceSwitch[string, string] {
 	validateFn := func(s string) (string, error) {
 		s = strings.TrimSpace(s)
 		for _, env := range environments {
@@ -139,7 +132,7 @@ func createEnvInputSwitch(environments []environment.Environment) *userio.InputS
 		return s, errors.New("unknown environment")
 	}
 	return &userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(""),
+		DefaultValue: userio.AsZeroable(opts.Environment),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			envs := make([]string, len(environments))
 			for i, t := range environments {
