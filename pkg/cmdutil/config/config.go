@@ -64,7 +64,33 @@ func RegisterStringParameterAsFlag(p *Parameter[string], fs *pflag.FlagSet) {
 			p.help,
 		)
 	}
+	hideDefaultValueFromHelp(p, fs)
+}
 
+func RegisterBoolParameterAsFlag(p *Parameter[bool], fs *pflag.FlagSet) {
+	if p.flag == "" && p.shortFlag == "" {
+		panic("Unexpected flag registration for config parameter")
+	}
+	if p.shortFlag == "" {
+		fs.BoolVar(
+			&p.Value,
+			p.flag,
+			p.Value,
+			p.help,
+		)
+	} else {
+		fs.BoolVarP(
+			&p.Value,
+			p.flag,
+			p.shortFlag,
+			p.Value,
+			p.help,
+		)
+	}
+	hideDefaultValueFromHelp(p, fs)
+}
+
+func hideDefaultValueFromHelp[V any](p *Parameter[V], fs *pflag.FlagSet) {
 	// do not output value from config in help
 	flag := fs.Lookup(p.flag)
 	flag.DefValue = ""
@@ -77,8 +103,9 @@ type Config struct {
 		Organization Parameter[string] `yaml:"organization"`
 	} `yaml:"github"`
 	Repositories struct {
-		CPlatform Parameter[string] `yaml:"cplatform"`
-		Templates Parameter[string] `yaml:"templates"`
+		CPlatform  Parameter[string] `yaml:"cplatform"`
+		Templates  Parameter[string] `yaml:"templates"`
+		AllowDirty Parameter[bool]   `yaml:"allow-dirty"`
 	} `yaml:"repositories"`
 	P2P struct {
 		FastFeedback P2PStageConfig `yaml:"fast-feedback"`
@@ -110,6 +137,10 @@ func newConfig() *Config {
 	config.Repositories.Templates.name = "template repository"
 	config.Repositories.Templates.flag = "templates"
 	config.Repositories.Templates.help = "Path to local repository with software templates"
+
+	config.Repositories.AllowDirty.name = "Allow dirty config repositories"
+	config.Repositories.AllowDirty.flag = "allow-dirty-config-repos"
+	config.Repositories.AllowDirty.help = "Allow local changes in configuration repositories"
 	return &config
 }
 

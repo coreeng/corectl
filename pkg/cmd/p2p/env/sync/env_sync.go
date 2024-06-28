@@ -24,7 +24,6 @@ type EnvCreateOpts struct {
 }
 
 func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
-
 	var opts = EnvCreateOpts{}
 	var syncEnvironmentsCmd = &cobra.Command{
 		Use:   "sync <app repository> <tenant>",

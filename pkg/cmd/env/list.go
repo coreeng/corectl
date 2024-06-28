@@ -55,7 +55,7 @@ func list(opts ListOpt, cfg *config.Config) error {
 		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)
 	}
 
-	table := corectlenv.NewTable(opts.Streams, "Name", "ID", "Cloud Platform")
+	table := corectlenv.NewTable(opts.Streams)
 	for _, env := range existing {
 		table.AppendEnv(env)
 	}
