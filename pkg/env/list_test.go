@@ -49,7 +49,7 @@ NAME        ID                   CLOUD PLATFORM
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			table := NewTable(streams, "Name", "ID", "Cloud Platform")
+			table := NewTable(streams)
 			table.AppendEnv(tt.env)
 			compareOutput(t, table.Render(), tt.expected)
 		})
@@ -99,7 +99,7 @@ NAME          ID    CLOUD PLATFORM
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			table := NewTable(streams, "Name", "ID", "Cloud Platform")
+			table := NewTable(streams)
 			table.AppendRow(tt.name, tt.id, tt.platform)
 			compareOutput(t, table.Render(), tt.expected)
 		})

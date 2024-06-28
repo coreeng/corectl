@@ -6,14 +6,22 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
+var (
+	tableHeaders = []string{
+		"Name",
+		"ID",
+		"Cloud Platform",
+	}
+)
+
 type TableEnv struct {
 	table table.Writer
 }
 
-func NewTable(streams userio.IOStreams, headers ...string) TableEnv {
+func NewTable(streams userio.IOStreams) TableEnv {
 	t := table.NewWriter()
-	row := make(table.Row, len(headers))
-	for i, header := range headers {
+	row := make(table.Row, len(tableHeaders))
+	for i, header := range tableHeaders {
 		row[i] = header
 	}
 	t.AppendHeader(row)

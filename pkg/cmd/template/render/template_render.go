@@ -8,7 +8,12 @@ import (
 	"os"
 )
 
+type TemplateRenderOpt struct {
+	Force bool
+}
+
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
+	opts := TemplateRenderOpt{}
 	templateRenderCmd := &cobra.Command{
 		Use:   "render <template-name> <target-path>",
 		Short: "Render template locally",
@@ -19,15 +24,33 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 
 			stat, err := os.Stat(targetPath)
 			if err != nil {
-				pathError := err.(*os.PathError)
-				return fmt.Errorf("%s: %v", pathError.Path, pathError.Err)
-			}
-			if !stat.IsDir() {
-				return fmt.Errorf("%s: not a directory", targetPath)
+				if !os.IsNotExist(err) {
+					pathError := err.(*os.PathError)
+					return fmt.Errorf("%s: %v", pathError.Path, pathError.Err)
+				}
+				if err := os.MkdirAll(targetPath, 0755); err != nil {
+					return fmt.Errorf("%s: could not create directory: %v", targetPath, err)
+				}
+			} else {
+				if !stat.IsDir() {
+					return fmt.Errorf("%s: not a directory", targetPath)
+				}
 			}
 
-			if _, err = config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-				return err
+			if !opts.Force {
+				dirEntries, err := os.ReadDir(targetPath)
+				if err != nil {
+					return fmt.Errorf("%s: couldn't list directory: %v", targetPath, err)
+				}
+				if len(dirEntries) > 0 {
+					return fmt.Errorf("%s: directory is not empty", targetPath)
+				}
+			}
+
+			if !cfg.Repositories.AllowDirty.Value {
+				if _, err = config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+					return err
+				}
 			}
 
 			templatesPath := cfg.Repositories.Templates.Value
@@ -54,6 +77,17 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,
 		templateRenderCmd.Flags(),
+	)
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		templateRenderCmd.Flags(),
+	)
+
+	templateRenderCmd.Flags().BoolVar(
+		&opts.Force,
+		"force",
+		false,
+		"Override non-empty directory",
 	)
 
 	return templateRenderCmd
