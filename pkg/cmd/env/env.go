@@ -17,6 +17,7 @@ func NewEnvCmd(cfg *config.Config) *cobra.Command {
 
 	envCmd.AddCommand(listCmd(cfg))
 	envCmd.AddCommand(connectCmd(cfg))
+	envCmd.AddCommand(openResource(cfg))
 
 	return envCmd
 }
