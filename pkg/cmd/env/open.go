@@ -55,7 +55,7 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 		return fmt.Errorf("environment %s not found", opts.Environment)
 	}
 	if err := corectlenv.OpenResource(corectlenv.ResourceType(opts.Resource), env); err != nil {
-		return err
+		return fmt.Errorf("couldn't open %s: %w", opts.Resource, err)
 	}
 	return nil
 }

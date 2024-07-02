@@ -2,8 +2,8 @@ package env
 
 import (
 	"errors"
-	"github.com/coreeng/corectl/pkg/browser"
 	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/pkg/browser"
 )
 
 var (
