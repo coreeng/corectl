@@ -43,8 +43,8 @@ github.com/cloudflare/circl v1.3.7/go.mod h1:sRTcRWXGLrKw6yIGJ+l7amYJFfAXbZG0kBS
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 h1:q2hJAaP1k2wIvVRd/hEHD7lacgqrCPS+k8g1MndzfWY=
 github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81/go.mod h1:YynlIjWYF8myEu6sdkwKIvGQq+cOckRm6So2avqoYAk=
-github.com/coreeng/developer-platform/pkg v0.11.1 h1:icIop2UJXB58MCkZFgHQG1YMuRm3uILWZ6rfI1Rfa0M=
-github.com/coreeng/developer-platform/pkg v0.11.1/go.mod h1:XBXbxzrXRFW2Gb5qKXixQoM5gX6ye8vnxCOD8FmkrU4=
+github.com/coreeng/developer-platform/pkg v0.18.0 h1:36jW8hlhh9QGnX4AMnIj9zOYW4b5dFEbBXVnfp4lqwQ=
+github.com/coreeng/developer-platform/pkg v0.18.0/go.mod h1:XBXbxzrXRFW2Gb5qKXixQoM5gX6ye8vnxCOD8FmkrU4=
 github.com/cpuguy83/go-md2man/v2 v2.0.3/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/cyphar/filepath-securejoin v0.2.4 h1:Ugdm7cg7i6ZK6x3xDF1oEu1nfkyfH53EtKeQYTC3kyg=
 github.com/cyphar/filepath-securejoin v0.2.4/go.mod h1:aPGpWjXOXUn2NCNjFvBE6aRxGGx79pTxQpKOJNYHHl4=
