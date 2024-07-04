@@ -38,7 +38,6 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
 	rootCmd.AddCommand(p2pCmd)
-	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
 	rootCmd.AddCommand(env.NewEnvCmd(cfg))
