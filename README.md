@@ -19,6 +19,8 @@ It requires the following:
 - initialization file: [init-example.yaml](examples/init-example.yaml)
 - your person GitHub token to perform operations on your behalf. See more info [here](#GitHub-Access-Token)
 
+**NOTE: Ensure that you update [init-example.yaml](examples/init-example.yaml) repositories to reference to your actual environments and software template repositories**.
+
 To run initialization run:
 ```bash
 corectl config init
