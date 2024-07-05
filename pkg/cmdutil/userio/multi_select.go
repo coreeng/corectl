@@ -23,7 +23,7 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		}
 	}
 
-	m := list.New(items, multiSelectItemDelegate{}, -1, len(items)+2)
+	m := list.New(items, multiSelectItemDelegate{streams.styles}, -1, len(items)+2)
 	m.SetShowStatusBar(false)
 	m.SetShowPagination(false)
 	m.SetFilteringEnabled(true)

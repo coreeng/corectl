@@ -78,13 +78,13 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Environments,
 		"environments",
-		[]string{},
+		nil,
 		"Environments, available to tenant",
 	)
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Repositories,
 		"repositories",
-		[]string{},
+		nil,
 		"Repositories, tenant is responsible for.",
 	)
 	tenantCreateCmd.Flags().StringVar(
