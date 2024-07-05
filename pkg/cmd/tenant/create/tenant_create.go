@@ -365,6 +365,7 @@ func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Env
 	}
 	return userio.InputSourceSwitch[[]string, []string]{
 		DefaultValue: userio.AsZeroableSlice(opt.Environments),
+		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
 			return &userio.MultiSelect{
 				Prompt: "Environments:",
@@ -411,6 +412,7 @@ func (opt *TenantCreateOpt) createRepositoriesInputSwitch() userio.InputSourceSw
 	}
 	return userio.InputSourceSwitch[[]string, []string]{
 		DefaultValue: userio.AsZeroableSlice(opt.Repositories),
+		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
 			return &userio.TextInput[[]string]{
 				Prompt: "Repositories (comma separated GitHub links):",

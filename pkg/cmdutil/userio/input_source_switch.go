@@ -23,6 +23,7 @@ type ValidateAndMap[V, T any] func(V) (T, error)
 
 type InputSourceSwitch[V, T any] struct {
 	DefaultValue        Zeroable[V]
+	Optional            bool
 	InteractivePromptFn func() (InputPrompt[V], error)
 	ValidateAndMap      ValidateAndMap[V, T]
 	ErrMessage          string
@@ -52,7 +53,8 @@ func (iss *InputSourceSwitch[V, T]) GetValue(streams IOStreams) (T, error) {
 	if iss.mapped {
 		return iss.value, iss.err
 	}
-	if !iss.DefaultValue.IsZeroValue() {
+	if !iss.DefaultValue.IsZeroValue() ||
+		(!streams.IsInteractive() && iss.Optional) {
 		v, err := iss.tryValidateAndMap(iss.DefaultValue.Value())
 		return v, err
 	}
