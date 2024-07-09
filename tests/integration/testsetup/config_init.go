@@ -27,7 +27,6 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, CorectlConf
 		"--file", initFilePath,
 		"--github-token", testconfig.Cfg.GitHubToken,
 		"--github-organization", testconfig.Cfg.GitHubOrg,
-		"--tenant", testconfig.Cfg.Tenant,
 		"--nonint",
 	)
 	Expect(err).NotTo(HaveOccurred())

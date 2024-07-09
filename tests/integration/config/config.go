@@ -47,7 +47,6 @@ var _ = Describe("config", Ordered, func() {
 				Equal(filepath.Join(homeDir, ".config", "corectl", "repositories", cfgDetails.TemplatesRepoName.Name())))
 			Expect(cfg.GitHub.Organization.Value).To(Equal(testconfig.Cfg.GitHubOrg))
 			Expect(cfg.GitHub.Token.Value).To(Equal(testconfig.Cfg.GitHubToken))
-			Expect(cfg.Tenant.Value).To(Equal(testconfig.Cfg.Tenant))
 			Expect(cfg.P2P.FastFeedback.DefaultEnvs.Value).To(ConsistOf(testdata.DevEnvironment()))
 			Expect(cfg.P2P.ExtendedTest.DefaultEnvs.Value).To(ConsistOf(testdata.DevEnvironment()))
 			Expect(cfg.P2P.Prod.DefaultEnvs.Value).To(ConsistOf(testdata.ProdEnvironment()))

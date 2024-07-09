@@ -65,6 +65,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(corectl.Run(
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
+				"--tenant", testconfig.Cfg.Tenant,
 				"--nonint",
 			)).To(Succeed())
 		}, NodeTimeout(time.Minute))
@@ -99,7 +100,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(repoVars.Variables).To(ConsistOf(
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "TENANT_NAME" &&
-						v.Value == cfg.Tenant.Value
+						v.Value == testconfig.Cfg.Tenant
 				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "FAST_FEEDBACK" &&
@@ -158,7 +159,7 @@ var _ = Describe("application", Ordered, func() {
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + cfg.Tenant.Value + "-add-repo-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-add-repo-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -167,7 +168,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("Add new repository " + newAppName + " for tenant " + cfg.Tenant.Value))
+			Expect(pr.GetTitle()).To(Equal("Add new repository " + newAppName + " for tenant " + testconfig.Cfg.Tenant))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
@@ -182,7 +183,7 @@ var _ = Describe("application", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("modified"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + cfg.Tenant.Value + ".yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + testconfig.Cfg.Tenant + ".yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })

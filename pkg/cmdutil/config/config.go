@@ -71,7 +71,6 @@ func RegisterStringParameterAsFlag(p *Parameter[string], fs *pflag.FlagSet) {
 }
 
 type Config struct {
-	Tenant Parameter[string] `yaml:"tenant"`
 	GitHub struct {
 		Token        Parameter[string] `yaml:"token"`
 		Organization Parameter[string] `yaml:"organization"`
@@ -94,9 +93,6 @@ type P2PStageConfig struct {
 
 func newConfig() *Config {
 	config := Config{}
-	config.Tenant.flag = "tenant"
-	config.Tenant.help = "Tenant to be used"
-
 	config.GitHub.Token.flag = "github-token"
 	config.GitHub.Token.help = "Personal GitHub token to use for GitHub authentication"
 
