@@ -2,23 +2,19 @@ package init
 
 import (
 	"context"
-	"errors"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type ConfigInitOpt struct {
 	File               string
 	RepositoriesDir    string
-	Tenant             string
 	GitHubToken        string
 	GitHubOrganisation string
 	NonInteractive     bool
@@ -68,11 +64,6 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"o",
 		"",
 		"GitHub organisation of your company.")
-	newInitCmd.Flags().StringVar(
-		&opt.Tenant,
-		"tenant",
-		"",
-		"Default tenant to be used")
 	newInitCmd.Flags().BoolVar(
 		&opt.NonInteractive,
 		"nonint",
@@ -164,17 +155,6 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	tenants, err := tenant.List(tenant.DirFromCPlatformPath(clonedRepositories.cplatform.Path()))
-	if err != nil {
-		return err
-	}
-	tenantInput := opt.createTenantInputSwitch(tenants)
-	tenantName, err := tenantInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
-	}
-
-	cfg.Tenant.Value = tenantName
 	cfg.Repositories.CPlatform.Value = clonedRepositories.cplatform.Path()
 	cfg.Repositories.Templates.Value = clonedRepositories.templates.Path()
 	cfg.GitHub.Token.Value = githubToken
@@ -188,9 +168,9 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 	}
 
 	opt.Streams.Info("Configuration is saved to: ", cfg.Path())
-	opt.Streams.Info(
-		`To keep configuration up to date, periodically run:
-  corectl config update`,
+	opt.Streams.Info(`
+To keep configuration up to date, periodically run:
+corectl config update`,
 	)
 	return nil
 }
@@ -269,39 +249,6 @@ func (opt *ConfigInitOpt) createInitFileInputSwitch() *userio.InputSourceSwitch[
 		},
 		ValidateAndMap: fileValidator,
 		ErrMessage:     "init file is invalid",
-	}
-}
-
-func (opt *ConfigInitOpt) createTenantInputSwitch(availableTenants []tenant.Tenant) *userio.InputSourceSwitch[string, string] {
-	validateFn := func(s string) (string, error) {
-		s = strings.TrimSpace(s)
-		for _, t := range availableTenants {
-			if t.Name == s {
-				return s, nil
-			}
-		}
-		return s, errors.New("unknown tenant")
-	}
-	return &userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(opt.Tenant),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			items := make([]string, len(availableTenants))
-			for i, t := range availableTenants {
-				items[i] = t.Name
-			}
-			return &userio.SingleSelect{
-				Prompt: "Pick your tenancy",
-				Items:  items,
-			}, nil
-		},
-		ValidateAndMap: func(s string) (string, error) {
-			s, err := validateFn(s)
-			if err != nil {
-				return "", err
-			}
-			return s, nil
-		},
-		ErrMessage: "tenant is invalid",
 	}
 }
 

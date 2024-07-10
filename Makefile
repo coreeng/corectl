@@ -19,6 +19,10 @@ integration-test: build
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/integration -v
 
+.PHONY: install
+install:
+	go install $(CORECTL_MAIN)
+
 .PHONY: dev-env
 dev-env:
 	docker build -f ./devenv.Dockerfile -t corectl-dev-env .

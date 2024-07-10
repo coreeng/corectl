@@ -1,7 +1,6 @@
 package create
 
 import (
-	"cmp"
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/application"
@@ -113,8 +112,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	defaultTenant := cfg.Tenant.Value
-	tenantInput := opts.createTenantInput(existingTenants, defaultTenant)
+	tenantInput := opts.createTenantInput(existingTenants)
 	appTenant, err := tenantInput.GetValue(opts.Streams)
 	if err != nil {
 		return err
@@ -251,19 +249,18 @@ func createPRWithUpdatedReposListForTenant(
 	return tenantUpdateResult, err
 }
 
-func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant, defaultTenantName string) userio.InputSourceSwitch[string, *coretnt.Tenant] {
+func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant) userio.InputSourceSwitch[string, *coretnt.Tenant] {
 	availableTenantNames := make([]string, len(existingTenant)+1)
 	availableTenantNames[0] = coretnt.RootName
 	for i, t := range existingTenant {
 		availableTenantNames[i+1] = t.Name
 	}
 	return userio.InputSourceSwitch[string, *coretnt.Tenant]{
-		DefaultValue: userio.AsZeroable(cmp.Or(opts.Tenant, defaultTenantName)),
+		DefaultValue: userio.AsZeroable(opts.Tenant),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt:          fmt.Sprintf("Tenant (default is '%s'):", defaultTenantName),
-				Items:           availableTenantNames,
-				PreselectedItem: defaultTenantName,
+				Prompt: "Tenant:",
+				Items:  availableTenantNames,
 			}, nil
 		},
 		ValidateAndMap: func(inp string) (*coretnt.Tenant, error) {

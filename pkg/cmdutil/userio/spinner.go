@@ -86,6 +86,6 @@ func (sm spinnerModel) View() string {
 	if sm.quitting {
 		return ""
 	} else {
-		return sm.model.View() + " " + sm.message + ""
+		return sm.model.View() + " " + sm.message + "\n"
 	}
 }
