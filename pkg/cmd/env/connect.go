@@ -29,10 +29,12 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 		Exec: corectlenv.NewCommand(),
 	}
 	connectCmd := &cobra.Command{
-		Use:   "connect [environment]",
+		Use:   "connect <environment>",
 		Short: "Connect to an environment",
 		Long:  `This command allows you to connect to a specified environment.`,
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Environment = args[0]
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
@@ -40,14 +42,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 			return connect(opts, cfg)
 		},
 	}
-
-	connectCmd.Flags().StringVarP(
-		&opts.Environment,
-		"environment",
-		"e",
-		"",
-		"Environment to connect to",
-	)
 
 	connectCmd.Flags().IntVarP(
 		&opts.Port,

@@ -15,18 +15,8 @@ func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port
 		return err
 	}
 	e := env.Platform.(*environment.GCPVendor)
-	// generate credentials and update kubeconfig
-	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {
-		return err
-	}
-	// set kube context
-	context := fmt.Sprintf("gke_%s_%s_%s", e.ProjectId, e.Region, env.Environment)
-	if err := setKubeContext(c, context); err != nil {
-		return err
-	}
-	// setup kube proxy with bastion
-	proxyUrl := fmt.Sprintf("localhost:%d", port)
-	if err := setKubeProxy(c, context, proxyUrl); err != nil {
+	proxyUrl, err := setupConnection(s, c, env, port)
+	if err != nil {
 		return err
 	}
 	// setup iap tunnel with bastion
@@ -36,6 +26,28 @@ func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port
 	}
 
 	return nil
+}
+
+func setupConnection(s userio.IOStreams, c Commander, env *environment.Environment, port int) (string, error) {
+	spinner := s.Spinner("Connecting to cluster...")
+	defer spinner.Done()
+
+	e := env.Platform.(*environment.GCPVendor)
+	// generate credentials and update kubeconfig
+	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {
+		return "", err
+	}
+	// set kube context
+	context := fmt.Sprintf("gke_%s_%s_%s", e.ProjectId, e.Region, env.Environment)
+	if err := setKubeContext(c, context); err != nil {
+		return "", err
+	}
+	// setup kube proxy with bastion
+	proxyUrl := fmt.Sprintf("localhost:%d", port)
+	if err := setKubeProxy(c, context, proxyUrl); err != nil {
+		return "", err
+	}
+	return proxyUrl, nil
 }
 
 func setCredentials(c Commander, cluster, projectID, region string) error {
