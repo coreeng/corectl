@@ -44,11 +44,16 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"",
 		"Initialization file. Please, ask platform engineer to provide it.",
 	)
+	defaultRepositoriesPath, err := repositoriesPath()
+	if err != nil {
+		// We couldn't calculate the default value. That's fine, because the user could override it, it will be checked later.
+		defaultRepositoriesPath = ""
+	}
 	newInitCmd.Flags().StringVarP(
 		&opt.RepositoriesDir,
 		"repositories",
 		"r",
-		"",
+		defaultRepositoriesPath,
 		"Directory to store platform local repositories. Default is near config file.",
 	)
 	newInitCmd.Flags().StringVarP(
@@ -111,12 +116,10 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 
 	repositoriesDir := opt.RepositoriesDir
 	if repositoriesDir == "" {
-		configPath, err := config.Path()
+		repositoriesDir, err = repositoriesPath()
 		if err != nil {
 			return err
 		}
-		configPath = filepath.Dir(configPath)
-		repositoriesDir = filepath.Join(configPath, "repositories")
 	}
 	if err = os.MkdirAll(repositoriesDir, 0o755); err != nil {
 		return err
@@ -173,6 +176,15 @@ To keep configuration up to date, periodically run:
 corectl config update`,
 	)
 	return nil
+}
+
+func repositoriesPath() (string, error) {
+	configPath, err := config.Path()
+	if err != nil {
+		return "", err
+	}
+	configPath = filepath.Dir(configPath)
+	return filepath.Join(configPath, "repositories"), nil
 }
 
 type cloneRepositoriesResult struct {
