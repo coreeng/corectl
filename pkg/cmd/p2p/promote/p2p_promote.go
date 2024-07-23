@@ -5,14 +5,19 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/spf13/cobra"
+	"os"
 	"os/exec"
 )
 
 type PromoteOpts struct {
-	Tenant       string
-	ImageWithTag string
-	FromStage    string
-	Streams      userio.IOStreams
+	ImageWithTag       string
+	SourceRegistry     string
+	SourceRepoPath     string
+	SourceAuthOverride string
+	DestRegistry       string
+	DestRepoPath       string
+	DestAuthOverride   string
+	Streams            userio.IOStreams
 }
 
 func NewP2PPromoteCmd(cfg *config.Config) (*cobra.Command, error) {
@@ -33,74 +38,75 @@ func NewP2PPromoteCmd(cfg *config.Config) (*cobra.Command, error) {
 			return run(&opts, cfg)
 		},
 	}
-	promoteCommand.Flags().StringVar(
-		&opts.Tenant,
-		"tenant",
-		"",
-		"Tenant name",
-	)
 
-	if err := promoteCommand.MarkFlagRequired("tenant"); err != nil {
-		return nil, err
+	requiredFlagMap := map[string]*string{
+		"source-registry":  &opts.SourceRegistry,
+		"source-repo-path": &opts.SourceRepoPath,
+		"dest-registry":    &opts.DestRegistry,
+		"dest-repo-path":   &opts.DestRepoPath,
 	}
 
-	promoteCommand.Flags().StringVar(
-		&opts.FromStage,
-		"fromStage",
-		"",
-		"Stage to promote from",
-	)
-
-	if err := promoteCommand.MarkFlagRequired("fromStage"); err != nil {
-		return nil, err
+	for name, field := range requiredFlagMap {
+		err := addFlag(promoteCommand, field, name, true)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		promoteCommand.Flags())
+	optionalFlagMap := map[string]*string{
+		"source-auth-override": &opts.SourceAuthOverride,
+		"dest-auth-override":   &opts.DestAuthOverride,
+	}
+	for name, field := range optionalFlagMap {
+		err := addFlag(promoteCommand, field, name, false)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return promoteCommand, nil
 }
 
+func addFlag(promoteCommand *cobra.Command, field *string, name string, required bool) error {
+	promoteCommand.Flags().StringVar(
+		field,
+		name,
+		"",
+		name,
+	)
+	if required {
+		if err := promoteCommand.MarkFlagRequired(name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type ImageOpts struct {
 	ImageNameWithTag string
-	GCPRegion        string
-	GCPProjectId     string
-	Tenant           string
-	Stage            string
+	Registry         string
+	RepoPath         string
+	AuthOverride     string
 }
 
 func run(opts *PromoteOpts, cfg *config.Config) error {
-	//todo lkan; implement actual promote
-	//spinnerHandler := opts.Streams.Spinner("Spinning up promotion...")
-	//defer spinnerHandler.Done()
-
-	//stage, err := GetNextStage(opts.FromStage)
-	//if err != nil {
-	//	return err
-	//}
 
 	sourceImage := &ImageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
-		GCPRegion:        "europe-west2",
-		GCPProjectId:     "core-platform-efb3c84c",
-		Tenant:           opts.Tenant,
-		Stage:            opts.FromStage,
+		Registry:         opts.SourceRegistry,
+		RepoPath:         opts.SourceRepoPath,
+		AuthOverride:     opts.SourceAuthOverride,
 	}
-
-	destinationStage, err := GetNextStage(opts.FromStage)
-	if err != nil {
-		return err
-	}
-
-	destinationGCPProjectId := GetGCPProjectId(destinationStage)
 
 	destinationImage := &ImageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
-		GCPRegion:        "europe-west2",
-		GCPProjectId:     destinationGCPProjectId,
-		Tenant:           opts.Tenant,
-		Stage:            destinationStage,
+		Registry:         opts.DestRegistry,
+		RepoPath:         opts.DestRepoPath,
+		AuthOverride:     opts.DestAuthOverride,
+	}
+	_, err := ConfigureDockerWithGcloud()
+	if err != nil {
+		return err
 	}
 
 	_, err = PullDockerImage(sourceImage)
@@ -121,10 +127,21 @@ func run(opts *PromoteOpts, cfg *config.Config) error {
 	return nil
 }
 
+func ConfigureDockerWithGcloud() ([]byte, error) {
+	fmt.Printf("Configuring docker with gcloud\n")
+	output, err := exec.Command("gcloud", "auth", "configure-docker", "--quiet", "europe-west2-docker.pkg.dev").Output()
+	fmt.Printf("%s", output)
+	return output, err
+}
+
 func PushDockerImage(opts *ImageOpts) ([]byte, error) {
 	imageUri := imageUri(opts)
 	fmt.Printf("Pushing image %s\n", imageUri)
-	output, err := exec.Command("docker", "push", imageUri).Output()
+	command := exec.Command("docker", "push", imageUri)
+	if opts.AuthOverride != "" {
+		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
+	}
+	output, err := command.Output()
 	fmt.Printf("%s", output)
 	return output, err
 }
@@ -157,11 +174,16 @@ func GetNextStage(stage string) (string, error) {
 func PullDockerImage(opts *ImageOpts) ([]byte, error) {
 	imageUri := imageUri(opts)
 	fmt.Printf("pulling image %s\n", imageUri)
-	output, err := exec.Command("docker", "pull", imageUri).Output()
+	command := exec.Command("docker", "pull", imageUri)
+	if opts.AuthOverride != "" {
+		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
+	}
+	output, err := command.Output()
 	fmt.Printf("%s", output)
 	return output, err
 }
 
 func imageUri(opts *ImageOpts) string {
-	return fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s/%s/%s", opts.GCPRegion, opts.GCPProjectId, opts.Tenant, opts.Stage, opts.ImageNameWithTag)
+	//return fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s/%s/%s", opts.GCPRegion, opts.GCPProjectId, opts.Tenant, opts.Stage, opts.ImageNameWithTag)
+	return fmt.Sprintf("%s/%s/%s", opts.Registry, opts.RepoPath, opts.ImageNameWithTag)
 }
