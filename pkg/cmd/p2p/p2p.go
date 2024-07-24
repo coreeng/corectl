@@ -19,17 +19,17 @@ func NewP2PCmd(cfg *config.Config) (*cobra.Command, error) {
 		},
 	}
 
-	envCommand, err := p2penv.NewP2PEnvCmd(cfg)
+	p2pCommand, err := p2penv.NewP2PEnvCmd(cfg)
 	if err != nil {
 		return nil, err
 	}
-	p2pCmd.AddCommand(envCommand)
+	p2pCmd.AddCommand(p2pCommand)
 
-	envCommand, err = promote.NewP2PPromoteCmd(cfg)
+	p2pCommand, err = promote.NewP2PPromoteCmd()
 	if err != nil {
 		return nil, err
 	}
-	p2pCmd.AddCommand(envCommand)
+	p2pCmd.AddCommand(p2pCommand)
 
 	return p2pCmd, nil
 }

@@ -2,14 +2,14 @@ package promote
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
+	"strings"
 )
 
-type PromoteOpts struct {
+type promoteOpts struct {
 	ImageWithTag       string
 	SourceRegistry     string
 	SourceRepoPath     string
@@ -20,8 +20,15 @@ type PromoteOpts struct {
 	Streams            userio.IOStreams
 }
 
-func NewP2PPromoteCmd(cfg *config.Config) (*cobra.Command, error) {
-	var opts = PromoteOpts{}
+type imageOpts struct {
+	ImageNameWithTag string
+	Registry         string
+	RepoPath         string
+	AuthOverride     string
+}
+
+func NewP2PPromoteCmd() (*cobra.Command, error) {
+	var opts = promoteOpts{}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
 		Short: "Promote image",
@@ -34,8 +41,7 @@ func NewP2PPromoteCmd(cfg *config.Config) (*cobra.Command, error) {
 				cmd.OutOrStdout(),
 			)
 
-			fmt.Printf("promote %v\n", opts)
-			return run(&opts, cfg)
+			return run(&opts)
 		},
 	}
 
@@ -68,13 +74,21 @@ func NewP2PPromoteCmd(cfg *config.Config) (*cobra.Command, error) {
 }
 
 func addFlag(promoteCommand *cobra.Command, field *string, name string, required bool) error {
+	envVariableName := strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
 	promoteCommand.Flags().StringVar(
 		field,
 		name,
 		"",
-		name,
+		fmt.Sprintf("defaults to environment variable: %s", envVariableName),
 	)
-	if required {
+
+	envVariableValue := os.Getenv(envVariableName)
+
+	if envVariableValue != "" {
+		*field = envVariableValue
+	}
+
+	if envVariableValue == "" && required {
 		if err := promoteCommand.MarkFlagRequired(name); err != nil {
 			return err
 		}
@@ -82,108 +96,82 @@ func addFlag(promoteCommand *cobra.Command, field *string, name string, required
 	return nil
 }
 
-type ImageOpts struct {
-	ImageNameWithTag string
-	Registry         string
-	RepoPath         string
-	AuthOverride     string
-}
+func run(opts *promoteOpts) error {
 
-func run(opts *PromoteOpts, cfg *config.Config) error {
-
-	sourceImage := &ImageOpts{
+	sourceImage := &imageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
 		Registry:         opts.SourceRegistry,
 		RepoPath:         opts.SourceRepoPath,
 		AuthOverride:     opts.SourceAuthOverride,
 	}
 
-	destinationImage := &ImageOpts{
+	destinationImage := &imageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
 		Registry:         opts.DestRegistry,
 		RepoPath:         opts.DestRepoPath,
 		AuthOverride:     opts.DestAuthOverride,
 	}
-	_, err := ConfigureDockerWithGcloud()
-	if err != nil {
-		return err
-	}
 
-	_, err = PullDockerImage(sourceImage)
+	logInfo := opts.Streams.Info
+	logInfo("Configuring docker with gcloud")
+	output, err := configureDockerWithGcloud()
 	if err != nil {
 		return err
 	}
+	logInfo(string(output))
 
-	_, err = TagDockerImage(sourceImage, destinationImage)
+	logInfo("Pulling image", imageUri(sourceImage))
+	output, err = pullDockerImage(sourceImage)
 	if err != nil {
 		return err
 	}
+	logInfo(string(output))
 
-	_, err = PushDockerImage(destinationImage)
+	logInfo("Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
+	output, err = tagDockerImage(sourceImage, destinationImage)
 	if err != nil {
 		return err
 	}
+	logInfo(string(output))
+
+	logInfo("Pushing image", imageUri(destinationImage))
+	output, err = pushDockerImage(destinationImage)
+	if err != nil {
+		return err
+	}
+	logInfo(string(output))
 
 	return nil
 }
 
-func ConfigureDockerWithGcloud() ([]byte, error) {
-	fmt.Printf("Configuring docker with gcloud\n")
-	output, err := exec.Command("gcloud", "auth", "configure-docker", "--quiet", "europe-west2-docker.pkg.dev").Output()
-	fmt.Printf("%s", output)
-	return output, err
+func configureDockerWithGcloud() ([]byte, error) {
+	return exec.Command("gcloud", "auth", "configure-docker", "--quiet", "europe-west2-docker.pkg.dev").Output()
 }
 
-func PushDockerImage(opts *ImageOpts) ([]byte, error) {
+func pushDockerImage(opts *imageOpts) ([]byte, error) {
 	imageUri := imageUri(opts)
-	fmt.Printf("Pushing image %s\n", imageUri)
 	command := exec.Command("docker", "push", imageUri)
 	if opts.AuthOverride != "" {
 		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
 	}
-	output, err := command.Output()
-	fmt.Printf("%s", output)
-	return output, err
+	return command.Output()
 }
 
-func GetGCPProjectId(stage string) string {
-	//todo lkan; implement
-	return "core-platform-efb3c84c"
-}
-
-func TagDockerImage(source *ImageOpts, newTag *ImageOpts) (interface{}, error) {
+func tagDockerImage(source *imageOpts, newTag *imageOpts) ([]byte, error) {
 	sourceImageUri := imageUri(source)
 	tagImageUri := imageUri(newTag)
-	fmt.Printf("tagging image %s with %s\n ", sourceImageUri, tagImageUri)
-	output, err := exec.Command("docker", "tag", sourceImageUri, tagImageUri).Output()
-	fmt.Printf("%s", output)
-	return output, err
+	return exec.Command("docker", "tag", sourceImageUri, tagImageUri).Output()
 }
 
-func GetNextStage(stage string) (string, error) {
-	switch stage {
-	case "fast-feedback":
-		return "extended", nil
-	case "extended":
-		return "prod", nil
-	default:
-		return "", fmt.Errorf("missing next stage for: %s", stage)
-	}
-}
-
-func PullDockerImage(opts *ImageOpts) ([]byte, error) {
+func pullDockerImage(opts *imageOpts) ([]byte, error) {
 	imageUri := imageUri(opts)
-	fmt.Printf("pulling image %s\n", imageUri)
 	command := exec.Command("docker", "pull", imageUri)
 	if opts.AuthOverride != "" {
 		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
 	}
-	output, err := command.Output()
-	fmt.Printf("%s", output)
-	return output, err
+	return command.Output()
 }
 
-func imageUri(opts *ImageOpts) string {
-	//return fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s/%s/%s", opts.GCPRegion, opts.GCPProjectId, opts.Tenant, opts.Stage, opts.ImageNameWithTag)
+func imageUri(opts *imageOpts) string {
 	return fmt.Sprintf("%s/%s/%s", opts.Registry, opts.RepoPath, opts.ImageNameWithTag)
 }
