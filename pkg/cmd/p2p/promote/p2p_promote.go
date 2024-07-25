@@ -31,7 +31,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 	var opts = promoteOpts{}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
-		Short: "Promote image",
+		Short: "Promotes image",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ImageWithTag = args[0]
@@ -75,11 +75,17 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 
 func addFlag(promoteCommand *cobra.Command, field *string, name string, required bool) error {
 	envVariableName := strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+
+	description := fmt.Sprintf("optional, defaults to environment variable: %s", envVariableName)
+	if required {
+		description = fmt.Sprintf("required, defaults to environment variable: %s", envVariableName)
+	}
+
 	promoteCommand.Flags().StringVar(
 		field,
 		name,
 		"",
-		fmt.Sprintf("defaults to environment variable: %s", envVariableName),
+		description,
 	)
 
 	envVariableValue := os.Getenv(envVariableName)
