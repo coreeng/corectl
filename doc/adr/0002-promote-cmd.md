@@ -40,10 +40,10 @@ We can transfer directly all parameters as they are to the `corectl` command
 ```shell
 corectl p2p promote $(image_name):${image_tag} \
 		--source-registry $(SOURCE_REGISTRY) \
-		--source-repo-path $(source_repo_path) \
+		--source-stage $(source_stage) \
 		--source-auth-override $(SOURCE_AUTH_OVERRIDE) \
 		--dest-registry $(REGISTRY) \
-		--dest-repo-path $(dest_repo_path) \
+		--dest-stage $(dest_stage) \
 		--dest-auth-override $(DEST_AUTH_OVERRIDE)
 ```
 
@@ -56,9 +56,9 @@ Resulting in following invocation
 
 ```shell
 corectl p2p promote $(image_name):${image_tag} \
-    --source-repo-path $(source_repo_path) \
+    --source-stage $(source_stage) \
     --dest-registry $(REGISTRY) \
-    --dest-repo-path $(dest_repo_path)
+    --dest-stage $(dest_stage)
 ```
 
 Full interface is as follows
@@ -73,11 +73,11 @@ Usage:
 Flags:
       --dest-auth-override string     optional, defaults to environment variable: DEST_AUTH_OVERRIDE
       --dest-registry string          required, defaults to environment variable: DEST_REGISTRY
-      --dest-repo-path string         required, defaults to environment variable: DEST_REPO_PATH
+      --dest-stage string             required, defaults to environment variable: DEST_STAGE
   -h, --help                          help for promote
       --source-auth-override string   optional, defaults to environment variable: SOURCE_AUTH_OVERRIDE
       --source-registry string        required, defaults to environment variable: SOURCE_REGISTRY
-      --source-repo-path string       required, defaults to environment variable: SOURCE_REPO_PATH
+      --source-stage string           required, defaults to environment variable: SOURCE_STAGE
 ```
 
 #### Pros/cons

@@ -12,10 +12,10 @@ import (
 type promoteOpts struct {
 	ImageWithTag       string
 	SourceRegistry     string
-	SourceRepoPath     string
+	SourceStage        string
 	SourceAuthOverride string
 	DestRegistry       string
-	DestRepoPath       string
+	DestStage          string
 	DestAuthOverride   string
 	Streams            userio.IOStreams
 }
@@ -46,10 +46,10 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 	}
 
 	requiredFlagMap := map[string]*string{
-		"source-registry":  &opts.SourceRegistry,
-		"source-repo-path": &opts.SourceRepoPath,
-		"dest-registry":    &opts.DestRegistry,
-		"dest-repo-path":   &opts.DestRepoPath,
+		"source-registry": &opts.SourceRegistry,
+		"source-stage":    &opts.SourceStage,
+		"dest-registry":   &opts.DestRegistry,
+		"dest-stage":      &opts.DestStage,
 	}
 
 	for name, field := range requiredFlagMap {
@@ -107,14 +107,14 @@ func run(opts *promoteOpts) error {
 	sourceImage := &imageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
 		Registry:         opts.SourceRegistry,
-		RepoPath:         opts.SourceRepoPath,
+		RepoPath:         opts.SourceStage,
 		AuthOverride:     opts.SourceAuthOverride,
 	}
 
 	destinationImage := &imageOpts{
 		ImageNameWithTag: opts.ImageWithTag,
 		Registry:         opts.DestRegistry,
-		RepoPath:         opts.DestRepoPath,
+		RepoPath:         opts.DestStage,
 		AuthOverride:     opts.DestAuthOverride,
 	}
 
