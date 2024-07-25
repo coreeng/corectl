@@ -6,7 +6,6 @@ import (
 	"github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -35,7 +34,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 	}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
-		Short: "Promotes image",
+		Short: "Promotes image from source to destination registry. Only GCP is supported for now",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ImageWithTag = args[0]
@@ -107,8 +106,7 @@ func addFlag(promoteCommand *cobra.Command, field *string, name string, required
 }
 
 func run(opts *promoteOpts) error {
-
-	if err := command.DepsInstalled(opts.Exec, "gcloud"); err != nil {
+	if err := validate(opts); err != nil {
 		return err
 	}
 
@@ -127,15 +125,18 @@ func run(opts *promoteOpts) error {
 	}
 
 	logInfo := opts.Streams.Info
-	logInfo("Configuring docker with gcloud")
-	output, err := configureDockerWithGcloud()
-	if err != nil {
-		return err
+
+	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
+		logInfo("Configuring docker with gcloud")
+		output, err := configureDockerWithGcloud(basePath(registry))
+		if err != nil {
+			return err
+		}
+		logInfo(string(output))
 	}
-	logInfo(string(output))
 
 	logInfo("Pulling image", imageUri(sourceImage))
-	output, err = pullDockerImage(sourceImage)
+	output, err := pullDockerImage(sourceImage)
 	if err != nil {
 		return err
 	}
@@ -158,34 +159,6 @@ func run(opts *promoteOpts) error {
 	return nil
 }
 
-func configureDockerWithGcloud() ([]byte, error) {
-	return exec.Command("gcloud", "auth", "configure-docker", "--quiet", "europe-west2-docker.pkg.dev").Output()
-}
-
-func pushDockerImage(opts *imageOpts) ([]byte, error) {
-	imageUri := imageUri(opts)
-	command := exec.Command("docker", "push", imageUri)
-	if opts.AuthOverride != "" {
-		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
-	}
-	return command.Output()
-}
-
-func tagDockerImage(source *imageOpts, newTag *imageOpts) ([]byte, error) {
-	sourceImageUri := imageUri(source)
-	tagImageUri := imageUri(newTag)
-	return exec.Command("docker", "tag", sourceImageUri, tagImageUri).Output()
-}
-
-func pullDockerImage(opts *imageOpts) ([]byte, error) {
-	imageUri := imageUri(opts)
-	command := exec.Command("docker", "pull", imageUri)
-	if opts.AuthOverride != "" {
-		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
-	}
-	return command.Output()
-}
-
-func imageUri(opts *imageOpts) string {
-	return fmt.Sprintf("%s/%s/%s", opts.Registry, opts.RepoPath, opts.ImageNameWithTag)
+func basePath(registry string) string {
+	return strings.Split(registry, "/")[0]
 }
