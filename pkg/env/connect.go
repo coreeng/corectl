@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/developer-platform/pkg/environment"
@@ -10,7 +11,7 @@ import (
 var kubeNamespace = "default"
 
 // Connect establishes a connection with a gke cluster via a bastion host
-func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port int) error {
+func Connect(s userio.IOStreams, env *environment.Environment, c command.Commander, port int) error {
 	if err := checkPlatformSupported(env); err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port
 	return nil
 }
 
-func setupConnection(s userio.IOStreams, c Commander, env *environment.Environment, port int) (string, error) {
+func setupConnection(s userio.IOStreams, c command.Commander, env *environment.Environment, port int) (string, error) {
 	spinner := s.Spinner("Connecting to cluster...")
 	defer spinner.Done()
 
@@ -50,14 +51,14 @@ func setupConnection(s userio.IOStreams, c Commander, env *environment.Environme
 	return proxyUrl, nil
 }
 
-func setCredentials(c Commander, cluster, projectID, region string) error {
+func setCredentials(c command.Commander, cluster, projectID, region string) error {
 	if _, err := c.Execute("gcloud", "container", "clusters", "get-credentials", "--project", projectID, "--zone", region, "--internal-ip", cluster); err != nil {
 		return fmt.Errorf("get gcp cluster credentials: %w", err)
 	}
 	return nil
 }
 
-func setKubeContext(c Commander, context string) error {
+func setKubeContext(c command.Commander, context string) error {
 	namespace := fmt.Sprintf("--namespace=%s", kubeNamespace)
 	if _, err := c.Execute("kubectl", "config", "set-context", context, namespace); err != nil {
 		return fmt.Errorf("set kube context %q: %w", context, err)
@@ -65,7 +66,7 @@ func setKubeContext(c Commander, context string) error {
 	return nil
 }
 
-func setKubeProxy(c Commander, context, proxy string) error {
+func setKubeProxy(c command.Commander, context, proxy string) error {
 	url := fmt.Sprintf("clusters.%s.proxy-url", context)
 	if _, err := c.Execute("kubectl", "config", "set", url, "http://"+proxy); err != nil {
 		return fmt.Errorf("set kube proxy %q: %w", proxy, err)
@@ -73,7 +74,7 @@ func setKubeProxy(c Commander, context, proxy string) error {
 	return nil
 }
 
-func startIAPTunnel(c Commander, env, projectID, proxy string) error {
+func startIAPTunnel(c command.Commander, env, projectID, proxy string) error {
 	if _, err := c.Execute("gcloud", "compute", "start-iap-tunnel", env+"-bastion", "3128", "--local-host-port", proxy, "--project", projectID, "--zone", "europe-west2-a"); err != nil {
 		return fmt.Errorf("establishing connection to IAP tunnel: %w", err)
 	}

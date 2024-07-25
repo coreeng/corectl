@@ -3,6 +3,7 @@ package promote
 import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
@@ -18,6 +19,7 @@ type promoteOpts struct {
 	DestStage          string
 	DestAuthOverride   string
 	Streams            userio.IOStreams
+	Exec               command.Commander
 }
 
 type imageOpts struct {
@@ -28,7 +30,9 @@ type imageOpts struct {
 }
 
 func NewP2PPromoteCmd() (*cobra.Command, error) {
-	var opts = promoteOpts{}
+	var opts = promoteOpts{
+		Exec: command.NewCommand(),
+	}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
 		Short: "Promotes image",
@@ -103,6 +107,10 @@ func addFlag(promoteCommand *cobra.Command, field *string, name string, required
 }
 
 func run(opts *promoteOpts) error {
+
+	if err := command.DepsInstalled(opts.Exec, "gcloud"); err != nil {
+		return err
+	}
 
 	sourceImage := &imageOpts{
 		ImageNameWithTag: opts.ImageWithTag,

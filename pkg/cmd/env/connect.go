@@ -2,6 +2,7 @@ package env
 
 import (
 	"errors"
+	"github.com/coreeng/corectl/pkg/command"
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -20,13 +21,13 @@ type EnvConnectOpt struct {
 	ProjectID          string
 	Region             string
 	Streams            userio.IOStreams
-	Exec               corectlenv.Commander
+	Exec               command.Commander
 	gcpClient          gcp.Client
 }
 
 func connectCmd(cfg *config.Config) *cobra.Command {
 	opts := EnvConnectOpt{
-		Exec: corectlenv.NewCommand(),
+		Exec: command.NewCommand(),
 	}
 	connectCmd := &cobra.Command{
 		Use:   "connect <environment>",

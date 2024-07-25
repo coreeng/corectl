@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/command"
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/gcp"
@@ -16,12 +17,12 @@ var (
 )
 
 // Validate checks if the required tools and configurations for the environment are installed and set up correctly.
-func Validate(ctx context.Context, env *environment.Environment, cmd Commander, client *gcp.Client) error {
+func Validate(ctx context.Context, env *environment.Environment, cmd command.Commander, client *gcp.Client) error {
 	if env == nil {
 		return ErrInvalidEnvironment
 	}
 
-	if err := depsInstalled(cmd); err != nil {
+	if err := command.DepsInstalled(cmd, "gcloud", "kubectl"); err != nil {
 		return err
 	}
 
@@ -31,18 +32,6 @@ func Validate(ctx context.Context, env *environment.Environment, cmd Commander, 
 
 	if err := checkClusterExists(ctx, client, env); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func depsInstalled(c Commander) error {
-	deps := []string{"gcloud", "kubectl"}
-
-	for _, cmd := range deps {
-		if _, err := c.Execute(cmd, "help"); err != nil {
-			return fmt.Errorf("%s is not installed: %w", cmd, err)
-		}
 	}
 
 	return nil
