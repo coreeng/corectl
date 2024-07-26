@@ -62,6 +62,9 @@ func helperExecProcess(fn string, args ...string) *exec.Cmd {
 func (m mockCommandSuccess) Execute(c string, args ...string) ([]byte, error) {
 	return helperExecProcess("TestOutputSuccess", args...).CombinedOutput()
 }
+func (m mockCommandSuccess) ExecuteWithEnv(_ string, _ map[string]string, _ ...string) ([]byte, error) {
+	return nil, nil
+}
 
 // TestOutputSuccess mocks a command that returns successful command
 func TestOutputSuccess(*testing.T) {
@@ -76,6 +79,10 @@ type mockCommandFail struct {
 
 func (m mockCommandFail) Execute(c string, args ...string) ([]byte, error) {
 	return helperExecProcess("TestOutputFail", args...).CombinedOutput()
+}
+
+func (m mockCommandFail) ExecuteWithEnv(_ string, _ map[string]string, _ ...string) ([]byte, error) {
+	return nil, nil
 }
 
 // TestOutputFail mocks a command that returns a non zero exit code

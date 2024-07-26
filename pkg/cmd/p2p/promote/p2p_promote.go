@@ -128,7 +128,7 @@ func run(opts *promoteOpts) error {
 
 	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
 		logInfo("Configuring docker with gcloud")
-		output, err := configureDockerWithGcloud(basePath(registry))
+		output, err := configureDockerWithGcloud(basePath(registry), opts.Exec)
 		if err != nil {
 			return err
 		}
@@ -136,21 +136,21 @@ func run(opts *promoteOpts) error {
 	}
 
 	logInfo("Pulling image", imageUri(sourceImage))
-	output, err := pullDockerImage(sourceImage)
+	output, err := pullDockerImage(sourceImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 	logInfo(string(output))
 
 	logInfo("Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
-	output, err = tagDockerImage(sourceImage, destinationImage)
+	output, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 	logInfo(string(output))
 
 	logInfo("Pushing image", imageUri(destinationImage))
-	output, err = pushDockerImage(destinationImage)
+	output, err = pushDockerImage(destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}

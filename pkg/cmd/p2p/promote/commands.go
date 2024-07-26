@@ -2,36 +2,35 @@ package promote
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
+	"github.com/coreeng/corectl/pkg/command"
 )
 
-func configureDockerWithGcloud(registryBasePath string) ([]byte, error) {
-	return exec.Command("gcloud", "auth", "configure-docker", "--quiet", registryBasePath).Output()
+func configureDockerWithGcloud(registryBasePath string, command command.Commander) ([]byte, error) {
+	return command.Execute("gcloud", "auth", "configure-docker", "--quiet", registryBasePath)
 }
 
-func pushDockerImage(opts *imageOpts) ([]byte, error) {
+func pushDockerImage(opts *imageOpts, command command.Commander) ([]byte, error) {
 	imageUri := imageUri(opts)
-	command := exec.Command("docker", "push", imageUri)
+	envs := map[string]string{}
 	if opts.AuthOverride != "" {
-		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
+		envs["CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE"] = opts.AuthOverride
 	}
-	return command.Output()
+	return command.ExecuteWithEnv("docker", envs, "push", imageUri)
 }
 
-func tagDockerImage(source *imageOpts, newTag *imageOpts) ([]byte, error) {
+func tagDockerImage(source *imageOpts, newTag *imageOpts, command command.Commander) ([]byte, error) {
 	sourceImageUri := imageUri(source)
 	tagImageUri := imageUri(newTag)
-	return exec.Command("docker", "tag", sourceImageUri, tagImageUri).Output()
+	return command.Execute("docker", "tag", sourceImageUri, tagImageUri)
 }
 
-func pullDockerImage(opts *imageOpts) ([]byte, error) {
+func pullDockerImage(opts *imageOpts, command command.Commander) ([]byte, error) {
 	imageUri := imageUri(opts)
-	command := exec.Command("docker", "pull", imageUri)
+	envs := map[string]string{}
 	if opts.AuthOverride != "" {
-		command.Env = append(os.Environ(), fmt.Sprintf("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=%s", opts.AuthOverride))
+		envs["CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE"] = opts.AuthOverride
 	}
-	return command.Output()
+	return command.ExecuteWithEnv("docker", envs, "pull", imageUri)
 }
 
 func imageUri(opts *imageOpts) string {

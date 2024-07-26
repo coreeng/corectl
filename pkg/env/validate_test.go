@@ -73,6 +73,10 @@ func (m *mockCommand) Execute(c string, args ...string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
+func (m *mockCommand) ExecuteWithEnv(_ string, _ map[string]string, _ ...string) ([]byte, error) {
+	return nil, nil
+}
+
 func TestOutput(*testing.T) {
 	if os.Getenv("GO_TEST_PROCESS") != "1" {
 		return
