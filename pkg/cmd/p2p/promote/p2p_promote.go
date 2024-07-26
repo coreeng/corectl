@@ -2,9 +2,9 @@ package promote
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
+	"io"
 	"os"
 	"strings"
 )
@@ -17,8 +17,8 @@ type promoteOpts struct {
 	DestRegistry       string
 	DestStage          string
 	DestAuthOverride   string
-	Streams            userio.IOStreams
 	Exec               command.Commander
+	Out                io.Writer
 }
 
 type imageOpts struct {
@@ -38,12 +38,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ImageWithTag = args[0]
-
-			opts.Streams = userio.NewIOStreams(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
-			)
-
+			opts.Out = cmd.OutOrStdout()
 			return run(&opts)
 		},
 	}
@@ -124,39 +119,41 @@ func run(opts *promoteOpts) error {
 		AuthOverride:     opts.DestAuthOverride,
 	}
 
-	logInfo := opts.Streams.Info
-
 	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
-		logInfo("Configuring docker with gcloud")
+		log(opts.Out, "Configuring docker with gcloud")
 		output, err := configureDockerWithGcloud(basePath(registry), opts.Exec)
 		if err != nil {
 			return err
 		}
-		logInfo(string(output))
+		log(opts.Out, string(output))
 	}
 
-	logInfo("Pulling image", imageUri(sourceImage))
+	log(opts.Out, "Pulling image", imageUri(sourceImage))
 	output, err := pullDockerImage(sourceImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	logInfo(string(output))
+	log(opts.Out, string(output))
 
-	logInfo("Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
+	log(opts.Out, "Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
 	output, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	logInfo(string(output))
+	log(opts.Out, string(output))
 
-	logInfo("Pushing image", imageUri(destinationImage))
+	log(opts.Out, "Pushing image", imageUri(destinationImage))
 	output, err = pushDockerImage(destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	logInfo(string(output))
+	log(opts.Out, string(output))
 
 	return nil
+}
+
+func log(out io.Writer, msgs ...any) {
+	_, _ = fmt.Fprintln(out, msgs...)
 }
 
 func basePath(registry string) string {
