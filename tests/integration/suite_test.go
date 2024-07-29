@@ -23,6 +23,10 @@ import (
 	_ "github.com/coreeng/corectl/tests/integration/tenant"
 )
 
+var (
+	GitAuth git.AuthMethod
+)
+
 func TestSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Integration Tests")
@@ -32,7 +36,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 	testRunId := randstr.String(6)
 	tempDir := GinkgoT().TempDir()
 	githubClient := testconfig.NewGitHubClient()
-	gitAuth := git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken)
+	GitAuth = git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken)
 	testconfig.Cfg.CPlatformRepoFullId = prepareTestRepository(
 		ctx,
 		testdata.CPlatformEnvsPath(),
@@ -40,7 +44,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		"test-cplatform-envs-",
 		testRunId,
 		githubClient,
-		gitAuth,
+		GitAuth,
 	)
 	testconfig.Cfg.TemplatesRepoFullId = prepareTestRepository(
 		ctx,
@@ -49,7 +53,7 @@ var _ = BeforeSuite(func(ctx SpecContext) {
 		"test-software-templates-",
 		testRunId,
 		githubClient,
-		gitAuth,
+		GitAuth,
 	)
 }, NodeTimeout(time.Minute))
 

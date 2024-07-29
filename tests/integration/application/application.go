@@ -23,7 +23,7 @@ var _ = Describe("application", Ordered, func() {
 		homeDir      string
 		corectl      *testconfig.CorectlClient
 		cfg          *config.Config
-		cfgDetails   testsetup.CorectlConfigDetails
+		cfgDetails   *testsetup.CorectlConfigDetails
 		githubClient *github.Client
 
 		prodEnv environment.Environment
@@ -32,9 +32,11 @@ var _ = Describe("application", Ordered, func() {
 	t := GinkgoT()
 
 	BeforeAll(func() {
+		var err error
 		homeDir = t.TempDir()
 		corectl = testconfig.NewCorectlClient(homeDir)
-		cfg, cfgDetails = testsetup.InitCorectl(corectl)
+		cfg, cfgDetails, err = testsetup.InitCorectl(corectl)
+		Expect(err).ToNot(HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 

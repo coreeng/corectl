@@ -210,11 +210,12 @@ func cloneRepositories(
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
-	cplatformRepository, err := git.CloneToLocalRepository(git.CloneOp{
+	cloneOpt := git.CloneOp{
 		URL:        cplatformGitHubRepo.GetCloneURL(),
 		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name()),
 		Auth:       gitAuth,
-	})
+	}
+	cplatformRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
@@ -227,12 +228,14 @@ func cloneRepositories(
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
-	templatesRepository, err := git.CloneToLocalRepository(git.CloneOp{
+	cloneOpt = git.CloneOp{
 		URL:        templatesGitHubRepo.GetCloneURL(),
 		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name()),
 		Auth:       gitAuth,
-	})
+	}
+	templatesRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
+
 		return cloneRepositoriesResult{}, err
 	}
 	return cloneRepositoriesResult{

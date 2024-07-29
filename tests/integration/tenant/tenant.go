@@ -15,15 +15,17 @@ var _ = Describe("tenant", Ordered, func() {
 	var (
 		homeDir      string
 		corectl      *testconfig.CorectlClient
-		cfgDetails   testsetup.CorectlConfigDetails
+		cfgDetails   *testsetup.CorectlConfigDetails
 		githubClient *github.Client
 	)
 	t := GinkgoT()
 
 	BeforeAll(func() {
+		var err error
 		homeDir = t.TempDir()
 		corectl = testconfig.NewCorectlClient(homeDir)
-		_, cfgDetails = testsetup.InitCorectl(corectl)
+		_, cfgDetails, err = testsetup.InitCorectl(corectl)
+		Expect(err).ToNot(HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})

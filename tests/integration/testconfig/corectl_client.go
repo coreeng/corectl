@@ -3,6 +3,7 @@ package testconfig
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	. "github.com/onsi/gomega"
 	"os"
@@ -34,9 +35,10 @@ func (c *CorectlClient) Run(args ...string) error {
 	outWriter := bufio.NewWriter(&outBuf)
 	cmd.Stdout = outWriter
 	cmd.Stderr = outWriter
+
 	if err := cmd.Run(); err != nil {
 		println(outBuf.String())
-		return err
+		return fmt.Errorf("%s: %w", outBuf.String(), err)
 	}
 	return nil
 }

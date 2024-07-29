@@ -2,6 +2,7 @@ package git
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -19,6 +20,15 @@ type LocalRepository struct {
 	repo     *git.Repository
 	worktree *git.Worktree
 	path     string
+}
+
+type RepositoryErr struct {
+	repo, cloneDirPath string
+	err                error
+}
+
+func (r *RepositoryErr) Error() string {
+	return fmt.Sprintf("repoUrl %s, dir %s: %s", r.repo, r.cloneDirPath, r.err)
 }
 
 func (localRepo *LocalRepository) Repository() *git.Repository {
@@ -90,11 +100,14 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 			Auth: gitAuth,
 		})
 	if err != nil {
-		return nil, err
+		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
+			return nil, fmt.Errorf("failed to clone repo %s to dir %s: %s: initialised already? run `corectl config update` and check your `corectl.yaml`", op.URL, op.TargetPath, err)
+		}
+		return nil, fmt.Errorf("failed to clone repo %s to dir %s: %s: check your `corectl.yaml` is configured correctly", op.URL, op.TargetPath, err)
 	}
 	worktree, err := repository.Worktree()
 	if err != nil {
-		return nil, err
+		return nil, &RepositoryErr{op.URL, op.TargetPath, err}
 	}
 	return &LocalRepository{
 		repo:     repository,

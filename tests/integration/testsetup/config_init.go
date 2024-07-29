@@ -14,7 +14,7 @@ type CorectlConfigDetails struct {
 	TemplatesRepoName git.RepositoryFullname
 }
 
-func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, CorectlConfigDetails) {
+func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlConfigDetails, error) {
 	initFilePath := filepath.Join(corectl.HomeDir(), "corectl-init.yaml")
 	err := testdata.RenderInitFile(
 		initFilePath,
@@ -29,21 +29,29 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, CorectlConf
 		"--github-organization", testconfig.Cfg.GitHubOrg,
 		"--nonint",
 	)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	cfg := corectl.Config()
 	cplatformRepo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return nil, nil, err
+	}
 	cplatformFullname, err := git.DeriveRepositoryFullname(cplatformRepo)
-	Expect(err).NotTo(HaveOccurred())
-
+	if err != nil {
+		return nil, nil, err
+	}
 	templatesRepo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value)
-	Expect(err).NotTo(HaveOccurred())
+	if err != nil {
+		return nil, nil, err
+	}
 	templateFullname, err := git.DeriveRepositoryFullname(templatesRepo)
-	Expect(err).NotTo(HaveOccurred())
-
-	return cfg, CorectlConfigDetails{
+	if err != nil {
+		return nil, nil, err
+	}
+	return cfg, &CorectlConfigDetails{
 		CPlatformRepoName: cplatformFullname,
 		TemplatesRepoName: templateFullname,
-	}
+	}, nil
 }
