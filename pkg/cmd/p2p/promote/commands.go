@@ -10,7 +10,7 @@ func configureDockerWithGcloud(registryBasePath string, command command.Commande
 }
 
 func pushDockerImage(opts *imageOpts, command command.Commander) ([]byte, error) {
-	imageUri := imageUri(opts)
+	uri := imageUri(opts)
 	envs := map[string]string{}
 	if opts.AuthOverride != "" {
 		envs["CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE"] = opts.AuthOverride
