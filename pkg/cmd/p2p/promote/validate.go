@@ -6,11 +6,6 @@ import (
 	"strings"
 )
 
-var validRegistriesSuffixes = []string{
-	"-docker.pkg.dev",
-	".gcr.io",
-}
-
 func validate(opts *promoteOpts) error {
 	if err := command.DepsInstalled(opts.Exec, "gcloud"); err != nil {
 		return err
@@ -26,7 +21,10 @@ func validate(opts *promoteOpts) error {
 }
 
 func isRegistrySupported(registry string) bool {
-	for _, suffix := range validRegistriesSuffixes {
+	for _, suffix := range []string{
+		"-docker.pkg.dev",
+		".gcr.io",
+	} {
 		if strings.HasSuffix(basePath(registry), suffix) {
 			return true
 		}
