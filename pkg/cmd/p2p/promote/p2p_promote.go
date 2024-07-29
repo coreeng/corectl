@@ -2,9 +2,9 @@ package promote
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"strings"
 )
@@ -18,7 +18,7 @@ type promoteOpts struct {
 	DestStage          string
 	DestAuthOverride   string
 	Exec               command.Commander
-	Out                io.Writer
+	Streams            userio.IOStreams
 }
 
 type imageOpts struct {
@@ -29,16 +29,20 @@ type imageOpts struct {
 }
 
 func NewP2PPromoteCmd() (*cobra.Command, error) {
-	var opts = promoteOpts{
-		Exec: command.NewCommand(),
-	}
+	var opts = promoteOpts{}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
 		Short: "Promotes image from source to destination registry. Only GCP is supported for now",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.ImageWithTag = args[0]
-			opts.Out = cmd.OutOrStdout()
+			opts.Streams = userio.NewIOStreams(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+			)
+			opts.Exec = command.NewCommand(
+				command.WithStdout(cmd.OutOrStdout()),
+			)
 			return run(&opts)
 		},
 	}
@@ -119,41 +123,35 @@ func run(opts *promoteOpts) error {
 		AuthOverride:     opts.DestAuthOverride,
 	}
 
+	logInfo := opts.Streams.Info
+
 	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
-		log(opts.Out, "Configuring docker with gcloud")
-		output, err := configureDockerWithGcloud(basePath(registry), opts.Exec)
+		logInfo("Configuring docker for registry: ", registry)
+		_, err := configureDockerWithGcloud(basePath(registry), opts.Exec)
 		if err != nil {
 			return err
 		}
-		log(opts.Out, string(output))
 	}
 
-	log(opts.Out, "Pulling image", imageUri(sourceImage))
-	output, err := pullDockerImage(sourceImage, opts.Exec)
+	logInfo("Pulling image", imageUri(sourceImage))
+	_, err := pullDockerImage(sourceImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	log(opts.Out, string(output))
 
-	log(opts.Out, "Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
-	output, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
+	logInfo("Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
+	_, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	log(opts.Out, string(output))
 
-	log(opts.Out, "Pushing image", imageUri(destinationImage))
-	output, err = pushDockerImage(destinationImage, opts.Exec)
+	logInfo("Pushing image", imageUri(destinationImage))
+	_, err = pushDockerImage(destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
-	log(opts.Out, string(output))
 
 	return nil
-}
-
-func log(out io.Writer, msgs ...any) {
-	_, _ = fmt.Fprintln(out, msgs...)
 }
 
 func basePath(registry string) string {

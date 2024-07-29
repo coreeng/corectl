@@ -2,7 +2,9 @@ package promote
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"strings"
 	"testing"
 )
@@ -19,8 +21,8 @@ func Test_run(t *testing.T) {
 			DestRegistry:       "eu.gcr.io/tenant/grizzly",
 			DestStage:          "prod",
 			DestAuthOverride:   "/dest-auth.json",
-			Out:                NoopWriter{}, //
 			Exec:               mockCommand,
+			Streams:            userio.NewIOStreams(os.Stdin, os.Stdout),
 		}
 		err := run(opts)
 
@@ -28,14 +30,17 @@ func Test_run(t *testing.T) {
 			t.Fatalf("run() error = %v", err)
 		}
 
-		assert.Equal(t, mockCommand.executedCommands, []string{
-			"gcloud help", // validate that gcloud exists
-			"gcloud auth configure-docker --quiet europe-west2-docker.pkg.dev", // docker configure source registry
-			"gcloud auth configure-docker --quiet eu.gcr.io",                   // docker configure destination registry
-			"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/source-auth.json docker pull europe-west2-docker.pkg.dev/tenant/grizzly/extended-test/imageName:1.1.1",
-			"docker tag europe-west2-docker.pkg.dev/tenant/grizzly/extended-test/imageName:1.1.1 eu.gcr.io/tenant/grizzly/prod/imageName:1.1.1",
-			"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/dest-auth.json docker push eu.gcr.io/tenant/grizzly/prod/imageName:1.1.1",
-		})
+		assert.Equal(t,
+			[]string{
+				"which -s gcloud", // validate that gcloud exists
+				"gcloud auth configure-docker --quiet europe-west2-docker.pkg.dev", // docker configure source registry
+				"gcloud auth configure-docker --quiet eu.gcr.io",                   // docker configure destination registry
+				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/source-auth.json docker pull europe-west2-docker.pkg.dev/tenant/grizzly/extended-test/imageName:1.1.1",
+				"docker tag europe-west2-docker.pkg.dev/tenant/grizzly/extended-test/imageName:1.1.1 eu.gcr.io/tenant/grizzly/prod/imageName:1.1.1",
+				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/dest-auth.json docker push eu.gcr.io/tenant/grizzly/prod/imageName:1.1.1",
+			},
+			mockCommand.executedCommands,
+		)
 
 	})
 }

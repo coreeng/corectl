@@ -2,6 +2,8 @@ package command
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 )
 
@@ -11,26 +13,52 @@ type Commander interface {
 }
 
 type Command struct {
+	Stdout io.Writer
 }
 
-func NewCommand() Commander {
-	return &Command{}
+func NewCommand(options ...func(*Command)) Commander {
+	cmd := &Command{
+		Stdout: os.Stdout, // Default to standard output
+	}
+
+	for _, option := range options {
+		option(cmd)
+	}
+
+	return cmd
+}
+
+func WithStdout(w io.Writer) func(*Command) {
+	return func(c *Command) {
+		c.Stdout = w
+	}
 }
 
 func (c *Command) Execute(cmd string, args ...string) ([]byte, error) {
-	return execute(cmd, args, map[string]string{})
+	return c.execute(cmd, args, map[string]string{})
 }
 
 func (c *Command) ExecuteWithEnv(cmd string, envs map[string]string, args ...string) ([]byte, error) {
-	return execute(cmd, args, envs)
+	return c.execute(cmd, args, envs)
 }
 
-func execute(cmd string, args []string, envs map[string]string) ([]byte, error) {
+func (c *Command) execute(cmd string, args []string, envs map[string]string) ([]byte, error) {
 	command := exec.Command(cmd, args...)
+	if c.Stdout != nil {
+		command.Stdout = c.Stdout
+	}
 	for key, value := range envs {
 		command.Env = append(command.Env, fmt.Sprintf("%s=%s", key, value))
 	}
-	out, err := command.Output()
+	var out []byte
+	var err error
+
+	if c.Stdout != nil {
+		err = command.Run()
+	} else {
+		out, err = command.Output()
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("execute command: %s %s: %w", cmd, args, err)
 	}
