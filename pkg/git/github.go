@@ -1,7 +1,7 @@
 package git
 
 import (
-	"errors"
+	"fmt"
 	"github.com/google/go-github/v59/github"
 	"regexp"
 	"strings"
@@ -26,7 +26,7 @@ func DeriveRepositoryFullname(localRepo *LocalRepository) (RepositoryFullname, e
 	}
 	remoteConfig, ok := config.Remotes["origin"]
 	if !ok {
-		return RepositoryFullname{}, errors.New("origin remote is missing")
+		return RepositoryFullname{}, fmt.Errorf("origin remote is missing, repo %q", localRepo.path)
 	}
 
 	repoUrl := remoteConfig.URLs[0]
@@ -36,7 +36,7 @@ func DeriveRepositoryFullname(localRepo *LocalRepository) (RepositoryFullname, e
 func DeriveRepositoryFullnameFromUrl(githubRepoUrl string) (RepositoryFullname, error) {
 	matches := gitRepoRegexp.FindStringSubmatch(githubRepoUrl)
 	if len(matches) != 4 {
-		return RepositoryFullname{}, errors.New("unexpected url")
+		return RepositoryFullname{}, fmt.Errorf("unexpected url %q", githubRepoUrl)
 	}
 	orgName := matches[1]
 	repoName := strings.TrimSuffix(matches[2], ".git")

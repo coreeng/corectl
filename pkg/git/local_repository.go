@@ -27,8 +27,19 @@ type RepositoryErr struct {
 	err                error
 }
 
-func (r *RepositoryErr) Error() string {
-	return fmt.Sprintf("repoUrl %s, dir %s: %s", r.repo, r.cloneDirPath, r.err)
+func (r RepositoryErr) Error() string {
+	return fmt.Sprintf("repoUrl %q, target dir %q: %s", r.repo, r.cloneDirPath, r.err)
+}
+
+type RepositoryCloneErr struct {
+	RepositoryErr
+}
+
+func newRepositoryCloneErr(url, targetDir string, err error) RepositoryCloneErr {
+	return RepositoryCloneErr{RepositoryErr{
+		url,
+		targetDir,
+		fmt.Errorf("failed to clone repository: %w", err)}}
 }
 
 func (localRepo *LocalRepository) Repository() *git.Repository {
@@ -101,13 +112,13 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 		})
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryAlreadyExists) {
-			return nil, fmt.Errorf("failed to clone repo %s to dir %s: %s: initialised already? run `corectl config update` and check your `corectl.yaml`", op.URL, op.TargetPath, err)
+			return nil, newRepositoryCloneErr(op.URL, op.TargetPath, err)
 		}
-		return nil, fmt.Errorf("failed to clone repo %s to dir %s: %s: check your `corectl.yaml` is configured correctly", op.URL, op.TargetPath, err)
+		return nil, RepositoryErr{op.URL, op.TargetPath, err}
 	}
 	worktree, err := repository.Worktree()
 	if err != nil {
-		return nil, &RepositoryErr{op.URL, op.TargetPath, err}
+		return nil, RepositoryErr{op.URL, op.TargetPath, err}
 	}
 	return &LocalRepository{
 		repo:     repository,

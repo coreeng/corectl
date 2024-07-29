@@ -2,6 +2,8 @@ package init
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -20,6 +22,15 @@ type ConfigInitOpt struct {
 	NonInteractive     bool
 
 	Streams userio.IOStreams
+}
+
+type InitConfigErr struct {
+	path, key string
+	err       error
+}
+
+func (i InitConfigErr) Error() string {
+	return fmt.Sprintf("init config key %q invalid, path %q: %s", i.key, i.path, i.err)
 }
 
 func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
@@ -135,16 +146,16 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 
 	cplatformRepoFullname, err := git.DeriveRepositoryFullnameFromUrl(initC.Repositories.Cplatform)
 	if err != nil {
-		return err
+		return InitConfigErr{initFile, "cplatform", err}
 	}
 	templateRepoFullname, err := git.DeriveRepositoryFullnameFromUrl(initC.Repositories.Templates)
 	if err != nil {
-		return err
+		return InitConfigErr{initFile, "templates", err}
 	}
 
 	clonedRepositories, err := cloneRepositories(opt.Streams, gitAuth, githubClient, repositoriesDir, cplatformRepoFullname, templateRepoFullname)
 	if err != nil {
-		return err
+		return addHint(err)
 	}
 
 	cplatformRepoFullName, err := git.DeriveRepositoryFullname(clonedRepositories.cplatform)
@@ -235,13 +246,21 @@ func cloneRepositories(
 	}
 	templatesRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
-
 		return cloneRepositoriesResult{}, err
 	}
 	return cloneRepositoriesResult{
 		cplatform: cplatformRepository,
 		templates: templatesRepository,
 	}, nil
+}
+
+func addHint(err error) error {
+	switch {
+	case errors.As(err, &git.RepositoryCloneErr{}):
+		return fmt.Errorf("%w: initialised already? run `corectl config update` to update repositories", err)
+	default:
+		return err
+	}
 }
 
 func (opt *ConfigInitOpt) createInitFileInputSwitch() *userio.InputSourceSwitch[string, string] {

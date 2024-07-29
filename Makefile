@@ -6,7 +6,7 @@ lint:
 
 .PHONY: test
 test:
-	go test ./pkg/... -v -ginkgo.v
+	go test ./pkg/... -v
 
 .PHONY: build
 build:
@@ -17,7 +17,7 @@ build:
 integration-test: build
 	TEST_CORECTL_BINARY="$$(realpath corectl)" \
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
-		go test ./tests/integration -v -ginkgo.v
+		go test ./tests/integration -v
 
 .PHONY: install
 install:

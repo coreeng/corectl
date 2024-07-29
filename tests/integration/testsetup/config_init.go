@@ -22,7 +22,11 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlCon
 		testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
 	)
 	Expect(err).NotTo(HaveOccurred())
-	err = corectl.Run(
+	return InitCorectlWithFile(corectl, initFilePath)
+}
+
+func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string) (*config.Config, *CorectlConfigDetails, error) {
+	err := corectl.Run(
 		"config", "init",
 		"--file", initFilePath,
 		"--github-token", testconfig.Cfg.GitHubToken,

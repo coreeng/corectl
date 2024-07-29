@@ -15,12 +15,10 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const ()
-
 var _ = Describe("config", Ordered, func() {
 	var (
-		homeDir, baseDirPath, repositoriesPath, configPath string
-		corectl                                            *testconfig.CorectlClient
+		homeDir, baseDirPath, repositoriesPath, configPath, initConfigPath string
+		corectl                                                            *testconfig.CorectlClient
 	)
 	t := GinkgoT()
 
@@ -30,6 +28,7 @@ var _ = Describe("config", Ordered, func() {
 		repositoriesPath = filepath.Join(baseDirPath, "repositories")
 		configPath = filepath.Join(baseDirPath, "corectl.yaml")
 		corectl = testconfig.NewCorectlClient(homeDir)
+		initConfigPath = filepath.Join(homeDir, "corectl-init.yaml")
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
@@ -43,7 +42,7 @@ var _ = Describe("config", Ordered, func() {
 			AfterEach(func() {
 				Expect(os.RemoveAll(baseDirPath)).ToNot(HaveOccurred())
 			})
-			It("returns actionable error when cplatform repository already exist", func() {
+			It("returns meaningful error when cplatform repository already exist", func() {
 				cloneOp := git.CloneOp{
 					URL:        testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
 					TargetPath: filepath.Join(repositoriesPath, testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.Name()),
@@ -54,9 +53,9 @@ var _ = Describe("config", Ordered, func() {
 
 				cfg, cfgDetails, err = testsetup.InitCorectl(corectl)
 
-				Expect(err.Error()).To(ContainSubstring("Error: failed to clone repo %s.git to dir %s: repository already exists", cloneOp.URL, cloneOp.TargetPath))
+				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories", cloneOp.URL, cloneOp.TargetPath))
 			})
-			It("returns actionable error when templates repository already exist", func() {
+			It("returns meaningful error when templates repository already exist", func() {
 				cloneOp := git.CloneOp{
 					URL:        testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
 					TargetPath: filepath.Join(repositoriesPath, testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.Name()),
@@ -67,7 +66,31 @@ var _ = Describe("config", Ordered, func() {
 
 				cfg, cfgDetails, err = testsetup.InitCorectl(corectl)
 
-				Expect(err.Error()).To(ContainSubstring("Error: failed to clone repo %s.git to dir %s: repository already exists", cloneOp.URL, cloneOp.TargetPath))
+				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories", cloneOp.URL, cloneOp.TargetPath))
+			})
+			It("returns meaningful error when invalid templates remote repository configuration", func() {
+				err := testdata.RenderInitFile(
+					initConfigPath,
+					testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
+					"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, _, err = testsetup.InitCorectlWithFile(corectl, initConfigPath)
+
+				Expect(err.Error()).To(ContainSubstring("Error: init config key \"templates\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
+			})
+			It("returns meaningful error when invalid cplatform remote repository configuration", func() {
+				err := testdata.RenderInitFile(
+					initConfigPath,
+					"",
+					testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
+				)
+				Expect(err).NotTo(HaveOccurred())
+
+				_, _, err = testsetup.InitCorectlWithFile(corectl, initConfigPath)
+
+				Expect(err.Error()).To(ContainSubstring("Error: init config key \"cplatform\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
 			})
 		})
 		Context("successfully initialise", func() {
