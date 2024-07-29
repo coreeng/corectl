@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/command"
 	"os"
 	"os/exec"
 	"testing"
@@ -65,16 +66,13 @@ func TestValidate(t *testing.T) {
 type mockCommand struct {
 }
 
-func (m *mockCommand) Execute(c string, args ...string) ([]byte, error) {
+func (m *mockCommand) Execute(c string, opts ...command.Option) ([]byte, error) {
+	options := command.ApplyOptions(opts)
 	cs := []string{"-test.run=TestOutput", "--"}
-	cs = append(cs, args...)
+	cs = append(cs, options.Args...)
 	cmd := exec.Command(os.Args[0], cs...)
 	cmd.Env = []string{"GO_TEST_PROCESS=1"}
 	return cmd.CombinedOutput()
-}
-
-func (m *mockCommand) ExecuteWithEnv(_ string, _ map[string]string, _ ...string) ([]byte, error) {
-	return nil, nil
 }
 
 func TestOutput(*testing.T) {

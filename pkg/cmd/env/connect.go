@@ -27,7 +27,7 @@ type EnvConnectOpt struct {
 
 func connectCmd(cfg *config.Config) *cobra.Command {
 	opts := EnvConnectOpt{
-		Exec: command.NewCommand(),
+		Exec: command.NewCommander(),
 	}
 	connectCmd := &cobra.Command{
 		Use:   "connect <environment>",

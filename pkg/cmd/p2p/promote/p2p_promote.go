@@ -40,7 +40,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
-			opts.Exec = command.NewCommand(
+			opts.Exec = command.NewCommander(
 				command.WithStdout(cmd.OutOrStdout()),
 			)
 			return run(&opts)
