@@ -1,6 +1,9 @@
 package promote
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
 func Test_isRegistrySupported(t *testing.T) {
 	tests := []struct {
@@ -14,9 +17,7 @@ func Test_isRegistrySupported(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.registry, func(t *testing.T) {
-			if got := isRegistrySupported(tt.registry); got != tt.valid {
-				t.Errorf("isRegistrySupported() = %v, want %v", got, tt.valid)
-			}
+			assert.Equal(t, tt.valid, isRegistrySupported(tt.registry))
 		})
 	}
 }

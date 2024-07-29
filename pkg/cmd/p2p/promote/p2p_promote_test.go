@@ -26,9 +26,7 @@ func Test_run(t *testing.T) {
 		}
 		err := run(opts)
 
-		if err != nil {
-			t.Fatalf("run() error = %v", err)
-		}
+		assert.NoError(t, err)
 
 		assert.Equal(t,
 			[]string{
@@ -69,11 +67,4 @@ func (m *mockCommand) ExecuteWithEnv(c string, envs map[string]string, args ...s
 	concatenated := strings.Join(commandParts, " ")
 	m.executedCommands = append(m.executedCommands, concatenated)
 	return nil, nil
-}
-
-type NoopWriter struct {
-}
-
-func (NoopWriter) Write(p []byte) (n int, err error) {
-	return len(p), nil
 }
