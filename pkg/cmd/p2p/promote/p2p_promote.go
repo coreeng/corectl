@@ -43,25 +43,25 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 		},
 	}
 
-	requiredFlagMap := map[string]*string{
+	requiredFlags := map[string]*string{
 		"source-registry": &opts.SourceRegistry,
 		"source-stage":    &opts.SourceStage,
 		"dest-registry":   &opts.DestRegistry,
 		"dest-stage":      &opts.DestStage,
 	}
 
-	for name, field := range requiredFlagMap {
+	for name, field := range requiredFlags {
 		err := addFlag(promoteCommand, field, name, true)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	optionalFlagMap := map[string]*string{
+	optionalFlags := map[string]*string{
 		"source-auth-override": &opts.SourceAuthOverride,
 		"dest-auth-override":   &opts.DestAuthOverride,
 	}
-	for name, field := range optionalFlagMap {
+	for name, field := range optionalFlags {
 		err := addFlag(promoteCommand, field, name, false)
 		if err != nil {
 			return nil, err
