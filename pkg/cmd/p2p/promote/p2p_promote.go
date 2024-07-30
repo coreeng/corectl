@@ -19,6 +19,7 @@ type promoteOpts struct {
 	DestAuthOverride   string
 	Exec               command.Commander
 	Streams            userio.IOStreams
+	FileSystem         FileSystem
 }
 
 type imageOpts struct {
@@ -29,7 +30,9 @@ type imageOpts struct {
 }
 
 func NewP2PPromoteCmd() (*cobra.Command, error) {
-	var opts = promoteOpts{}
+	var opts = promoteOpts{
+		FileSystem: &RealFileSystem{},
+	}
 	var promoteCommand = &cobra.Command{
 		Use:   "promote <image_with_tag>",
 		Short: "Promotes image from source to destination registry. Only GCP is supported for now",
@@ -105,7 +108,14 @@ func addFlag(promoteCommand *cobra.Command, field *string, name string, required
 }
 
 func run(opts *promoteOpts) error {
-	if err := validate(opts); err != nil {
+	v := &Validator{
+		FileSystem: opts.FileSystem,
+		Commander:  opts.Exec,
+	}
+	logInfo := opts.Streams.Info
+
+	logInfo("Validating passed arguments")
+	if err := v.validate(opts); err != nil {
 		return err
 	}
 
@@ -122,8 +132,6 @@ func run(opts *promoteOpts) error {
 		RepoPath:         opts.DestStage,
 		AuthOverride:     opts.DestAuthOverride,
 	}
-
-	logInfo := opts.Streams.Info
 
 	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
 		logInfo("Configuring docker for registry: ", registry)
@@ -156,4 +164,14 @@ func run(opts *promoteOpts) error {
 
 func basePath(registry string) string {
 	return strings.Split(registry, "/")[0]
+}
+
+type FileSystem interface {
+	Stat(name string) (os.FileInfo, error)
+}
+
+type RealFileSystem struct{}
+
+func (RealFileSystem) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
 }

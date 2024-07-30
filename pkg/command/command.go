@@ -5,11 +5,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type Options struct {
-	Env  map[string]string
-	Args []string
+	Env    map[string]string
+	Args   []string
+	Stdout io.Writer
 }
 
 type Option func(*Options)
@@ -23,6 +25,12 @@ func WithEnv(env map[string]string) Option {
 func WithArgs(args ...string) Option {
 	return func(o *Options) {
 		o.Args = args
+	}
+}
+
+func WithOverrideStdout(w io.Writer) Option {
+	return func(o *Options) {
+		o.Stdout = w
 	}
 }
 
@@ -66,23 +74,29 @@ func (c *DefaultCommander) Execute(cmd string, opts ...Option) ([]byte, error) {
 
 	command := exec.Command(cmd, options.Args...)
 
-	if c.Stdout != nil {
-		command.Stdout = c.Stdout
+	out := c.Stdout
+	if options.Stdout != nil {
+		out = options.Stdout
+	}
+
+	if out != nil {
+		command.Stdout = out
 	}
 	for key, value := range options.Env {
 		command.Env = append(command.Env, fmt.Sprintf("%s=%s", key, value))
 	}
-	var out []byte
+	var output []byte
 	var err error
 
-	if c.Stdout != nil {
+	if out != nil {
 		err = command.Run()
 	} else {
-		out, err = command.Output()
+		output, err = command.Output()
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("execute command: %s: %w", cmd, err)
+		cmdWithArgs := strings.Join(append([]string{cmd}, options.Args...), " ")
+		return nil, fmt.Errorf("execute command `%s` returned %w", cmdWithArgs, err)
 	}
-	return out, nil
+	return output, nil
 }

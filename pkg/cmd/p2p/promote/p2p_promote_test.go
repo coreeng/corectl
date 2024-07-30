@@ -10,8 +10,16 @@ import (
 	"testing"
 )
 
+type MockFileSystem struct {
+}
+
+func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
+	return nil, nil
+}
+
 func Test_run(t *testing.T) {
 	t.Run("Run Promote successfully", func(t *testing.T) {
+		mockFS := new(MockFileSystem)
 
 		mockCommander := &mockCommander{executedCommands: []string{}}
 		opts := &promoteOpts{
@@ -24,6 +32,7 @@ func Test_run(t *testing.T) {
 			DestAuthOverride:   "/dest-auth.json",
 			Exec:               mockCommander,
 			Streams:            userio.NewIOStreams(os.Stdin, os.Stdout),
+			FileSystem:         mockFS,
 		}
 		err := run(opts)
 
@@ -32,6 +41,8 @@ func Test_run(t *testing.T) {
 		assert.Equal(t,
 			[]string{
 				"which -s gcloud", // validate that gcloud exists
+				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/source-auth.json gcloud artifacts docker images list europe-west2-docker.pkg.dev/tenant/grizzly --limit=1",
+				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/dest-auth.json gcloud artifacts docker images list eu.gcr.io/tenant/grizzly --limit=1",
 				"gcloud auth configure-docker --quiet europe-west2-docker.pkg.dev", // docker configure source registry
 				"gcloud auth configure-docker --quiet eu.gcr.io",                   // docker configure destination registry
 				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/source-auth.json docker pull europe-west2-docker.pkg.dev/tenant/grizzly/extended-test/imageName:1.1.1",
