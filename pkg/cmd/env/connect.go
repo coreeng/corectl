@@ -109,7 +109,7 @@ func setupSvc(ctx context.Context) (*gcp.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	gcpClient, err := gcp.NewClient(ctx, clusterClient)
+	gcpClient, err := gcp.NewClient(clusterClient)
 	if err != nil {
 		return nil, err
 	}
