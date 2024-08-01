@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	. "github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/developer-platform/pkg/environment"
@@ -51,7 +52,7 @@ func setupConnection(s userio.IOStreams, c Commander, env *environment.Environme
 }
 
 func setCredentials(c Commander, cluster, projectID, region string) error {
-	if _, err := c.Execute("gcloud", "container", "clusters", "get-credentials", "--project", projectID, "--zone", region, "--internal-ip", cluster); err != nil {
+	if _, err := c.Execute("gcloud", WithArgs("container", "clusters", "get-credentials", "--project", projectID, "--zone", region, "--internal-ip", cluster)); err != nil {
 		return fmt.Errorf("get gcp cluster credentials: %w", err)
 	}
 	return nil
@@ -59,7 +60,7 @@ func setCredentials(c Commander, cluster, projectID, region string) error {
 
 func setKubeContext(c Commander, context string) error {
 	namespace := fmt.Sprintf("--namespace=%s", kubeNamespace)
-	if _, err := c.Execute("kubectl", "config", "set-context", context, namespace); err != nil {
+	if _, err := c.Execute("kubectl", WithArgs("config", "set-context", context, namespace)); err != nil {
 		return fmt.Errorf("set kube context %q: %w", context, err)
 	}
 	return nil
@@ -67,14 +68,14 @@ func setKubeContext(c Commander, context string) error {
 
 func setKubeProxy(c Commander, context, proxy string) error {
 	url := fmt.Sprintf("clusters.%s.proxy-url", context)
-	if _, err := c.Execute("kubectl", "config", "set", url, "http://"+proxy); err != nil {
+	if _, err := c.Execute("kubectl", WithArgs("config", "set", url, "http://"+proxy)); err != nil {
 		return fmt.Errorf("set kube proxy %q: %w", proxy, err)
 	}
 	return nil
 }
 
 func startIAPTunnel(c Commander, env, projectID, proxy string) error {
-	if _, err := c.Execute("gcloud", "compute", "start-iap-tunnel", env+"-bastion", "3128", "--local-host-port", proxy, "--project", projectID, "--zone", "europe-west2-a"); err != nil {
+	if _, err := c.Execute("gcloud", WithArgs("compute", "start-iap-tunnel", env+"-bastion", "3128", "--local-host-port", proxy, "--project", projectID, "--zone", "europe-west2-a")); err != nil {
 		return fmt.Errorf("establishing connection to IAP tunnel: %w", err)
 	}
 	return nil

@@ -1,6 +1,7 @@
 package env
 
 import (
+	"github.com/coreeng/corectl/pkg/command"
 	"os"
 	"os/exec"
 	"testing"
@@ -23,7 +24,7 @@ func TestConnectSuccess(t *testing.T) {
 		os.Stdin,
 		os.Stdout,
 	)
-	err := Connect(streams, env, mockCommandSuccess{}, proxy)
+	err := Connect(streams, env, mockCommanderSuccess{}, proxy)
 	assert.NoError(t, err)
 }
 
@@ -40,11 +41,11 @@ func TestConnectFail(t *testing.T) {
 		os.Stdin,
 		os.Stdout,
 	)
-	err := Connect(streams, env, mockCommandFail{}, proxy)
+	err := Connect(streams, env, mockCommanderFail{}, proxy)
 	assert.Error(t, err)
 }
 
-type mockCommandSuccess struct {
+type mockCommanderSuccess struct {
 }
 
 // helperExecProcess allows us to execute a mock exec.Command
@@ -59,8 +60,9 @@ func helperExecProcess(fn string, args ...string) *exec.Cmd {
 	return cmd
 }
 
-func (m mockCommandSuccess) Execute(c string, args ...string) ([]byte, error) {
-	return helperExecProcess("TestOutputSuccess", args...).CombinedOutput()
+func (m mockCommanderSuccess) Execute(c string, opts ...command.Option) ([]byte, error) {
+	options := command.ApplyOptions(opts)
+	return helperExecProcess("TestOutputSuccess", options.Args...).CombinedOutput()
 }
 
 // TestOutputSuccess mocks a command that returns successful command
@@ -71,11 +73,12 @@ func TestOutputSuccess(*testing.T) {
 	os.Exit(0)
 }
 
-type mockCommandFail struct {
+type mockCommanderFail struct {
 }
 
-func (m mockCommandFail) Execute(c string, args ...string) ([]byte, error) {
-	return helperExecProcess("TestOutputFail", args...).CombinedOutput()
+func (m mockCommanderFail) Execute(c string, opts ...command.Option) ([]byte, error) {
+	options := command.ApplyOptions(opts)
+	return helperExecProcess("TestOutputFail", options.Args...).CombinedOutput()
 }
 
 // TestOutputFail mocks a command that returns a non zero exit code
