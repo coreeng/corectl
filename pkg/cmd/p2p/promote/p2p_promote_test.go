@@ -1,12 +1,10 @@
 package promote
 
 import (
-	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -40,7 +38,7 @@ func Test_run(t *testing.T) {
 
 		assert.Equal(t,
 			[]string{
-				"which -s gcloud", // validate that gcloud exists
+				"gcloud help", // validate that gcloud exists
 				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/source-auth.json gcloud artifacts docker images list europe-west2-docker.pkg.dev/tenant/grizzly --limit=1",
 				"CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE=/dest-auth.json gcloud artifacts docker images list eu.gcr.io/tenant/grizzly --limit=1",
 				"gcloud auth configure-docker --quiet europe-west2-docker.pkg.dev", // docker configure source registry
@@ -61,17 +59,6 @@ type mockCommander struct {
 
 func (m *mockCommander) Execute(c string, opts ...command.Option) ([]byte, error) {
 	options := command.ApplyOptions(opts)
-	var envArray []string
-	for k, v := range options.Env {
-		envArray = append(envArray, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	commandParts := make([]string, 0, len(envArray)+1+len(options.Args))
-	commandParts = append(commandParts, envArray...)
-	commandParts = append(commandParts, c)
-	commandParts = append(commandParts, options.Args...)
-
-	concatenated := strings.Join(commandParts, " ")
-	m.executedCommands = append(m.executedCommands, concatenated)
+	m.executedCommands = append(m.executedCommands, command.FormatCommand(c, options))
 	return nil, nil
 }

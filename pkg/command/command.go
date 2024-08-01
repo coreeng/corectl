@@ -47,7 +47,9 @@ type Commander interface {
 }
 
 type DefaultCommander struct {
-	Stdout io.Writer
+	Stdout        io.Writer
+	Stderr        io.Writer
+	VerboseWriter io.Writer
 }
 
 func NewCommander(options ...func(*DefaultCommander)) Commander {
@@ -68,6 +70,18 @@ func WithStdout(w io.Writer) func(*DefaultCommander) {
 	}
 }
 
+func WithStderr(w io.Writer) func(*DefaultCommander) {
+	return func(c *DefaultCommander) {
+		c.Stderr = w
+	}
+}
+
+func WithVerboseWriter(w io.Writer) func(*DefaultCommander) {
+	return func(c *DefaultCommander) {
+		c.VerboseWriter = w
+	}
+}
+
 func (c *DefaultCommander) Execute(cmd string, opts ...Option) ([]byte, error) {
 
 	options := ApplyOptions(opts)
@@ -82,11 +96,24 @@ func (c *DefaultCommander) Execute(cmd string, opts ...Option) ([]byte, error) {
 	if out != nil {
 		command.Stdout = out
 	}
+
+	if c.Stderr != nil {
+		command.Stderr = c.Stderr
+	}
+
+	command.Env = os.Environ()
 	for key, value := range options.Env {
 		command.Env = append(command.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 	var output []byte
 	var err error
+
+	if c.VerboseWriter != nil {
+		_, err := fmt.Fprintf(c.VerboseWriter, "Executing command: %s\n", FormatCommand(cmd, options))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	if out != nil {
 		err = command.Run()
@@ -95,8 +122,21 @@ func (c *DefaultCommander) Execute(cmd string, opts ...Option) ([]byte, error) {
 	}
 
 	if err != nil {
-		cmdWithArgs := strings.Join(append([]string{cmd}, options.Args...), " ")
-		return nil, fmt.Errorf("execute command `%s` returned %w", cmdWithArgs, err)
+		return nil, fmt.Errorf("execute command `%s` returned %w", FormatCommand(cmd, options), err)
 	}
 	return output, nil
+}
+
+func FormatCommand(cmd string, options *Options) string {
+	var envArray []string
+	for k, v := range options.Env {
+		envArray = append(envArray, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	commandParts := make([]string, 0, len(envArray)+1+len(options.Args))
+	commandParts = append(commandParts, envArray...)
+	commandParts = append(commandParts, cmd)
+	commandParts = append(commandParts, options.Args...)
+
+	return strings.Join(commandParts, " ")
 }

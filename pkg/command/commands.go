@@ -1,10 +1,13 @@
 package command
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 func DepsInstalled(c Commander, deps ...string) error {
 	for _, dep := range deps {
-		if _, err := c.Execute("which", WithArgs("-s", dep)); err != nil {
+		if _, err := c.Execute(dep, WithArgs("help"), WithOverrideStdout(io.Discard)); err != nil {
 			return fmt.Errorf("%s is not installed: %w", dep, err)
 		}
 	}

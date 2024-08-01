@@ -3,7 +3,7 @@ package promote
 import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/command"
+	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
@@ -17,7 +17,7 @@ type promoteOpts struct {
 	DestRegistry       string
 	DestStage          string
 	DestAuthOverride   string
-	Exec               command.Commander
+	Exec               Commander
 	Streams            userio.IOStreams
 	FileSystem         FileSystem
 }
@@ -43,8 +43,10 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
-			opts.Exec = command.NewCommander(
-				command.WithStdout(cmd.OutOrStdout()),
+			opts.Exec = NewCommander(
+				WithStdout(cmd.OutOrStdout()),
+				WithStderr(cmd.ErrOrStderr()),
+				WithVerboseWriter(cmd.OutOrStdout()),
 			)
 			return run(&opts)
 		},
@@ -141,19 +143,19 @@ func run(opts *promoteOpts) error {
 		}
 	}
 
-	logInfo("Pulling image", imageUri(sourceImage))
+	logInfo("Pulling image ", imageUri(sourceImage))
 	_, err := pullDockerImage(sourceImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 
-	logInfo("Tagging image", imageUri(sourceImage), "with", imageUri(destinationImage))
+	logInfo("Tagging image ", imageUri(sourceImage), " with ", imageUri(destinationImage))
 	_, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 
-	logInfo("Pushing image", imageUri(destinationImage))
+	logInfo("Pushing image ", imageUri(destinationImage))
 	_, err = pushDockerImage(destinationImage, opts.Exec)
 	if err != nil {
 		return err
