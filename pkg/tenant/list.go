@@ -6,44 +6,27 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-var (
-	tableHeaders = []string{
-		"Name",
-		"Parent",
-		"Contact Email",
-		"Description",
-	}
-)
-
-type TableTenant struct {
+type Table struct {
 	table table.Writer
 }
 
-func NewTable(streams userio.IOStreams) TableTenant {
+func NewTable(streams userio.IOStreams) Table {
 	t := table.NewWriter()
-	rows := make(table.Row, len(tableHeaders))
-	for i, header := range tableHeaders {
-		rows[i] = header
-	}
-	t.AppendHeader(rows)
+	t.AppendHeader(table.Row{"Name", "Parent", "Contact Email"})
 	t.Style().Options.DrawBorder = false
 	t.Style().Options.SeparateColumns = false
 	t.Style().Options.SeparateFooter = false
 	t.Style().Options.SeparateHeader = false
 	t.Style().Options.SeparateRows = false
 	t.SetOutputMirror(streams.GetOutput())
-	return TableTenant{table: t}
+
+	return Table{table: t}
 }
 
-func (t TableTenant) Append(tnt tenant.Tenant) {
-	t.table.AppendRows([]table.Row{{
-		tnt.Name,
-		tnt.Parent,
-		tnt.ContactEmail,
-		tnt.Description,
-	}})
+func (t Table) AppendRow(tnnt tenant.Tenant) {
+	t.table.AppendRows([]table.Row{{tnnt.Name, tnnt.Parent, tnnt.ContactEmail}})
 }
 
-func (t TableTenant) Render() string {
+func (t Table) Render() string {
 	return t.table.Render()
 }

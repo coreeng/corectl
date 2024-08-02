@@ -1,11 +1,12 @@
-package list
+package describe
 
 import (
+	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	corectltnt "github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 type TenantDescribeOpts struct {
@@ -39,14 +40,19 @@ func run(opts *TenantDescribeOpts, cfg *config.Config) error {
 	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
 		return err
 	}
-	tenants, err := tenant.List(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
+
+	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.TenantName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find the tenant: %w", err)
 	}
-	table := corectltnt.NewTable(opts.Streams)
-	for _, t := range tenants {
-		table.Append(t)
+	if t == nil {
+		return fmt.Errorf("tenant is not found: %s", opts.TenantName)
 	}
-	table.Render()
+
+	encoder := yaml.NewEncoder(opts.Streams.GetOutput())
+	encoder.SetIndent(2)
+	if err := encoder.Encode(t); err != nil {
+		return fmt.Errorf("failed to print tenant: %w", err)
+	}
 	return nil
 }

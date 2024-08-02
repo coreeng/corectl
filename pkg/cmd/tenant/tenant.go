@@ -1,8 +1,8 @@
 package tenant
 
 import (
-	"github.com/coreeng/corectl/pkg/cmd/template/describe"
 	"github.com/coreeng/corectl/pkg/cmd/tenant/create"
+	"github.com/coreeng/corectl/pkg/cmd/tenant/describe"
 	"github.com/coreeng/corectl/pkg/cmd/tenant/list"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ func NewTenantCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	tenantCmd.AddCommand(list.NewTenantListCmd(cfg))
-	tenantCmd.AddCommand(describe.NewTemplateDescribeCmd(cfg))
+	tenantCmd.AddCommand(describe.NewTenantDescribeCmd(cfg))
 	tenantCmd.AddCommand(create.NewTenantCreateCmd(cfg))
 
 	return tenantCmd

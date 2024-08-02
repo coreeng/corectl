@@ -6,25 +6,13 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
-var (
-	tableHeaders = []string{
-		"Name",
-		"ID",
-		"Cloud Platform",
-	}
-)
-
 type TableEnv struct {
 	table table.Writer
 }
 
 func NewTable(streams userio.IOStreams) TableEnv {
 	t := table.NewWriter()
-	row := make(table.Row, len(tableHeaders))
-	for i, header := range tableHeaders {
-		row[i] = header
-	}
-	t.AppendHeader(row)
+	t.AppendHeader(table.Row{[]string{"Name", "ID", "Cloud Platform"}})
 	t.Style().Options.DrawBorder = false
 	t.Style().Options.SeparateColumns = false
 	t.Style().Options.SeparateFooter = false

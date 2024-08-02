@@ -200,7 +200,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	opt.Streams.Info("Created PR link: ", result.PRUrl)
-	opt.Streams.Info("Tenant created successfully: ", string(t.Name))
+	opt.Streams.Info("Tenant created successfully: ", t.Name)
 	return nil
 }
 

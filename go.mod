@@ -25,11 +25,14 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	github.com/thanhpk/randstr v1.0.6
+	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	golang.org/x/net v0.26.0
 	google.golang.org/api v0.187.0
 	google.golang.org/grpc v1.65.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/coreeng/developer-platform/pkg => ../developer-platform/pkg
 
 require (
 	cloud.google.com/go/auth v0.6.1 // indirect
@@ -48,6 +51,7 @@ require (
 	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dprotaso/go-yit v0.0.0-20191028211022-135eb7262960 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

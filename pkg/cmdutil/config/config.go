@@ -118,7 +118,7 @@ type P2PStageConfig struct {
 	DefaultEnvs Parameter[[]string] `yaml:"default-envs"`
 }
 
-func newConfig() *Config {
+func NewConfig() *Config {
 	config := Config{}
 	config.GitHub.Token.flag = "github-token"
 	config.GitHub.Token.help = "Personal GitHub token to use for GitHub authentication"
@@ -154,7 +154,7 @@ func DiscoverConfig() (*Config, error) {
 
 func ReadConfig(path string) (*Config, error) {
 	fileContent, err := os.ReadFile(path)
-	config := newConfig()
+	config := NewConfig()
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return config, nil
