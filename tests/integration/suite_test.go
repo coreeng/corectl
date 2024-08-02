@@ -19,6 +19,7 @@ import (
 	// Test cases import
 	_ "github.com/coreeng/corectl/tests/integration/application"
 	_ "github.com/coreeng/corectl/tests/integration/config"
+	_ "github.com/coreeng/corectl/tests/integration/env"
 	_ "github.com/coreeng/corectl/tests/integration/p2p"
 	_ "github.com/coreeng/corectl/tests/integration/tenant"
 )

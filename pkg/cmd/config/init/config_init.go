@@ -2,6 +2,8 @@ package init
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -20,6 +22,15 @@ type ConfigInitOpt struct {
 	NonInteractive     bool
 
 	Streams userio.IOStreams
+}
+
+type ConfigErr struct {
+	path, key string
+	err       error
+}
+
+func (c ConfigErr) Error() string {
+	return fmt.Sprintf("init config key %q invalid, path %q: %s", c.key, c.path, c.err)
 }
 
 func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
@@ -135,16 +146,19 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 
 	cplatformRepoFullname, err := git.DeriveRepositoryFullnameFromUrl(initC.Repositories.Cplatform)
 	if err != nil {
-		return err
+		return ConfigErr{initFile, "cplatform", err}
 	}
 	templateRepoFullname, err := git.DeriveRepositoryFullnameFromUrl(initC.Repositories.Templates)
 	if err != nil {
-		return err
+		return ConfigErr{initFile, "templates", err}
 	}
-
+	configBaseDir, err := cfg.BaseDir()
+	if err != nil {
+		return fmt.Errorf("failed to construct corectl config directory path: %w", err)
+	}
 	clonedRepositories, err := cloneRepositories(opt.Streams, gitAuth, githubClient, repositoriesDir, cplatformRepoFullname, templateRepoFullname)
 	if err != nil {
-		return err
+		return tryAppendHint(err, configBaseDir)
 	}
 
 	cplatformRepoFullName, err := git.DeriveRepositoryFullname(clonedRepositories.cplatform)
@@ -210,11 +224,12 @@ func cloneRepositories(
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
-	cplatformRepository, err := git.CloneToLocalRepository(git.CloneOp{
+	cloneOpt := git.CloneOp{
 		URL:        cplatformGitHubRepo.GetCloneURL(),
 		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name()),
 		Auth:       gitAuth,
-	})
+	}
+	cplatformRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
@@ -227,11 +242,12 @@ func cloneRepositories(
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
-	templatesRepository, err := git.CloneToLocalRepository(git.CloneOp{
+	cloneOpt = git.CloneOp{
 		URL:        templatesGitHubRepo.GetCloneURL(),
 		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name()),
 		Auth:       gitAuth,
-	})
+	}
+	templatesRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
 	}
@@ -239,6 +255,15 @@ func cloneRepositories(
 		cplatform: cplatformRepository,
 		templates: templatesRepository,
 	}, nil
+}
+
+func tryAppendHint(err error, configBaseDir string) error {
+	switch {
+	case errors.As(err, &git.RepositoryCloneErr{}):
+		return fmt.Errorf("%w: initialised already? run `corectl config update` to update repositories, alternatively to initialise again delete corectl config dir at %q and run `corectl config init`", err, configBaseDir)
+	default:
+		return err
+	}
 }
 
 func (opt *ConfigInitOpt) createInitFileInputSwitch() *userio.InputSourceSwitch[string, string] {

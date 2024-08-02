@@ -47,7 +47,7 @@ func TestValidate(t *testing.T) {
 	assert.NoError(t, err)
 
 	ctx := context.Background()
-	client, err := gcp.NewClient(ctx, clusterSvc)
+	client, err := gcp.NewClient(clusterSvc)
 	assert.NoError(t, err)
 
 	mockCmd := &mockCommand{}

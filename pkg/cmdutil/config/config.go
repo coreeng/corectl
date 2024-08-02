@@ -169,6 +169,14 @@ func (c *Config) Path() string {
 	return c.path
 }
 
+func (c *Config) BaseDir() (string, error) {
+	path, err := Path()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Dir(path), nil
+}
+
 func Path() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

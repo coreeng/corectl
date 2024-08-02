@@ -28,9 +28,11 @@ var _ = Describe("p2p", Ordered, func() {
 	t := GinkgoT()
 
 	BeforeAll(func(ctx SpecContext) {
+		var err error
 		homeDir = t.TempDir()
 		corectl = testconfig.NewCorectlClient(homeDir)
-		cfg, _ = testsetup.InitCorectl(corectl)
+		cfg, _, err = testsetup.InitCorectl(corectl)
+		Expect(err).ToNot(HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 		envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
