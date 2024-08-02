@@ -6,32 +6,34 @@ import (
 
 	container "cloud.google.com/go/container/apiv1"
 	"cloud.google.com/go/container/apiv1/containerpb"
-	googleContainer "google.golang.org/api/container/v1"
 )
 
 type Client struct {
 	clusterSvc *container.ClusterManagerClient
 }
 
-// NewClient will return a client that has permissions to interact with GCP services
-func NewClient(ctx context.Context, clusterManager *container.ClusterManagerClient) (*Client, error) {
-	return &Client{clusterSvc: clusterManager}, nil
+type GCloudError struct {
+	msg string
 }
 
-// NewContainerClient creates a client that can be used to fetch cluster credentials
-func NewContainerClient(ctx context.Context) (*googleContainer.Service, error) {
-	c, err := googleContainer.NewService(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("google create container client: %w", err)
-	}
-	return c, nil
+func (g GCloudError) Error() string {
+	return fmt.Sprintf("%s: did you run `gcloud auth application-default login`?", g.msg)
+}
+
+func newGCloudError(format string, args ...any) error {
+	return GCloudError{fmt.Sprintf(format, args...)}
+}
+
+// NewClient will return a client that has permissions to interact with GCP services
+func NewClient(clusterManager *container.ClusterManagerClient) (*Client, error) {
+	return &Client{clusterSvc: clusterManager}, nil
 }
 
 // NewClusterClient creates a client that can be used to interact with GKE clusters
 func NewClusterClient(ctx context.Context) (*container.ClusterManagerClient, error) {
 	c, err := container.NewClusterManagerClient(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create google cluster client: %w", err)
+		return nil, newGCloudError("create google cluster client: %s", err)
 	}
 	return c, nil
 }
@@ -43,7 +45,7 @@ func (c *Client) GetCluster(ctx context.Context, cluster, location, project stri
 
 	resp, err := c.clusterSvc.GetCluster(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("get GCP cluster: %w", err)
+		return nil, newGCloudError("get GCP cluster %q: %s", query, err)
 	}
 
 	return resp, nil
