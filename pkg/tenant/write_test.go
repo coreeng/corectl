@@ -27,6 +27,7 @@ environments:
 adminGroup: admin-group
 readonlyGroup: readonly-group
 cloudAccess: []
+repos: []
 `
 	t := GinkgoTB()
 
