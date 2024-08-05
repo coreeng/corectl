@@ -9,3 +9,4 @@ environments:
 adminGroup: admin-group@prod.domain
 readonlyGroup: readonly-group@prod.domain
 cloudAccess: []
+repos: []

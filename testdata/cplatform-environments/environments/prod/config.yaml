@@ -33,7 +33,7 @@ tenantsYaml:
 
 ingressDomains:
   - name: default
-    domain: "prod.domain"
+    domain: "env.prod.domain"
 
 internalServices:
   name: secure
