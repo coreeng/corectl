@@ -37,7 +37,7 @@ var _ = Describe("tenant", Ordered, func() {
 
 		BeforeAll(func() {
 			newTenantName = "new-tenant-name-" + randstr.Hex(6)
-			Expect(corectl.Run(
+			_, err := corectl.Run(
 				"tenant", "create",
 				"--name", newTenantName,
 				"--parent", "parent",
@@ -48,8 +48,8 @@ var _ = Describe("tenant", Ordered, func() {
 				// Omitting repositories parameter
 				"--admin-group", "ag",
 				"--readonly-group", "rg",
-				"--nonint",
-			)).To(Succeed())
+				"--nonint")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("created a PR in the CPlatform repository", func(ctx SpecContext) {

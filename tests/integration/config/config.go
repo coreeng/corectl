@@ -134,9 +134,8 @@ var _ = Describe("config", Ordered, func() {
 			originalTemplatesPullTimestamp, err = getLastPullTime(cfg.Repositories.Templates.Value)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(corectl.Run(
-				"config", "update",
-			)).To(Succeed())
+			_, err = corectl.Run("config", "update")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		It("pulls configuration changes from remote configuration repositories", func() {

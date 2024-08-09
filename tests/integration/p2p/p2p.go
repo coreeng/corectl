@@ -66,11 +66,11 @@ var _ = Describe("p2p", Ordered, func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(corectl.Run(
+			_, err := corectl.Run(
 				"p2p", "env", "sync",
 				appRepo,
-				tenant,
-			)).To(Succeed())
+				tenant)
+			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
 		AfterAll(func(ctx SpecContext) {

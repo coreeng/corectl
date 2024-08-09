@@ -26,7 +26,7 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlCon
 }
 
 func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string) (*config.Config, *CorectlConfigDetails, error) {
-	err := corectl.Run(
+	_, err := corectl.Run(
 		"config", "init",
 		"--file", initFilePath,
 		"--github-token", testconfig.Cfg.GitHubToken,
