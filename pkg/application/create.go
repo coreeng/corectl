@@ -51,21 +51,75 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 	}
 
 	if isMonorepo {
-		result := CreateResult{MonorepoMode: true}
 		if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
 			return result, err
 		}
 		if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
 			return result, err
 		}
-		return finalizeMonorepoCreate(op, localRepo, githubClient)
+		repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
+		if err != nil {
+			return result, err
+		}
+		result = CreateResult{
+			MonorepoMode:       true,
+			RepositoryFullname: repoFullId.RepositoryFullname,
+		}
 	} else {
-		result := CreateResult{MonorepoMode: false}
 		if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
 			return result, err
 		}
-		return finalizeSingleRepoCreate(op, localRepo, githubClient)
+		repoFullId, err := createRemoteRepository(op, githubClient, localRepo)
+		if err != nil {
+			return result, err
+		}
+		if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
+			return result, err
+		}
+		result = CreateResult{
+			MonorepoMode:       false,
+			RepositoryFullname: repoFullId.RepositoryFullname,
+		}
+
 	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+	remoteRepoName, err := localRepo.GetRemoteRepoName()
+	if err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+
+	githubRepo, _, err := githubClient.Repositories.Get(
+		context.Background(),
+		op.OrgName,
+		remoteRepoName,
+	)
+	if err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+
+	return git.NewGithubRepoFullId(githubRepo), nil
+}
+
+func createRemoteRepository(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+	githubRepo, err := createGithubRepository(op, githubClient)
+	if err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+
+	repoFullId := git.NewGithubRepoFullId(githubRepo)
+
+	if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+	return repoFullId, nil
 }
 
 func undoWhenError(undoSteps *undo.Steps) {
@@ -119,58 +173,6 @@ func commitAllChanges(localRepo *git.LocalRepository, message string) error {
 		return err
 	}
 	return localRepo.Commit(&git.CommitOp{Message: message})
-}
-
-func finalizeMonorepoCreate(op CreateOp, localRepo *git.LocalRepository, githubClient *github.Client) (CreateResult, error) {
-	result := CreateResult{MonorepoMode: true}
-
-	remoteRepoName, err := localRepo.GetRemoteRepoName()
-	if err != nil {
-		return result, err
-	}
-
-	githubRepo, _, err := githubClient.Repositories.Get(
-		context.Background(),
-		op.OrgName,
-		remoteRepoName,
-	)
-	if err != nil {
-		return result, err
-	}
-
-	result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).RepositoryFullname
-
-	if err := localRepo.Push(op.GitAuth); err != nil {
-		return result, err
-	}
-
-	return result, nil
-}
-
-func finalizeSingleRepoCreate(op CreateOp, localRepo *git.LocalRepository, githubClient *github.Client) (CreateResult, error) {
-	result := CreateResult{MonorepoMode: false}
-
-	githubRepo, err := createGithubRepository(op, githubClient)
-	if err != nil {
-		return result, err
-	}
-
-	repoFullId := git.NewGithubRepoFullId(githubRepo)
-	result.RepositoryFullname = repoFullId.RepositoryFullname
-
-	if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
-		return result, err
-	}
-
-	if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
-		return result, err
-	}
-
-	if err := localRepo.Push(op.GitAuth); err != nil {
-		return result, err
-	}
-
-	return result, nil
 }
 
 func createGithubRepository(op CreateOp, githubClient *github.Client) (*github.Repository, error) {
