@@ -290,6 +290,7 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
 
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "new-app-name")
 
