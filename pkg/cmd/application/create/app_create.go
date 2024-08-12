@@ -143,6 +143,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
 	}
 
+	//todo lkan; check if we need to create PR for monorepo
 	tenantUpdateResult, err := createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 	if err != nil && !createdAppResult.MonorepoMode {
 		return err

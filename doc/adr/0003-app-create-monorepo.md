@@ -1,4 +1,4 @@
-# p2p promote command
+# app create - add new application to existing repository
 
 Date: 2024-08-07
 
