@@ -11,8 +11,8 @@ import (
 	"github.com/coreeng/developer-platform/pkg/p2p"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 )
 
@@ -30,6 +30,7 @@ type CreateOp struct {
 
 type CreateResult struct {
 	RepositoryFullname git.RepositoryFullname
+	MonorepoMode       bool
 }
 
 func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err error) {
@@ -46,10 +47,18 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 	if err = os.MkdirAll(op.LocalPath, 0o755); err != nil {
 		return result, err
 	}
-	localRepo, err := git.InitLocalRepository(op.LocalPath)
-	if err != nil {
-		return result, err
+
+	localRepo, _ := git.OpenLocalRepository(filepath.Dir(op.LocalPath))
+	isMonorepo := localRepo.Repository() != nil
+	result.MonorepoMode = isMonorepo
+
+	if localRepo.Repository() == nil {
+		localRepo, err = git.InitLocalRepository(op.LocalPath)
+		if err != nil {
+			return result, err
+		}
 	}
+
 	undoSteps.Add(func() error {
 		return os.RemoveAll(op.LocalPath)
 	})
@@ -57,48 +66,114 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		if err = template.Render(op.Template, op.LocalPath); err != nil {
 			return result, err
 		}
+		if isMonorepo && githubWorkflowsExist(op.LocalPath) {
+			if err = moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-"); err != nil {
+				return result, err
+			}
+		}
 		if err = localRepo.AddAll(); err != nil {
 			return CreateResult{}, err
 		}
-		if err = localRepo.Commit(&git.CommitOp{Message: "Initial commit\n[skip ci]"}); err != nil {
+		message := "Initial commit\n[skip ci]"
+		if isMonorepo {
+			message = fmt.Sprintf("New app: %s\n[skip ci]", op.Name)
+		}
+		if err = localRepo.Commit(&git.CommitOp{Message: message}); err != nil {
+			return result, err
+		}
+
+	}
+
+	if !isMonorepo {
+		deleteBranchOnMerge := true
+		visibility := "private"
+		githubRepo, _, err := githubClient.Repositories.Create(
+			context.Background(),
+			op.OrgName,
+			&github.Repository{
+				Name:                &op.Name,
+				DeleteBranchOnMerge: &deleteBranchOnMerge,
+				Visibility:          &visibility,
+			},
+		)
+		if err != nil {
+			return result, err
+		}
+		repoFullId := git.NewGithubRepoFullId(githubRepo)
+		result.RepositoryFullname = repoFullId.RepositoryFullname
+
+		if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
+			return result, err
+		}
+
+		if err = p2p.SynchronizeRepository(&p2p.SynchronizeOp{
+			RepositoryId:     &repoFullId,
+			Tenant:           op.Tenant,
+			FastFeedbackEnvs: op.FastFeedbackEnvs,
+			ExtendedTestEnvs: op.ExtendedTestEnvs,
+			ProdEnvs:         op.ProdEnvs,
+		}, githubClient); err != nil {
 			return result, err
 		}
 	}
+	if isMonorepo {
+		remoteRepoName, err := localRepo.GetRemoteRepoName()
+		if err != nil {
+			return result, err
+		}
+		githubRepo, _, err := githubClient.Repositories.Get(
+			context.Background(),
+			op.OrgName,
+			remoteRepoName,
+		)
+		if err != nil {
+			return result, err
+		}
 
-	deleteBranchOnMerge := true
-	visibility := "private"
-	githubRepo, _, err := githubClient.Repositories.Create(
-		context.Background(),
-		op.OrgName,
-		&github.Repository{
-			Name:                &op.Name,
-			DeleteBranchOnMerge: &deleteBranchOnMerge,
-			Visibility:          &visibility,
-		},
-	)
-	if err != nil {
-		return result, err
+		result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).RepositoryFullname
 	}
-	repoFullId := git.NewGithubRepoFullId(githubRepo)
-	result.RepositoryFullname = repoFullId.RepositoryFullname
 
-	if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
-		return result, err
-	}
 	if err = localRepo.Push(op.GitAuth); err != nil {
 		return result, err
 	}
-
-	if err = p2p.SynchronizeRepository(&p2p.SynchronizeOp{
-		RepositoryId:     &repoFullId,
-		Tenant:           op.Tenant,
-		FastFeedbackEnvs: op.FastFeedbackEnvs,
-		ExtendedTestEnvs: op.ExtendedTestEnvs,
-		ProdEnvs:         op.ProdEnvs,
-	}, githubClient); err != nil {
-		return result, err
-	}
 	return result, nil
+}
+
+func moveGithubWorkflowsToRoot(path string, filePrefix string) error {
+	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
+	rootWorkflowsPath := filepath.Join(filepath.Dir(path), ".github", "workflows")
+	dir, err := os.ReadDir(githubWorkflowsPath)
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(rootWorkflowsPath, 0o755)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range dir {
+		if file.IsDir() {
+			continue
+		}
+		src := filepath.Join(githubWorkflowsPath, file.Name())
+		dst := filepath.Join(rootWorkflowsPath, filePrefix+file.Name())
+
+		err = os.Rename(src, dst)
+		if err != nil {
+			return err
+		}
+	}
+	err = os.RemoveAll(filepath.Join(path, ".github"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func githubWorkflowsExist(path string) bool {
+	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
+	dir, err := os.ReadDir(githubWorkflowsPath)
+	return err == nil && len(dir) > 0
 }
 
 func ValidateCreate(op CreateOp, githubClient *github.Client) error {
@@ -122,16 +197,17 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	if err != nil {
 		return fmt.Errorf("%s: %v", op.LocalPath, err)
 	}
-	_, response, err := githubClient.Repositories.Get(
-		context.Background(),
-		op.OrgName,
-		op.Name,
-	)
-	if err == nil {
-		return fmt.Errorf("%s/%s repository is already exists", op.OrgName, op.Name)
-	}
-	if err != nil && response.StatusCode != http.StatusNotFound {
-		return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
-	}
+	//todo lkan; probably we don't need this check
+	//_, response, err := githubClient.Repositories.Get(
+	//	context.Background(),
+	//	op.OrgName,
+	//	op.Name,
+	//)
+	//if err == nil {
+	//	return fmt.Errorf("%s/%s repository is already exists", op.OrgName, op.Name)
+	//}
+	//if err != nil && response.StatusCode != http.StatusNotFound {
+	//	return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
+	//}
 	return nil
 }

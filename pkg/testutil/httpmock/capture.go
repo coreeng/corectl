@@ -36,10 +36,14 @@ func NewCaptureHandlerWithResponseFn[REQ any](
 ) *HttpCaptureHandler[REQ] {
 	return NewCaptureHandlerWithMappingFns(
 		func(r *http.Request) REQ {
-			body, err := io.ReadAll(r.Body)
-			Expect(err).NotTo(HaveOccurred(), "couldn't read request body from http mock")
 			var req REQ
-			Expect(json.Unmarshal(body, &req)).To(Succeed(), "couldn't unmarshal http mock body as json")
+			if r.Body != nil && r.ContentLength > 0 {
+				body, err := io.ReadAll(r.Body)
+				Expect(err).NotTo(HaveOccurred(), "couldn't read request body from http mock")
+				Expect(json.Unmarshal(body, &req)).To(Succeed(), "couldn't unmarshal http mock request body as json")
+			} else {
+				req = *new(REQ)
+			}
 			return req
 		},
 		provideResponseFn,

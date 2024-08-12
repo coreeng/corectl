@@ -73,3 +73,7 @@ func ProdEnvironment() string {
 func BlankTemplate() string {
 	return "blank"
 }
+
+func Monorepo() string {
+	return "monorepo"
+}

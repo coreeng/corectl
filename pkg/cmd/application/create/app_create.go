@@ -137,10 +137,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+	if createdAppResult.MonorepoMode {
+		opts.Streams.Info("Added ", opts.Name, " to repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+	} else {
+		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+	}
 
 	tenantUpdateResult, err := createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
-	if err != nil {
+	if err != nil && !createdAppResult.MonorepoMode {
 		return err
 	}
 

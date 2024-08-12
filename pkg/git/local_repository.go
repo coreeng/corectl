@@ -7,6 +7,8 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"path"
+	"strings"
 )
 
 var (
@@ -304,4 +306,12 @@ func (localRepo *LocalRepository) SetRemote(url string) error {
 		URLs: []string{url},
 	})
 	return err
+}
+func (localRepo *LocalRepository) GetRemoteRepoName() (string, error) {
+	remote, err := localRepo.repo.Remote(OriginRemote)
+	if err != nil {
+		return "", err
+	}
+	url := remote.Config().URLs[0]
+	return path.Base(strings.TrimSuffix(url, ".git")), nil
 }

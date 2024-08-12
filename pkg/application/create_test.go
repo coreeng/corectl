@@ -255,8 +255,12 @@ var _ = Describe("Create new application", func() {
 				To: head.Hash(),
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
-						Message:      "Initial commit\n[skip ci]",
-						ChangedFiles: []string{"./README.md"},
+						Message: "Initial commit\n[skip ci]",
+						ChangedFiles: []string{
+							"README.md",
+							".github/workflows/fast-feedback.yaml",
+							".github/workflows/extended-test.yaml",
+						},
 					},
 				},
 			})
@@ -264,5 +268,108 @@ var _ = Describe("Create new application", func() {
 		It("pushes all the changes to the remote repository", func() {
 			newAppServerRepo.AssertInSyncWith(newAppLocalRepo)
 		})
+
 	})
+	Context("monorepo mode", Ordered, func() {
+		var (
+			monorepoServerRepo *gittest.BareRepository
+			monorepoLocalRepo  *git.LocalRepository
+			newAppLocalPath    string
+			createResult       CreateResult
+			createOp           CreateOp
+			getRepoCapture     *httpmock.HttpCaptureHandler[any]
+		)
+
+		BeforeAll(func() {
+			var err error
+			monorepoServerRepo, monorepoLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
+				TargetBareRepoDir:  t.TempDir(),
+				TargetLocalRepoDir: t.TempDir(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+
+			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "new-app-name")
+
+			createOp = CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        newAppLocalPath,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template: &template.FulfilledTemplate{
+					Spec:      templateToUse,
+					Arguments: nil,
+				},
+			}
+
+			url := monorepoServerRepo.LocalCloneUrl()
+			response := &github.Repository{
+				ID:   &newRepoId,
+				Name: &newAppName,
+				Owner: &github.User{
+					Login: &githubOrg,
+				},
+				CloneURL: &url,
+			}
+			fmt.Println(response)
+			getRepoCapture = httpmock.NewCaptureHandler[any](response)
+
+			githubClient = github.NewClient(mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposByOwnerByRepo,
+					getRepoCapture.Func(),
+				),
+			))
+
+			// Execute Create function
+			createResult, err = Create(createOp, githubClient)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("correctly identifies monorepo mode", func() {
+			Expect(createResult.MonorepoMode).To(BeTrue())
+		})
+
+		It("creates the new application directory within the monorepo", func() {
+			Expect(newAppLocalPath).To(BeADirectory())
+		})
+
+		It("moves GitHub workflows to the root .github/workflows directory", func() {
+			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
+			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")).To(BeAnExistingFile())
+			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-extended-test.yaml")).To(BeAnExistingFile())
+		})
+
+		It("does not leave .github directory in the new application directory", func() {
+			Expect(filepath.Join(newAppLocalPath, ".github")).NotTo(BeADirectory())
+		})
+
+		It("commits changes to the monorepo", func() {
+			head, err := monorepoLocalRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			monorepoServerRepo.AssertCommits(gittest.AssertCommitOp{
+				To: head.Hash(),
+				ExpectedCommits: []gittest.ExpectedCommit{
+					{
+						Message: "New app: new-app-name\n[skip ci]",
+						ChangedFiles: []string{
+							"new-app-name/README.md",
+							".github/workflows/new-app-name-fast-feedback.yaml",
+							".github/workflows/new-app-name-extended-test.yaml",
+						},
+					},
+				},
+			})
+		})
+
+		It("pushes all the changes to the remote repository", func() {
+			monorepoServerRepo.AssertInSyncWith(monorepoLocalRepo)
+		})
+	})
+
 })
