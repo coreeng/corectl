@@ -34,111 +34,169 @@ type CreateResult struct {
 }
 
 func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err error) {
-	result = CreateResult{}
-
 	undoSteps := undo.NewSteps()
-	defer func() {
-		if err != nil {
-			errs := undoSteps.Undo()
-			err = undo.FormatError("create new application", err, errs)
-		}
-	}()
+	defer undoWhenError(&undoSteps)
 
-	if err = os.MkdirAll(op.LocalPath, 0o755); err != nil {
+	if err := prepareLocalPath(op.LocalPath, &undoSteps); err != nil {
 		return result, err
 	}
 
-	localRepo, _ := git.OpenLocalRepository(filepath.Dir(op.LocalPath))
+	localRepo, isMonorepo, err := setupLocalRepository(op.LocalPath)
+	if err != nil {
+		return result, err
+	}
+
+	if err := renderTemplateMaybe(op); err != nil {
+		return result, err
+	}
+
+	if isMonorepo {
+		result := CreateResult{MonorepoMode: true}
+		if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
+			return result, err
+		}
+		if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
+			return result, err
+		}
+		return finalizeMonorepoCreate(op, localRepo, githubClient)
+	} else {
+		result := CreateResult{MonorepoMode: false}
+		if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
+			return result, err
+		}
+		return finalizeSingleRepoCreate(op, localRepo, githubClient)
+	}
+}
+
+func undoWhenError(undoSteps *undo.Steps) {
+	if err := recover(); err != nil {
+		errs := undoSteps.Undo()
+		panic(undo.FormatError("create new application", fmt.Errorf("%v", err), errs))
+	}
+}
+
+func prepareLocalPath(localPath string, undoSteps *undo.Steps) error {
+	if err := os.MkdirAll(localPath, 0o755); err != nil {
+		return err
+	}
+	undoSteps.Add(func() error {
+		return os.RemoveAll(localPath)
+	})
+	return nil
+}
+
+func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) {
+	localRepo, _ := git.OpenLocalRepository(filepath.Dir(localPath))
 	isMonorepo := localRepo.Repository() != nil
-	result.MonorepoMode = isMonorepo
 
 	if localRepo.Repository() == nil {
-		localRepo, err = git.InitLocalRepository(op.LocalPath)
+		var err error
+		localRepo, err = git.InitLocalRepository(localPath)
 		if err != nil {
-			return result, err
+			return nil, false, err
 		}
 	}
 
-	undoSteps.Add(func() error {
-		return os.RemoveAll(op.LocalPath)
-	})
-	if op.Template != nil {
-		if err = template.Render(op.Template, op.LocalPath); err != nil {
-			return result, err
-		}
-		if isMonorepo && githubWorkflowsExist(op.LocalPath) {
-			if err = moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-"); err != nil {
-				return result, err
-			}
-		}
-		if err = localRepo.AddAll(); err != nil {
-			return CreateResult{}, err
-		}
-		message := "Initial commit\n[skip ci]"
-		if isMonorepo {
-			message = fmt.Sprintf("New app: %s\n[skip ci]", op.Name)
-		}
-		if err = localRepo.Commit(&git.CommitOp{Message: message}); err != nil {
-			return result, err
-		}
+	return localRepo, isMonorepo, nil
+}
 
+func renderTemplateMaybe(op CreateOp) error {
+	if op.Template == nil {
+		return nil
 	}
+	return template.Render(op.Template, op.LocalPath)
+}
 
-	if !isMonorepo {
-		deleteBranchOnMerge := true
-		visibility := "private"
-		githubRepo, _, err := githubClient.Repositories.Create(
-			context.Background(),
-			op.OrgName,
-			&github.Repository{
-				Name:                &op.Name,
-				DeleteBranchOnMerge: &deleteBranchOnMerge,
-				Visibility:          &visibility,
-			},
-		)
-		if err != nil {
-			return result, err
-		}
-		repoFullId := git.NewGithubRepoFullId(githubRepo)
-		result.RepositoryFullname = repoFullId.RepositoryFullname
-
-		if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
-			return result, err
-		}
-
-		if err = p2p.SynchronizeRepository(&p2p.SynchronizeOp{
-			RepositoryId:     &repoFullId,
-			Tenant:           op.Tenant,
-			FastFeedbackEnvs: op.FastFeedbackEnvs,
-			ExtendedTestEnvs: op.ExtendedTestEnvs,
-			ProdEnvs:         op.ProdEnvs,
-		}, githubClient); err != nil {
-			return result, err
-		}
+func moveGithubWorkflowsToRootMaybe(op CreateOp) error {
+	if githubWorkflowsExist(op.LocalPath) {
+		return moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-")
 	}
-	if isMonorepo {
-		remoteRepoName, err := localRepo.GetRemoteRepoName()
-		if err != nil {
-			return result, err
-		}
-		githubRepo, _, err := githubClient.Repositories.Get(
-			context.Background(),
-			op.OrgName,
-			remoteRepoName,
-		)
-		if err != nil {
-			return result, err
-		}
+	return nil
+}
 
-		result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).RepositoryFullname
+func commitAllChanges(localRepo *git.LocalRepository, message string) error {
+	if err := localRepo.AddAll(); err != nil {
+		return err
 	}
+	return localRepo.Commit(&git.CommitOp{Message: message})
+}
 
-	if err = localRepo.Push(op.GitAuth); err != nil {
+func finalizeMonorepoCreate(op CreateOp, localRepo *git.LocalRepository, githubClient *github.Client) (CreateResult, error) {
+	result := CreateResult{MonorepoMode: true}
+
+	remoteRepoName, err := localRepo.GetRemoteRepoName()
+	if err != nil {
 		return result, err
 	}
+
+	githubRepo, _, err := githubClient.Repositories.Get(
+		context.Background(),
+		op.OrgName,
+		remoteRepoName,
+	)
+	if err != nil {
+		return result, err
+	}
+
+	result.RepositoryFullname = git.NewGithubRepoFullId(githubRepo).RepositoryFullname
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
 	return result, nil
 }
 
+func finalizeSingleRepoCreate(op CreateOp, localRepo *git.LocalRepository, githubClient *github.Client) (CreateResult, error) {
+	result := CreateResult{MonorepoMode: false}
+
+	githubRepo, err := createGithubRepository(op, githubClient)
+	if err != nil {
+		return result, err
+	}
+
+	repoFullId := git.NewGithubRepoFullId(githubRepo)
+	result.RepositoryFullname = repoFullId.RepositoryFullname
+
+	if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
+		return result, err
+	}
+
+	if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
+		return result, err
+	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func createGithubRepository(op CreateOp, githubClient *github.Client) (*github.Repository, error) {
+	deleteBranchOnMerge := true
+	visibility := "private"
+	githubRepo, _, err := githubClient.Repositories.Create(
+		context.Background(),
+		op.OrgName,
+		&github.Repository{
+			Name:                &op.Name,
+			DeleteBranchOnMerge: &deleteBranchOnMerge,
+			Visibility:          &visibility,
+		},
+	)
+	return githubRepo, err
+}
+
+func synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId, githubClient *github.Client) error {
+	return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
+		RepositoryId:     &repoFullId,
+		Tenant:           op.Tenant,
+		FastFeedbackEnvs: op.FastFeedbackEnvs,
+		ExtendedTestEnvs: op.ExtendedTestEnvs,
+		ProdEnvs:         op.ProdEnvs,
+	}, githubClient)
+}
 func moveGithubWorkflowsToRoot(path string, filePrefix string) error {
 	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
 	rootWorkflowsPath := filepath.Join(filepath.Dir(path), ".github", "workflows")
