@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -10,7 +11,9 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/coreeng/developer-platform/pkg/p2p"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -140,8 +143,10 @@ func prepareLocalPath(localPath string, undoSteps *undo.Steps) error {
 }
 
 func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) {
-	localRepo, _ := git.OpenLocalRepository(filepath.Dir(localPath))
-	isMonorepo := localRepo.Repository() != nil
+	localRepo, isMonorepo, err := openMonorepoMaybe(localPath)
+	if err != nil {
+		return nil, false, err
+	}
 
 	if localRepo.Repository() == nil {
 		var err error
@@ -151,6 +156,15 @@ func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) 
 		}
 	}
 
+	return localRepo, isMonorepo, nil
+}
+
+func openMonorepoMaybe(localPath string) (localRepo *git.LocalRepository, isMonorepo bool, err error) {
+	localRepo, err = git.OpenLocalRepository(filepath.Dir(localPath))
+	if err != nil && !errors.Is(err, gogit.ErrRepositoryNotExists) {
+		return nil, false, err
+	}
+	isMonorepo = localRepo.Repository() != nil
 	return localRepo, isMonorepo, nil
 }
 
@@ -257,17 +271,24 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	if err != nil {
 		return fmt.Errorf("%s: %v", op.LocalPath, err)
 	}
-	//todo lkan; probably we don't need this check
-	//_, response, err := githubClient.Repositories.Get(
-	//	context.Background(),
-	//	op.OrgName,
-	//	op.Name,
-	//)
-	//if err == nil {
-	//	return fmt.Errorf("%s/%s repository is already exists", op.OrgName, op.Name)
-	//}
-	//if err != nil && response.StatusCode != http.StatusNotFound {
-	//	return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
-	//}
+
+	_, isMonorepo, err := openMonorepoMaybe(op.LocalPath)
+	if err == nil {
+		return fmt.Errorf("checking for monorepo failed with %v", err)
+	}
+
+	if isMonorepo {
+		_, response, err := githubClient.Repositories.Get(
+			context.Background(),
+			op.OrgName,
+			op.Name,
+		)
+		if err == nil {
+			return fmt.Errorf("%s/%s repository already exists", op.OrgName, op.Name)
+		}
+		if err != nil && response.StatusCode != http.StatusNotFound {
+			return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
+		}
+	}
 	return nil
 }
