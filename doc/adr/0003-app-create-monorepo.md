@@ -68,14 +68,17 @@ Once we have a bare repository, we can add new applications to it.
 ```shell
 corectl app create <app-name> <monorepo-path>/<app-name> --tenant sub-tenant-name
 ```
+or 
+```shell
+cd <monorepo-path>;
+corectl app create <app-name> --tenant sub-tenant-name
+```
 
-Changes to current implementation
-
-1. if local-path is already a git repository
-   - don't create a new github repository
-   - don't set github variables (as they already set by parent)
+1. Corectl will detect if the parent directory is a git repository and will    
+   - not create a new github repository
+   - not set github variables (as they already set by parent)
    - check if there is no local changes
-2. `tenant` should be passed to template to be rendered in Makefile
-3. `.github` folder from templates would have to be copied to root of the repository
-and all files would be prefixed with `app-name`
-
+2. `tenant` will be passed to a template to be rendered in Makefile (once we have capability to render templates 
+   with parameters)
+3. `.github/workflows` folder from templates would have to be copied to root of the repository
+and all files would be prefixed with `app-name-`
