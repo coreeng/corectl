@@ -273,7 +273,7 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	}
 
 	_, isMonorepo, err := openMonorepoMaybe(op.LocalPath)
-	if err == nil {
+	if err != nil {
 		return fmt.Errorf("checking for monorepo failed with %v", err)
 	}
 

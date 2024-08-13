@@ -143,30 +143,38 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
 	}
 
+	nextStepsMessage := fmt.Sprintf(
+		nextStepsMessageTemplateWithoutPR,
+		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+		createdAppResult.RepositoryFullname.String(),
+		createdAppResult.RepositoryFullname.String(),
+	)
+
 	var tenantUpdateResult tenant.CreateOrUpdateResult
 	if !createdAppResult.MonorepoMode {
 		tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 		if err != nil {
 			return err
 		}
+		nextStepsMessage = fmt.Sprintf(
+			nextStepsMessageTemplateWithPR,
+			tenantUpdateResult.PRUrl,
+			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+			createdAppResult.RepositoryFullname.String(),
+			createdAppResult.RepositoryFullname.String(),
+		)
 	}
 
-	nextStepsMessage := fmt.Sprintf(
-		nextStepsMessageTemplate,
-		tenantUpdateResult.PRUrl,
-		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-		createdAppResult.RepositoryFullname.String(),
-		createdAppResult.RepositoryFullname.String(),
-	)
 	opts.Streams.Info(nextStepsMessage)
 	return nil
 }
 
-const nextStepsMessageTemplate = `
+const (
+	nextStepsMessageTemplateWithPR = `
 Note: to complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
 PR url: %s
 
-After the PR is merged, you application is ready to be deployed to the Core Platform!
+After the PR is merged, your application is ready to be deployed to the Core Platform!
 It will either happen with next commit or you can do it manually by triggering P2P workflow.
 To do it, use GitHub web-interface or GitHub CLI.
 Workflows link: %s
@@ -174,6 +182,16 @@ GitHub CLI commands:
   gh workflow list -R %s
   gh workflow run <workflow-id> -R %s
 `
+	nextStepsMessageTemplateWithoutPR = `
+Your application is ready to be deployed to the Core Platform!
+It will either happen with next commit or you can do it manually by triggering P2P workflow.
+To do it, use GitHub web-interface or GitHub CLI.
+Workflows link: %s
+GitHub CLI commands:
+  gh workflow list -R %s
+  gh workflow run <workflow-id> -R %s
+`
+)
 
 func createNewApp(
 	opts *AppCreateOpt,
