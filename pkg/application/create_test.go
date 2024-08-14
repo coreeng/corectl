@@ -13,6 +13,7 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"os"
 	"path/filepath"
 	"slices"
 )
@@ -136,8 +137,17 @@ var _ = Describe("Create new application", func() {
 				ExtendedTestEnvs: []environment.Environment{devEnv},
 				ProdEnvs:         []environment.Environment{prodEnv},
 				Template: &template.FulfilledTemplate{
-					Spec:      templateToUse,
-					Arguments: nil,
+					Spec: templateToUse,
+					Arguments: []template.Argument{
+						{
+							Name:  "name",
+							Value: "new-app-name",
+						},
+						{
+							Name:  "tenant",
+							Value: defaultTenant.Name,
+						},
+					},
 				},
 			}, githubClient)
 			Expect(err).NotTo(HaveOccurred())
@@ -278,6 +288,7 @@ var _ = Describe("Create new application", func() {
 			createResult       CreateResult
 			createOp           CreateOp
 			getRepoCapture     *httpmock.HttpCaptureHandler[any]
+			appName            string = "new-app-name"
 		)
 
 		BeforeAll(func() {
@@ -292,10 +303,10 @@ var _ = Describe("Create new application", func() {
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
-			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "new-app-name")
+			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), appName)
 
 			createOp = CreateOp{
-				Name:             "new-app-name",
+				Name:             appName,
 				OrgName:          "github-org-name",
 				LocalPath:        newAppLocalPath,
 				Tenant:           defaultTenant,
@@ -303,8 +314,17 @@ var _ = Describe("Create new application", func() {
 				ExtendedTestEnvs: []environment.Environment{devEnv},
 				ProdEnvs:         []environment.Environment{prodEnv},
 				Template: &template.FulfilledTemplate{
-					Spec:      templateToUse,
-					Arguments: nil,
+					Spec: templateToUse,
+					Arguments: []template.Argument{
+						{
+							Name:  "name",
+							Value: appName,
+						},
+						{
+							Name:  "tenant",
+							Value: defaultTenant.Name,
+						},
+					},
 				},
 			}
 
@@ -346,6 +366,18 @@ var _ = Describe("Create new application", func() {
 			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-extended-test.yaml")).To(BeAnExistingFile())
 		})
 
+		It("renders template with passed arguments", func() {
+			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
+
+			content := readFileContent(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")
+			Expect(content).To(ContainSubstring(defaultTenant.Name))
+			Expect(content).To(ContainSubstring(appName))
+
+			content = readFileContent(rootWorkflowsPath, "new-app-name-extended-test.yaml")
+			Expect(content).To(ContainSubstring(defaultTenant.Name))
+			Expect(content).To(ContainSubstring(appName))
+		})
+
 		It("does not leave .github directory in the new application directory", func() {
 			Expect(filepath.Join(newAppLocalPath, ".github")).NotTo(BeADirectory())
 		})
@@ -374,3 +406,10 @@ var _ = Describe("Create new application", func() {
 	})
 
 })
+
+func readFileContent(path ...string) string {
+	filePath := filepath.Join(path...)
+	content, err := os.ReadFile(filePath)
+	Expect(err).NotTo(HaveOccurred())
+	return string(content)
+}

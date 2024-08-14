@@ -32,7 +32,17 @@ func NewAppCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 	var appCreateCmd = &cobra.Command{
 		Use:   "create <app-name> [<local-path>]",
 		Short: "Create new application",
-		Args:  cobra.RangeArgs(1, 2),
+		Long: `Creates new application:
+
+- create a git repository locally and initializes it with application skeleton generated from a template
+- template is rendered with arguments: {{name}}, {{tenant}}
+- create a new github repository with p2p related variables
+- create a new PR to environment repository with configuration update for the new application (if necessary)
+
+NOTE: If parent directory is an existing git repository it will add a new application to it 
+      without creating a new remote repository.
+`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Name = args[0]
 			if len(args) > 1 {
@@ -209,8 +219,17 @@ func createNewApp(
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
 	fulfilledTemplate := template.FulfilledTemplate{
-		Spec:      fromTemplate,
-		Arguments: []template.Argument{},
+		Spec: fromTemplate,
+		Arguments: []template.Argument{
+			{
+				Name:  "name",
+				Value: opts.Name,
+			},
+			{
+				Name:  "tenant",
+				Value: opts.Tenant,
+			},
+		},
 	}
 
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
