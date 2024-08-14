@@ -431,7 +431,8 @@ var _ = Describe("Create new application", func() {
 		It("called create PR correctly", func() {
 			Expect(createPrCapture.Requests).To(HaveLen(1))
 			newPrRequest := createPrCapture.Requests[0]
-			Expect(*newPrRequest.Title).To(Equal("Add " + appName))
+			Expect(*newPrRequest.Title).To(Equal("Add new-app-name application"))
+			Expect(*newPrRequest.Body).To(Equal("Adding `new-app-name` application"))
 			Expect(*newPrRequest.Head).To(Equal("add-" + appName))
 			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
 		})
