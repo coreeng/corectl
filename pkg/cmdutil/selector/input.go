@@ -23,18 +23,31 @@ func Tenant(cPlatRepoPath string, overrideTenantName string, streams userio.IOSt
 	return tenantOutput, nil
 }
 
-func Environment(cPlatRepoPath string, overrideEnvName string, streams userio.IOStreams) (*environment.Environment, error) {
-	cPlatRepoPath = environment.DirFromCPlatformRepoPath(cPlatRepoPath)
-	envs, err := environment.List(cPlatRepoPath)
+func Environment(cPlatRepoPath, overrideEnvName string, tenantOnboardedEnvs []string, streams userio.IOStreams) (*environment.Environment, error) {
+	cPlatEnvRepoPath := environment.DirFromCPlatformRepoPath(cPlatRepoPath)
+	tenantEnvs, err := getTenantEnvs(cPlatEnvRepoPath, tenantOnboardedEnvs)
+	if err != nil {
+		return nil, err
+	}
+	if len(*tenantEnvs) == 0 {
+		return nil, fmt.Errorf("tenant env %s doesn't exist in tenant configuration %s", overrideEnvName, coretnt.DirFromCPlatformPath(cPlatRepoPath))
+	}
+	inputEnv := createEnvInputSwitch(overrideEnvName, *tenantEnvs)
+	envOutput, err := inputEnv.GetValue(streams)
+	if err != nil {
+		return nil, fmt.Errorf("config repo path %s: %w", cPlatEnvRepoPath, err)
+	}
+	return envOutput, nil
+}
+
+func getTenantEnvs(cPlatEnvRepoPath string, tenantEnvNames []string) (*[]environment.Environment, error) {
+	allEnvs, err := environment.List(cPlatEnvRepoPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't load environment configuration: %w", err)
 	}
-	inputEnv := createEnvInputSwitch(overrideEnvName, envs)
-	envOutput, err := inputEnv.GetValue(streams)
-	if err != nil {
-		return nil, fmt.Errorf("config repo path %s: %w", cPlatRepoPath, err)
-	}
-	return envOutput, nil
+	return sliceFilter(allEnvs, func(e environment.Environment) bool {
+		return slices.Contains(tenantEnvNames, e.Environment)
+	}), nil
 }
 
 func createEnvInputSwitch(defaultEnv string, environments []environment.Environment) *userio.InputSourceSwitch[string, *environment.Environment] {
@@ -105,4 +118,15 @@ func sliceMap[S ~[]E, E any](s S, f func(E) string) []string {
 		vsm[i] = f(v)
 	}
 	return vsm
+}
+
+// apply function to each element of the slice and return a slice with elements satisfying the function
+func sliceFilter[T any](s []T, p func(T) bool) *[]T {
+	d := &[]T{}
+	for _, e := range s {
+		if p(e) {
+			*d = append(*d, e)
+		}
+	}
+	return d
 }

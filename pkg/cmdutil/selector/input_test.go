@@ -6,6 +6,8 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
+	"github.com/coreeng/developer-platform/pkg/environment"
+	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -44,26 +46,35 @@ func TestTenantSelectorInvalidCPlatRepo(t *testing.T) {
 func TestEnvironmentSelectorReturnsEnvironment(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
 
-	env, err := Environment(cPlatRepo.Path(), testdata.DevEnvironment(), streams)
+	env, err := Environment(cPlatRepo.Path(), testdata.DevEnvironment(), testdata.TenantEnvs(), streams)
 
 	assert.NoError(t, err)
 	assert.Equal(t, env.Environment, testdata.DevEnvironment())
+}
+
+func TestEnvironmentSelectorFilterOnTenantEnvs(t *testing.T) {
+	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
+
+	env, err := Environment(cPlatRepo.Path(), testdata.DevEnvironment(), []string{"not-tenant-envs"}, streams)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("tenant env %s doesn't exist in tenant configuration %s", testdata.DevEnvironment(), coretnt.DirFromCPlatformPath(cPlatRepo.Path())))
+	assert.Nil(t, env)
 }
 
 func TestEnvironmentSelectorNonExistingEnvironment(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
 	env := fmt.Sprintf("%s-env", t.Name())
 
-	tenant, err := Environment(cPlatRepo.Path(), env, streams)
+	tenant, err := Environment(cPlatRepo.Path(), env, testdata.TenantEnvs(), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/environments: environment %s invalid: cannot find %s environment, available envs: [dev prod]", cPlatRepo.Path(), env, env))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: environment %s invalid: cannot find %s environment, available envs: [dev prod]", environment.DirFromCPlatformRepoPath(cPlatRepo.Path()), env, env))
 	assert.Nil(t, tenant)
 }
 
 func TestEnvironmentSelectorInvalidCPlatRepo(t *testing.T) {
 	cPlatRepoPath := t.TempDir()
 
-	tenant, err := Environment(cPlatRepoPath, testdata.DevEnvironment(), streams)
+	tenant, err := Environment(cPlatRepoPath, testdata.DevEnvironment(), testdata.TenantEnvs(), streams)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load environment configuration: open %s/environments: no such file or directory", cPlatRepoPath))
 	assert.Nil(t, tenant)

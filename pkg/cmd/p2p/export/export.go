@@ -19,12 +19,12 @@ type exportOpts struct {
 	streams         userio.IOStreams
 }
 
-func (eo *exportOpts) processFlags(cplatRepoPath string) (*p2p.EnvVarContext, error) {
-	argTenant, err := selector.Tenant(cplatRepoPath, eo.tenant, eo.streams)
+func (eo *exportOpts) processFlags(cPlatRepoPath string) (*p2p.EnvVarContext, error) {
+	argTenant, err := selector.Tenant(cPlatRepoPath, eo.tenant, eo.streams)
 	if err != nil {
 		return nil, err
 	}
-	argEnv, err := selector.Environment(cplatRepoPath, eo.environmentName, eo.streams)
+	argEnv, err := selector.Environment(cPlatRepoPath, eo.environmentName, argTenant.Environments, eo.streams)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +114,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 		currDir,
 		"Local repository path to export variables for P2P, defaults to current exec directory",
 	)
+
 	return exportCommand, nil
 }
 
