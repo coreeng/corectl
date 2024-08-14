@@ -34,6 +34,7 @@ type CreateOp struct {
 type CreateResult struct {
 	RepositoryFullname git.RepositoryFullname
 	MonorepoMode       bool
+	PRUrl              string
 }
 
 func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err error) {
@@ -49,17 +50,30 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 		return result, err
 	}
 
-	if err := renderTemplateMaybe(op); err != nil {
-		return result, err
-	}
-
 	if isMonorepo {
+
+		branchName := "add-" + op.Name
+		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
+			BranchName:      branchName,
+			CreateIfMissing: true,
+		}); err != nil {
+			return result, err
+		}
+
+		if err := renderTemplateMaybe(op); err != nil {
+			return result, err
+		}
 		if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
 			return result, err
 		}
+
 		if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
 			return result, err
 		}
+		if err := localRepo.Push(op.GitAuth); err != nil {
+			return result, err
+		}
+
 		repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
 		if err != nil {
 			return result, err
@@ -68,7 +82,26 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 			MonorepoMode:       true,
 			RepositoryFullname: repoFullId.RepositoryFullname,
 		}
+
+		if pullRequest, _, err := githubClient.PullRequests.Create(
+			context.Background(),
+			repoFullId.Organization(),
+			repoFullId.Name(),
+			&github.NewPullRequest{
+				Base:  github.String(git.MainBranch),
+				Head:  github.String(branchName),
+				Title: github.String("Add " + op.Name),
+				Body:  github.String("Adding new application to the monorepo"),
+			}); err != nil {
+			return result, err
+		} else {
+			result.PRUrl = pullRequest.GetHTMLURL()
+		}
+
 	} else {
+		if err := renderTemplateMaybe(op); err != nil {
+			return result, err
+		}
 		if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
 			return result, err
 		}
@@ -83,13 +116,11 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 			MonorepoMode:       false,
 			RepositoryFullname: repoFullId.RepositoryFullname,
 		}
+		if err := localRepo.Push(op.GitAuth); err != nil {
+			return result, err
+		}
 
 	}
-
-	if err := localRepo.Push(op.GitAuth); err != nil {
-		return result, err
-	}
-
 	return result, nil
 }
 

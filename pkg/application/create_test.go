@@ -279,6 +279,14 @@ var _ = Describe("Create new application", func() {
 			newAppServerRepo.AssertInSyncWith(newAppLocalRepo)
 		})
 
+		It("returns empty PR url", func() {
+			Expect(createResult.PRUrl).To(Equal(""))
+		})
+
+		It("returns false for monorepo mode", func() {
+			Expect(createResult.MonorepoMode).To(BeFalse())
+		})
+
 	})
 	Context("monorepo mode", Ordered, func() {
 		var (
@@ -288,7 +296,9 @@ var _ = Describe("Create new application", func() {
 			createResult       CreateResult
 			createOp           CreateOp
 			getRepoCapture     *httpmock.HttpCaptureHandler[any]
-			appName            string = "new-app-name"
+			createPrCapture    *httpmock.HttpCaptureHandler[github.NewPullRequest]
+			appName            = "new-app-name"
+			newPrHtmlUrl       = "https://github.com/org/repo/pull/1"
 		)
 
 		BeforeAll(func() {
@@ -340,10 +350,20 @@ var _ = Describe("Create new application", func() {
 			fmt.Println(response)
 			getRepoCapture = httpmock.NewCaptureHandler[any](response)
 
+			createPrCapture = httpmock.NewCaptureHandler[github.NewPullRequest](
+				&github.PullRequest{
+					HTMLURL: &newPrHtmlUrl,
+				},
+			)
+
 			githubClient = github.NewClient(mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
 					mock.GetReposByOwnerByRepo,
 					getRepoCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsByOwnerByRepo,
+					createPrCapture.Func(),
 				),
 			))
 
@@ -352,7 +372,7 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("correctly identifies monorepo mode", func() {
+		It("returns true for monorepo mode", func() {
 			Expect(createResult.MonorepoMode).To(BeTrue())
 		})
 
@@ -402,6 +422,18 @@ var _ = Describe("Create new application", func() {
 
 		It("pushes all the changes to the remote repository", func() {
 			monorepoServerRepo.AssertInSyncWith(monorepoLocalRepo)
+		})
+
+		It("returns correct PR url", func() {
+			Expect(createResult.PRUrl).To(Equal(newPrHtmlUrl))
+		})
+
+		It("called create PR correctly", func() {
+			Expect(createPrCapture.Requests).To(HaveLen(1))
+			newPrRequest := createPrCapture.Requests[0]
+			Expect(*newPrRequest.Title).To(Equal("Add " + appName))
+			Expect(*newPrRequest.Head).To(Equal("add-" + appName))
+			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
 		})
 	})
 
