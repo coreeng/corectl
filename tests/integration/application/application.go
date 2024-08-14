@@ -64,12 +64,12 @@ var _ = Describe("application", Ordered, func() {
 		BeforeAll(func(ctx SpecContext) {
 			newAppName = "new-test-app-" + randstr.Hex(6)
 			appDir = filepath.Join(homeDir, newAppName)
-			Expect(corectl.Run(
+			_, err := corectl.Run(
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
 				"--tenant", testconfig.Cfg.Tenant,
-				"--nonint",
-			)).To(Succeed())
+				"--nonint")
+			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
 		AfterAll(func(ctx SpecContext) {

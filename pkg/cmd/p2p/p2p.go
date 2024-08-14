@@ -2,6 +2,7 @@ package p2p
 
 import (
 	p2penv "github.com/coreeng/corectl/pkg/cmd/p2p/env"
+	"github.com/coreeng/corectl/pkg/cmd/p2p/export"
 	"github.com/coreeng/corectl/pkg/cmd/p2p/promote"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
@@ -26,6 +27,12 @@ func NewP2PCmd(cfg *config.Config) (*cobra.Command, error) {
 	p2pCmd.AddCommand(p2pCommand)
 
 	p2pCommand, err = promote.NewP2PPromoteCmd()
+	if err != nil {
+		return nil, err
+	}
+	p2pCmd.AddCommand(p2pCommand)
+
+	p2pCommand, err = export.NewP2PExportCmd(cfg)
 	if err != nil {
 		return nil, err
 	}

@@ -82,7 +82,7 @@ func OpenLocalRepository(path string) (*LocalRepository, error) {
 	repository, err := git.PlainOpen(path)
 	localRepository.repo = repository
 	if err != nil {
-		return localRepository, err
+		return localRepository, fmt.Errorf("repository on path %s not found: %w", path, err)
 	}
 	worktree, err := repository.Worktree()
 	localRepository.worktree = worktree
@@ -304,4 +304,13 @@ func (localRepo *LocalRepository) SetRemote(url string) error {
 		URLs: []string{url},
 	})
 	return err
+}
+
+// HeadShortCommitHash returns short commit hash, currently no support for this feature in go-git lib (some discussions: https://github.com/src-d/go-git/issues/602)
+func (localRepo *LocalRepository) HeadShortCommitHash() (string, error) {
+	ref, err := localRepo.repo.Head()
+	if err != nil {
+		return "", err
+	}
+	return ref.Hash().String()[0:7], nil
 }

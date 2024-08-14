@@ -26,10 +26,10 @@ func NewCorectlClient(homeDir string) *CorectlClient {
 	}
 }
 
-func (c *CorectlClient) Run(args ...string) error {
+func (c *CorectlClient) RunInDir(dir string, args ...string) (string, error) {
 	cmd := exec.Command(c.binaryPath, args...)
 	cmd.Env = c.env
-	cmd.Dir = c.homeDir
+	cmd.Dir = dir
 
 	outBuf := bytes.Buffer{}
 	outWriter := bufio.NewWriter(&outBuf)
@@ -38,9 +38,13 @@ func (c *CorectlClient) Run(args ...string) error {
 
 	if err := cmd.Run(); err != nil {
 		println(outBuf.String())
-		return fmt.Errorf("%s: %w", outBuf.String(), err)
+		return "", fmt.Errorf("%s: %w", outBuf.String(), err)
 	}
-	return nil
+	return outBuf.String(), nil
+}
+
+func (c *CorectlClient) Run(args ...string) (string, error) {
+	return c.RunInDir(c.homeDir, args...)
 }
 
 func (c *CorectlClient) HomeDir() string {
