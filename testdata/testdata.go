@@ -66,6 +66,10 @@ func DevEnvironment() string {
 	return "dev"
 }
 
+func TenantEnvs() []string {
+	return []string{DevEnvironment(), ProdEnvironment()}
+}
+
 func ProdEnvironment() string {
 	return "prod"
 }
