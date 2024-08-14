@@ -155,6 +155,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	nextStepsMessage := fmt.Sprintf(
 		nextStepsMessageTemplateWithoutPR,
+		createdAppResult.PRUrl,
 		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
 		createdAppResult.RepositoryFullname.String(),
 		createdAppResult.RepositoryFullname.String(),
@@ -193,7 +194,10 @@ GitHub CLI commands:
   gh workflow run <workflow-id> -R %s
 `
 	nextStepsMessageTemplateWithoutPR = `
-Your application is ready to be deployed to the Core Platform!
+Note: to complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
+PR url: %s
+
+After the PR is merged, your application is ready to be deployed to the Core Platform!
 It will either happen with next commit or you can do it manually by triggering P2P workflow.
 To do it, use GitHub web-interface or GitHub CLI.
 Workflows link: %s
