@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -31,6 +32,8 @@ func TestSuite(t *testing.T) {
 
 var _ = BeforeSuite(func(ctx SpecContext) {
 	testRunId := randstr.String(6)
+	testconfig.SetTestRunId(testRunId)
+	fmt.Println("Test Run ID: ", testRunId)
 	tempDir := GinkgoT().TempDir()
 	githubClient := testconfig.NewGitHubClient()
 	gitAuth := git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken)
