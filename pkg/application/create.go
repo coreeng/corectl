@@ -58,71 +58,75 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 	}
 
 	if isMonorepo {
-
-		branchName := "add-" + op.Name
-		if err := checkoutNewBranch(localRepo, branchName); err != nil {
-			return result, err
-		}
-
-		if err := renderTemplateMaybe(op); err != nil {
-			return result, err
-		}
-		if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
-			return result, err
-		}
-
-		if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
-			return result, err
-		}
-
-		if err := localRepo.Push(op.GitAuth); err != nil {
-			return result, err
-		}
-
-		repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
-		if err != nil {
-			return result, err
-		}
-
-		pullRequest, err := createPR(op.Name, branchName, githubClient, repoFullId)
-		if err != nil {
-			return result, err
-		}
-
-		result = CreateResult{
-			MonorepoMode:       true,
-			RepositoryFullname: repoFullId.RepositoryFullname,
-			PRUrl:              pullRequest.GetHTMLURL(),
-		}
-
+		return handleMonorepo(op, githubClient, localRepo)
 	} else {
-		if err := renderTemplateMaybe(op); err != nil {
-			return result, err
-		}
-
-		if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
-			return result, err
-		}
-
-		repoFullId, err := createRemoteRepository(op, githubClient, localRepo)
-		if err != nil {
-			return result, err
-		}
-		if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
-			return result, err
-		}
-
-		if err := localRepo.Push(op.GitAuth); err != nil {
-			return result, err
-		}
-
-		result = CreateResult{
-			MonorepoMode:       false,
-			RepositoryFullname: repoFullId.RepositoryFullname,
-		}
-
+		return handleSingleRepo(op, githubClient, localRepo)
 	}
-	return result, nil
+}
+
+func handleSingleRepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
+	if err := renderTemplateMaybe(op); err != nil {
+		return result, err
+	}
+
+	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
+		return result, err
+	}
+
+	repoFullId, err := createRemoteRepository(op, githubClient, localRepo)
+	if err != nil {
+		return result, err
+	}
+	if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
+		return result, err
+	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	return CreateResult{
+		MonorepoMode:       false,
+		RepositoryFullname: repoFullId.RepositoryFullname,
+	}, nil
+}
+
+func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
+	branchName := "add-" + op.Name
+	if err := checkoutNewBranch(localRepo, branchName); err != nil {
+		return result, err
+	}
+
+	if err := renderTemplateMaybe(op); err != nil {
+		return result, err
+	}
+	if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
+		return result, err
+	}
+
+	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
+		return result, err
+	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
+	if err != nil {
+		return result, err
+	}
+
+	pullRequest, err := createPR(op.Name, branchName, githubClient, repoFullId)
+	if err != nil {
+		return result, err
+	}
+
+	return CreateResult{
+		MonorepoMode:       true,
+		RepositoryFullname: repoFullId.RepositoryFullname,
+		PRUrl:              pullRequest.GetHTMLURL(),
+	}, nil
 }
 
 func createPR(name string, branchName string, githubClient *github.Client, repoFullId git.GithubRepoFullId) (*github.PullRequest, error) {
@@ -342,7 +346,7 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 		if err == nil {
 			return fmt.Errorf("%s/%s repository already exists", op.OrgName, op.Name)
 		}
-		if err != nil && response.StatusCode != http.StatusNotFound {
+		if response.StatusCode != http.StatusNotFound {
 			return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
 		}
 	}
