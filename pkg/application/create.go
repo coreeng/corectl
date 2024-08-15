@@ -129,7 +129,7 @@ func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.Loc
 	}, nil
 }
 
-func createPR(name string, branchName string, githubClient *github.Client, repoFullId git.GithubRepoFullId) (*github.PullRequest, error) {
+func createPR(name string, branchName string, githubClient *github.Client, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
 	pullRequest, _, err := githubClient.PullRequests.Create(
 		context.Background(),
 		repoFullId.Organization(),
@@ -143,10 +143,10 @@ func createPR(name string, branchName string, githubClient *github.Client, repoF
 	return pullRequest, err
 }
 
-func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (*git.GithubRepoFullId, error) {
 	remoteRepoName, err := localRepo.GetRemoteRepoName()
 	if err != nil {
-		return git.GithubRepoFullId{}, err
+		return nil, err
 	}
 
 	githubRepo, _, err := githubClient.Repositories.Get(
@@ -155,10 +155,11 @@ func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRe
 		remoteRepoName,
 	)
 	if err != nil {
-		return git.GithubRepoFullId{}, err
+		return nil, err
 	}
 
-	return git.NewGithubRepoFullId(githubRepo), nil
+	repo := git.NewGithubRepoFullId(githubRepo)
+	return &repo, nil
 }
 
 func createRemoteRepository(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
