@@ -13,6 +13,7 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"os"
 	"path/filepath"
 	"slices"
 )
@@ -136,8 +137,17 @@ var _ = Describe("Create new application", func() {
 				ExtendedTestEnvs: []environment.Environment{devEnv},
 				ProdEnvs:         []environment.Environment{prodEnv},
 				Template: &template.FulfilledTemplate{
-					Spec:      templateToUse,
-					Arguments: nil,
+					Spec: templateToUse,
+					Arguments: []template.Argument{
+						{
+							Name:  "name",
+							Value: "new-app-name",
+						},
+						{
+							Name:  "tenant",
+							Value: defaultTenant.Name,
+						},
+					},
 				},
 			}, githubClient)
 			Expect(err).NotTo(HaveOccurred())
@@ -255,8 +265,12 @@ var _ = Describe("Create new application", func() {
 				To: head.Hash(),
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
-						Message:      "Initial commit\n[skip ci]",
-						ChangedFiles: []string{"./README.md"},
+						Message: "Initial commit\n[skip ci]",
+						ChangedFiles: []string{
+							"README.md",
+							".github/workflows/fast-feedback.yaml",
+							".github/workflows/extended-test.yaml",
+						},
 					},
 				},
 			})
@@ -264,5 +278,220 @@ var _ = Describe("Create new application", func() {
 		It("pushes all the changes to the remote repository", func() {
 			newAppServerRepo.AssertInSyncWith(newAppLocalRepo)
 		})
+
+		It("returns empty PR url", func() {
+			Expect(createResult.PRUrl).To(Equal(""))
+		})
+
+		It("returns false for monorepo mode", func() {
+			Expect(createResult.MonorepoMode).To(BeFalse())
+		})
+
 	})
+
+	Context("monorepo mode", Ordered, func() {
+		var (
+			monorepoServerRepo *gittest.BareRepository
+			monorepoLocalRepo  *git.LocalRepository
+			newAppLocalPath    string
+			createResult       CreateResult
+			createOp           CreateOp
+			getRepoCapture     *httpmock.HttpCaptureHandler[any]
+			createPrCapture    *httpmock.HttpCaptureHandler[github.NewPullRequest]
+			appName            = "new-app-name"
+			newPrHtmlUrl       = "https://github.com/org/repo/pull/1"
+		)
+
+		BeforeAll(func() {
+			var err error
+			monorepoServerRepo, monorepoLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
+				TargetBareRepoDir:  t.TempDir(),
+				TargetLocalRepoDir: t.TempDir(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), appName)
+
+			createOp = CreateOp{
+				Name:             appName,
+				OrgName:          "github-org-name",
+				LocalPath:        newAppLocalPath,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template: &template.FulfilledTemplate{
+					Spec: templateToUse,
+					Arguments: []template.Argument{
+						{
+							Name:  "name",
+							Value: appName,
+						},
+						{
+							Name:  "tenant",
+							Value: defaultTenant.Name,
+						},
+					},
+				},
+			}
+
+			url := monorepoServerRepo.LocalCloneUrl()
+			response := &github.Repository{
+				ID:   &newRepoId,
+				Name: &newAppName,
+				Owner: &github.User{
+					Login: &githubOrg,
+				},
+				CloneURL: &url,
+			}
+			fmt.Println(response)
+			getRepoCapture = httpmock.NewCaptureHandler[any](response)
+
+			createPrCapture = httpmock.NewCaptureHandler[github.NewPullRequest](
+				&github.PullRequest{
+					HTMLURL: &newPrHtmlUrl,
+				},
+			)
+
+			githubClient = github.NewClient(mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.GetReposByOwnerByRepo,
+					getRepoCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					mock.PostReposPullsByOwnerByRepo,
+					createPrCapture.Func(),
+				),
+			))
+
+			// Execute Create function
+			createResult, err = Create(createOp, githubClient)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns true for monorepo mode", func() {
+			Expect(createResult.MonorepoMode).To(BeTrue())
+		})
+
+		It("creates the new application directory within the monorepo", func() {
+			Expect(newAppLocalPath).To(BeADirectory())
+		})
+
+		It("moves GitHub workflows to the root .github/workflows directory", func() {
+			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
+			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")).To(BeAnExistingFile())
+			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-extended-test.yaml")).To(BeAnExistingFile())
+		})
+
+		It("renders template with passed arguments", func() {
+			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
+
+			content := readFileContent(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")
+			Expect(content).To(ContainSubstring(defaultTenant.Name))
+			Expect(content).To(ContainSubstring(appName))
+
+			content = readFileContent(rootWorkflowsPath, "new-app-name-extended-test.yaml")
+			Expect(content).To(ContainSubstring(defaultTenant.Name))
+			Expect(content).To(ContainSubstring(appName))
+		})
+
+		It("does not leave .github directory in the new application directory", func() {
+			Expect(filepath.Join(newAppLocalPath, ".github")).NotTo(BeADirectory())
+		})
+
+		It("commits changes to the monorepo", func() {
+			head, err := monorepoLocalRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			monorepoServerRepo.AssertCommits(gittest.AssertCommitOp{
+				To: head.Hash(),
+				ExpectedCommits: []gittest.ExpectedCommit{
+					{
+						Message: "New app: new-app-name\n[skip ci]",
+						ChangedFiles: []string{
+							"new-app-name/README.md",
+							".github/workflows/new-app-name-fast-feedback.yaml",
+							".github/workflows/new-app-name-extended-test.yaml",
+						},
+					},
+				},
+			})
+		})
+
+		It("pushes all the changes to the remote repository", func() {
+			monorepoServerRepo.AssertInSyncWith(monorepoLocalRepo)
+		})
+
+		It("returns correct PR url", func() {
+			Expect(createResult.PRUrl).To(Equal(newPrHtmlUrl))
+		})
+
+		It("called create PR correctly", func() {
+			Expect(createPrCapture.Requests).To(HaveLen(1))
+			newPrRequest := createPrCapture.Requests[0]
+			Expect(*newPrRequest.Title).To(Equal("Add new-app-name application"))
+			Expect(*newPrRequest.Body).To(Equal("Adding `new-app-name` application"))
+			Expect(*newPrRequest.Head).To(Equal("add-" + appName))
+			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
+		})
+	})
+	Context("monorepo mode - when in error", Ordered, func() {
+		var (
+			newAppLocalPath   string
+			monorepoLocalPath string
+		)
+		BeforeAll(func() {
+			_, monorepoLocalRepo, err := gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
+				TargetBareRepoDir:  t.TempDir(),
+				TargetLocalRepoDir: t.TempDir(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			templateToUse, _ := template.FindByName(templatesLocalRepo.Path(), "incorrect-template")
+
+			monorepoLocalPath = monorepoLocalRepo.Path()
+			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")
+
+			executeCreate := func() {
+				createOp := CreateOp{
+					Name:             "app-with-error",
+					OrgName:          "github-org-name",
+					LocalPath:        newAppLocalPath,
+					Tenant:           defaultTenant,
+					FastFeedbackEnvs: []environment.Environment{devEnv},
+					ExtendedTestEnvs: []environment.Environment{devEnv},
+					ProdEnvs:         []environment.Environment{prodEnv},
+					Template: &template.FulfilledTemplate{
+						Spec:      templateToUse,
+						Arguments: []template.Argument{},
+					},
+				}
+
+				_, _ = Create(createOp, githubClient)
+			}
+
+			Expect(executeCreate).To(Panic())
+		})
+
+		It("deletes newly created app directory", func() {
+			Expect(newAppLocalPath).NotTo(BeADirectory())
+		})
+
+		It("don't delete monorepo directory", func() {
+			Expect(monorepoLocalPath).To(BeADirectory())
+		})
+
+	})
+
 })
+
+func readFileContent(path ...string) string {
+	filePath := filepath.Join(path...)
+	content, err := os.ReadFile(filePath)
+	Expect(err).NotTo(HaveOccurred())
+	return string(content)
+}

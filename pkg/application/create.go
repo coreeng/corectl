@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -10,9 +11,11 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/coreeng/developer-platform/pkg/p2p"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 )
 
@@ -30,41 +33,218 @@ type CreateOp struct {
 
 type CreateResult struct {
 	RepositoryFullname git.RepositoryFullname
+	MonorepoMode       bool
+	PRUrl              string
+}
+
+func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error {
+	return localRepo.CheckoutBranch(&git.CheckoutOp{
+		BranchName:      branchName,
+		CreateIfMissing: true,
+	})
 }
 
 func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err error) {
-	result = CreateResult{}
-
 	undoSteps := undo.NewSteps()
-	defer func() {
-		if err != nil {
-			errs := undoSteps.Undo()
-			err = undo.FormatError("create new application", err, errs)
-		}
-	}()
+	defer undoWhenError(&undoSteps)
 
-	if err = os.MkdirAll(op.LocalPath, 0o755); err != nil {
+	if err := prepareLocalPath(op.LocalPath, &undoSteps); err != nil {
 		return result, err
 	}
-	localRepo, err := git.InitLocalRepository(op.LocalPath)
+
+	localRepo, isMonorepo, err := setupLocalRepository(op.LocalPath)
 	if err != nil {
 		return result, err
 	}
+
+	if isMonorepo {
+		return handleMonorepo(op, githubClient, localRepo)
+	} else {
+		return handleSingleRepo(op, githubClient, localRepo)
+	}
+}
+
+func handleSingleRepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
+	if err := renderTemplateMaybe(op); err != nil {
+		return result, err
+	}
+
+	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
+		return result, err
+	}
+
+	repoFullId, err := createRemoteRepository(op, githubClient, localRepo)
+	if err != nil {
+		return result, err
+	}
+	if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
+		return result, err
+	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	return CreateResult{
+		MonorepoMode:       false,
+		RepositoryFullname: repoFullId.RepositoryFullname,
+	}, nil
+}
+
+func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
+	branchName := "add-" + op.Name
+	if err := checkoutNewBranch(localRepo, branchName); err != nil {
+		return result, err
+	}
+
+	if err := renderTemplateMaybe(op); err != nil {
+		return result, err
+	}
+	if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
+		return result, err
+	}
+
+	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
+		return result, err
+	}
+
+	if err := localRepo.Push(op.GitAuth); err != nil {
+		return result, err
+	}
+
+	repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
+	if err != nil {
+		return result, err
+	}
+
+	pullRequest, err := createPR(op.Name, branchName, githubClient, repoFullId)
+	if err != nil {
+		return result, err
+	}
+
+	return CreateResult{
+		MonorepoMode:       true,
+		RepositoryFullname: repoFullId.RepositoryFullname,
+		PRUrl:              pullRequest.GetHTMLURL(),
+	}, nil
+}
+
+func createPR(name string, branchName string, githubClient *github.Client, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
+	pullRequest, _, err := githubClient.PullRequests.Create(
+		context.Background(),
+		repoFullId.Organization(),
+		repoFullId.Name(),
+		&github.NewPullRequest{
+			Base:  github.String(git.MainBranch),
+			Head:  github.String(branchName),
+			Title: github.String("Add " + name + " application"),
+			Body:  github.String(fmt.Sprintf("Adding `%s` application", name)),
+		})
+	return pullRequest, err
+}
+
+func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (*git.GithubRepoFullId, error) {
+	remoteRepoName, err := localRepo.GetRemoteRepoName()
+	if err != nil {
+		return nil, err
+	}
+
+	githubRepo, _, err := githubClient.Repositories.Get(
+		context.Background(),
+		op.OrgName,
+		remoteRepoName,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := git.NewGithubRepoFullId(githubRepo)
+	return &repo, nil
+}
+
+func createRemoteRepository(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+	githubRepo, err := createGithubRepository(op, githubClient)
+	if err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+
+	repoFullId := git.NewGithubRepoFullId(githubRepo)
+
+	if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+	return repoFullId, nil
+}
+
+func undoWhenError(undoSteps *undo.Steps) {
+	if err := recover(); err != nil {
+		errs := undoSteps.Undo()
+		panic(undo.FormatError("create new application", fmt.Errorf("%v", err), errs))
+	}
+}
+
+func prepareLocalPath(localPath string, undoSteps *undo.Steps) error {
+	if err := os.MkdirAll(localPath, 0o755); err != nil {
+		return err
+	}
 	undoSteps.Add(func() error {
-		return os.RemoveAll(op.LocalPath)
+		return os.RemoveAll(localPath)
 	})
-	if op.Template != nil {
-		if err = template.Render(op.Template, op.LocalPath); err != nil {
-			return result, err
-		}
-		if err = localRepo.AddAll(); err != nil {
-			return CreateResult{}, err
-		}
-		if err = localRepo.Commit(&git.CommitOp{Message: "Initial commit\n[skip ci]"}); err != nil {
-			return result, err
+	return nil
+}
+
+func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) {
+	localRepo, isMonorepo, err := openMonorepoMaybe(localPath)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if localRepo.Repository() == nil {
+		var err error
+		localRepo, err = git.InitLocalRepository(localPath)
+		if err != nil {
+			return nil, false, err
 		}
 	}
 
+	return localRepo, isMonorepo, nil
+}
+
+func openMonorepoMaybe(localPath string) (localRepo *git.LocalRepository, isMonorepo bool, err error) {
+	localRepo, err = git.OpenLocalRepository(filepath.Dir(localPath))
+	if err != nil && !errors.Is(err, gogit.ErrRepositoryNotExists) {
+		return nil, false, err
+	}
+	isMonorepo = localRepo.Repository() != nil
+	return localRepo, isMonorepo, nil
+}
+
+func renderTemplateMaybe(op CreateOp) error {
+	if op.Template == nil {
+		return nil
+	}
+	return template.Render(op.Template, op.LocalPath)
+}
+
+func moveGithubWorkflowsToRootMaybe(op CreateOp) error {
+	exists, err := githubWorkflowsExist(op.LocalPath)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-")
+	}
+	return nil
+}
+
+func commitAllChanges(localRepo *git.LocalRepository, message string) error {
+	if err := localRepo.AddAll(); err != nil {
+		return err
+	}
+	return localRepo.Commit(&git.CommitOp{Message: message})
+}
+
+func createGithubRepository(op CreateOp, githubClient *github.Client) (*github.Repository, error) {
 	deleteBranchOnMerge := true
 	visibility := "private"
 	githubRepo, _, err := githubClient.Repositories.Create(
@@ -76,29 +256,59 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 			Visibility:          &visibility,
 		},
 	)
-	if err != nil {
-		return result, err
-	}
-	repoFullId := git.NewGithubRepoFullId(githubRepo)
-	result.RepositoryFullname = repoFullId.RepositoryFullname
+	return githubRepo, err
+}
 
-	if err = localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
-		return result, err
-	}
-	if err = localRepo.Push(op.GitAuth); err != nil {
-		return result, err
-	}
-
-	if err = p2p.SynchronizeRepository(&p2p.SynchronizeOp{
+func synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId, githubClient *github.Client) error {
+	return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
 		RepositoryId:     &repoFullId,
 		Tenant:           op.Tenant,
 		FastFeedbackEnvs: op.FastFeedbackEnvs,
 		ExtendedTestEnvs: op.ExtendedTestEnvs,
 		ProdEnvs:         op.ProdEnvs,
-	}, githubClient); err != nil {
-		return result, err
+	}, githubClient)
+}
+func moveGithubWorkflowsToRoot(path string, filePrefix string) error {
+	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
+	rootWorkflowsPath := filepath.Join(filepath.Dir(path), ".github", "workflows")
+	dir, err := os.ReadDir(githubWorkflowsPath)
+	if err != nil {
+		return err
 	}
-	return result, nil
+	err = os.MkdirAll(rootWorkflowsPath, 0o755)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range dir {
+		if file.IsDir() {
+			continue
+		}
+		src := filepath.Join(githubWorkflowsPath, file.Name())
+		dst := filepath.Join(rootWorkflowsPath, filePrefix+file.Name())
+
+		err = os.Rename(src, dst)
+		if err != nil {
+			return err
+		}
+	}
+	err = os.RemoveAll(filepath.Join(path, ".github"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func githubWorkflowsExist(path string) (bool, error) {
+	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
+	dir, err := os.ReadDir(githubWorkflowsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Directory doesn't exist, but that's not an error for our purposes
+		}
+		return false, fmt.Errorf("error checking .github/workflows directory: %w", err)
+	}
+	return len(dir) > 0, nil
 }
 
 func ValidateCreate(op CreateOp, githubClient *github.Client) error {
@@ -122,16 +332,24 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	if err != nil {
 		return fmt.Errorf("%s: %v", op.LocalPath, err)
 	}
-	_, response, err := githubClient.Repositories.Get(
-		context.Background(),
-		op.OrgName,
-		op.Name,
-	)
-	if err == nil {
-		return fmt.Errorf("%s/%s repository is already exists", op.OrgName, op.Name)
+
+	_, isMonorepo, err := openMonorepoMaybe(op.LocalPath)
+	if err != nil {
+		return fmt.Errorf("checking for monorepo failed with %v", err)
 	}
-	if err != nil && response.StatusCode != http.StatusNotFound {
-		return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
+
+	if isMonorepo {
+		_, response, err := githubClient.Repositories.Get(
+			context.Background(),
+			op.OrgName,
+			op.Name,
+		)
+		if err == nil {
+			return fmt.Errorf("%s/%s repository already exists", op.OrgName, op.Name)
+		}
+		if response.StatusCode != http.StatusNotFound {
+			return fmt.Errorf("error while checking if %s/%s repository exists", op.OrgName, op.Name)
+		}
 	}
 	return nil
 }

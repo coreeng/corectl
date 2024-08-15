@@ -32,7 +32,17 @@ func NewAppCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 	var appCreateCmd = &cobra.Command{
 		Use:   "create <app-name> [<local-path>]",
 		Short: "Create new application",
-		Args:  cobra.RangeArgs(1, 2),
+		Long: `Creates new application:
+
+- create a git repository locally and initializes it with application skeleton generated from a template
+- template is rendered with arguments: {{name}}, {{tenant}}
+- create a new github repository with p2p related variables
+- create a new PR to environment repository with configuration update for the new application (if necessary)
+
+NOTE: If parent directory is an existing git repository it will add a new application to it 
+      without creating a new remote repository.
+`,
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Name = args[0]
 			if len(args) > 1 {
@@ -137,29 +147,45 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
-
-	tenantUpdateResult, err := createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
-	if err != nil {
-		return err
+	if createdAppResult.MonorepoMode {
+		opts.Streams.Info("Added ", opts.Name, " to repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+	} else {
+		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
 	}
 
 	nextStepsMessage := fmt.Sprintf(
-		nextStepsMessageTemplate,
-		tenantUpdateResult.PRUrl,
+		nextStepsMessageTemplateWithoutPR,
+		createdAppResult.PRUrl,
 		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
 		createdAppResult.RepositoryFullname.String(),
 		createdAppResult.RepositoryFullname.String(),
 	)
+
+	var tenantUpdateResult tenant.CreateOrUpdateResult
+	if !createdAppResult.MonorepoMode {
+		tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
+		if err != nil {
+			return err
+		}
+		nextStepsMessage = fmt.Sprintf(
+			nextStepsMessageTemplateWithPR,
+			tenantUpdateResult.PRUrl,
+			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+			createdAppResult.RepositoryFullname.String(),
+			createdAppResult.RepositoryFullname.String(),
+		)
+	}
+
 	opts.Streams.Info(nextStepsMessage)
 	return nil
 }
 
-const nextStepsMessageTemplate = `
+const (
+	nextStepsMessageTemplateWithPR = `
 Note: to complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
 PR url: %s
 
-After the PR is merged, you application is ready to be deployed to the Core Platform!
+After the PR is merged, your application is ready to be deployed to the Core Platform!
 It will either happen with next commit or you can do it manually by triggering P2P workflow.
 To do it, use GitHub web-interface or GitHub CLI.
 Workflows link: %s
@@ -167,6 +193,19 @@ GitHub CLI commands:
   gh workflow list -R %s
   gh workflow run <workflow-id> -R %s
 `
+	nextStepsMessageTemplateWithoutPR = `
+Note: to complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
+PR url: %s
+
+After the PR is merged, your application is ready to be deployed to the Core Platform!
+It will either happen with next commit or you can do it manually by triggering P2P workflow.
+To do it, use GitHub web-interface or GitHub CLI.
+Workflows link: %s
+GitHub CLI commands:
+  gh workflow list -R %s
+  gh workflow run <workflow-id> -R %s
+`
+)
 
 func createNewApp(
 	opts *AppCreateOpt,
@@ -184,8 +223,17 @@ func createNewApp(
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
 	fulfilledTemplate := template.FulfilledTemplate{
-		Spec:      fromTemplate,
-		Arguments: []template.Argument{},
+		Spec: fromTemplate,
+		Arguments: []template.Argument{
+			{
+				Name:  "name",
+				Value: opts.Name,
+			},
+			{
+				Name:  "tenant",
+				Value: opts.Tenant,
+			},
+		},
 	}
 
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
