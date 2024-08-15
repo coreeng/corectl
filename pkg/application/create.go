@@ -222,7 +222,11 @@ func renderTemplateMaybe(op CreateOp) error {
 }
 
 func moveGithubWorkflowsToRootMaybe(op CreateOp) error {
-	if githubWorkflowsExist(op.LocalPath) {
+	exists, err := githubWorkflowsExist(op.LocalPath)
+	if err != nil {
+		return err
+	}
+	if exists {
 		return moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-")
 	}
 	return nil
@@ -290,10 +294,16 @@ func moveGithubWorkflowsToRoot(path string, filePrefix string) error {
 	return nil
 }
 
-func githubWorkflowsExist(path string) bool {
+func githubWorkflowsExist(path string) (bool, error) {
 	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
 	dir, err := os.ReadDir(githubWorkflowsPath)
-	return err == nil && len(dir) > 0
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Directory doesn't exist, but that's not an error for our purposes
+		}
+		return false, fmt.Errorf("error checking .github/workflows directory: %w", err)
+	}
+	return len(dir) > 0, nil
 }
 
 func ValidateCreate(op CreateOp, githubClient *github.Client) error {
