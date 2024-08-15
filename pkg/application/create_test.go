@@ -288,6 +288,7 @@ var _ = Describe("Create new application", func() {
 		})
 
 	})
+
 	Context("monorepo mode", Ordered, func() {
 		var (
 			monorepoServerRepo *gittest.BareRepository
@@ -436,6 +437,54 @@ var _ = Describe("Create new application", func() {
 			Expect(*newPrRequest.Head).To(Equal("add-" + appName))
 			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
 		})
+	})
+	Context("monorepo mode - when in error", Ordered, func() {
+		var (
+			newAppLocalPath   string
+			monorepoLocalPath string
+		)
+		BeforeAll(func() {
+			_, monorepoLocalRepo, err := gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
+				TargetBareRepoDir:  t.TempDir(),
+				TargetLocalRepoDir: t.TempDir(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			templateToUse, _ := template.FindByName(templatesLocalRepo.Path(), "incorrect-template")
+
+			monorepoLocalPath = monorepoLocalRepo.Path()
+			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")
+
+			executeCreate := func() {
+				createOp := CreateOp{
+					Name:             "app-with-error",
+					OrgName:          "github-org-name",
+					LocalPath:        newAppLocalPath,
+					Tenant:           defaultTenant,
+					FastFeedbackEnvs: []environment.Environment{devEnv},
+					ExtendedTestEnvs: []environment.Environment{devEnv},
+					ProdEnvs:         []environment.Environment{prodEnv},
+					Template: &template.FulfilledTemplate{
+						Spec:      templateToUse,
+						Arguments: []template.Argument{},
+					},
+				}
+
+				_, _ = Create(createOp, githubClient)
+			}
+
+			Expect(executeCreate).To(Panic())
+		})
+
+		It("deletes newly created app directory", func() {
+			Expect(newAppLocalPath).NotTo(BeADirectory())
+		})
+
+		It("don't delete monorepo directory", func() {
+			Expect(monorepoLocalPath).To(BeADirectory())
+		})
+
 	})
 
 })
