@@ -8,7 +8,12 @@ import (
 	"os"
 )
 
+type TemplateRenderOpts struct {
+	IgnoreChecks bool
+}
+
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
+	var opts = TemplateRenderOpts{}
 	templateRenderCmd := &cobra.Command{
 		Use:   "render <template-name> <target-path>",
 		Short: "Render template locally",
@@ -26,8 +31,10 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("%s: not a directory", targetPath)
 			}
 
-			if _, err = config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-				return err
+			if !opts.IgnoreChecks {
+				if _, err = config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+					return err
+				}
 			}
 
 			templatesPath := cfg.Repositories.Templates.Value
@@ -50,6 +57,13 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			return nil
 		},
 	}
+
+	templateRenderCmd.Flags().BoolVar(
+		&opts.IgnoreChecks,
+		"ignore-checks",
+		false,
+		"Ignore checks for uncommitted changes and branch status",
+	)
 
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,
