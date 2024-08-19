@@ -2,14 +2,17 @@ package render
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/spf13/cobra"
-	"os"
+	"gopkg.in/yaml.v3"
 )
 
 type TemplateRenderOpts struct {
 	IgnoreChecks bool
+	ParamsFile   string
 }
 
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
@@ -46,10 +49,16 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("%s: unknown template", templateName)
 			}
 
+			arguments, err := parseParamsFileAndConvertToArguments(opts.ParamsFile)
+			if err != nil {
+				return err
+			}
+
 			fulfilledT := template.FulfilledTemplate{
 				Spec:      t,
-				Arguments: []template.Argument{},
+				Arguments: arguments,
 			}
+
 			if err := template.Render(&fulfilledT, targetPath); err != nil {
 				return err
 			}
@@ -65,10 +74,41 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 		"Ignore checks for uncommitted changes and branch status",
 	)
 
+	templateRenderCmd.Flags().StringVar(
+		&opts.ParamsFile,
+		"params-file",
+		"",
+		"Path to YAML file containing template parameters",
+	)
+
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,
 		templateRenderCmd.Flags(),
 	)
 
 	return templateRenderCmd
+}
+
+func parseParamsFileAndConvertToArguments(paramsFile string) ([]template.Argument, error) {
+	var params map[string]string
+	var arguments []template.Argument
+
+	if paramsFile != "" {
+		fileContent, err := os.ReadFile(paramsFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read params file: %w", err)
+		}
+		if err := yaml.Unmarshal(fileContent, &params); err != nil {
+			return nil, fmt.Errorf("failed to parse params file: %w", err)
+		}
+	}
+
+	for key, value := range params {
+		arguments = append(arguments, template.Argument{
+			Name:  key,
+			Value: value,
+		})
+	}
+
+	return arguments, nil
 }
