@@ -11,8 +11,11 @@ import (
 )
 
 type TemplateRenderOpts struct {
-	IgnoreChecks bool
-	ParamsFile   string
+	IgnoreChecks  bool
+	ParamsFile    string
+	TemplateName  string
+	TargetPath    string
+	TemplatesPath string
 }
 
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
@@ -22,48 +25,17 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 		Short: "Render template locally",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateName := args[0]
-			targetPath := args[1]
-
-			stat, err := os.Stat(targetPath)
-			if err != nil {
-				pathError := err.(*os.PathError)
-				return fmt.Errorf("%s: %v", pathError.Path, pathError.Err)
-			}
-			if !stat.IsDir() {
-				return fmt.Errorf("%s: not a directory", targetPath)
-			}
+			opts.TemplateName = args[0]
+			opts.TargetPath = args[1]
+			opts.TemplatesPath = cfg.Repositories.Templates.Value
 
 			if !opts.IgnoreChecks {
-				if _, err = config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
 					return err
 				}
 			}
 
-			templatesPath := cfg.Repositories.Templates.Value
-			t, err := template.FindByName(templatesPath, templateName)
-			if err != nil {
-				return err
-			}
-			if t == nil {
-				return fmt.Errorf("%s: unknown template", templateName)
-			}
-
-			arguments, err := parseParamsFileAndConvertToArguments(opts.ParamsFile)
-			if err != nil {
-				return err
-			}
-
-			fulfilledT := template.FulfilledTemplate{
-				Spec:      t,
-				Arguments: arguments,
-			}
-
-			if err := template.Render(&fulfilledT, targetPath); err != nil {
-				return err
-			}
-
-			return nil
+			return run(opts)
 		},
 	}
 
@@ -87,6 +59,41 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	)
 
 	return templateRenderCmd
+}
+
+func run(opts TemplateRenderOpts) error {
+	stat, err := os.Stat(opts.TargetPath)
+	if err != nil {
+		pathError := err.(*os.PathError)
+		return fmt.Errorf("%s: %v", pathError.Path, pathError.Err)
+	}
+	if !stat.IsDir() {
+		return fmt.Errorf("%s: not a directory", opts.TargetPath)
+	}
+
+	templ, err := template.FindByName(opts.TemplatesPath, opts.TemplateName)
+	if err != nil {
+		return err
+	}
+	if templ == nil {
+		return fmt.Errorf("%s: unknown template", opts.TemplateName)
+	}
+
+	arguments, err := parseParamsFileAndConvertToArguments(opts.ParamsFile)
+	if err != nil {
+		return err
+	}
+
+	fulfilledT := template.FulfilledTemplate{
+		Spec:      templ,
+		Arguments: arguments,
+	}
+
+	if err := template.Render(&fulfilledT, opts.TargetPath); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func parseParamsFileAndConvertToArguments(paramsFile string) ([]template.Argument, error) {
