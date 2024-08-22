@@ -15,71 +15,82 @@ func TestAppCreateSuite(t *testing.T) {
 
 var _ = Describe("AppCreateOpt", func() {
 	Describe("createTemplateInput", func() {
-		var opts *AppCreateOpt
+		var (
+			opts              *AppCreateOpt
+			existingTemplates []template.Spec
+			input             userio.InputSourceSwitch[string, *template.Spec]
+		)
 
-		BeforeEach(func() {
-			opts = &AppCreateOpt{}
+		Context("when creating template input with existing templates", func() {
+			BeforeEach(func() {
+				opts = &AppCreateOpt{}
+				existingTemplates = []template.Spec{
+					{Name: "template1"},
+					{Name: "template2"},
+					{Name: "template3"},
+				}
+				input = opts.createTemplateInput(existingTemplates)
+			})
+
+			It("should create a template input with an 'empty' option and existing templates", func() {
+				prompt, err := input.InteractivePromptFn()
+
+				Expect(err).NotTo(HaveOccurred())
+				singleSelect, ok := prompt.(*userio.SingleSelect)
+				Expect(ok).To(BeTrue())
+				Expect(singleSelect.Items).To(Equal([]string{"<empty>", "template1", "template2", "template3"}))
+			})
+
+			It("should handle empty selection", func() {
+				result, err := input.ValidateAndMap("<empty>")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
+
+			It("should handle empty string - default value of a FromTemplate input", func() {
+				result, err := input.ValidateAndMap("")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
+
+			It("should handle valid template selection", func() {
+				result, err := input.ValidateAndMap("template2")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(&existingTemplates[1]))
+			})
+
+			It("should handle invalid template selection", func() {
+				result, err := input.ValidateAndMap("nonexistent")
+				Expect(err).To(MatchError("unknown template"))
+				Expect(result).To(BeNil())
+			})
 		})
 
-		It("should create a template input with an 'empty' option and existing templates", func() {
-			existingTemplates := []template.Spec{
-				{Name: "template1"},
-				{Name: "template2"},
-				{Name: "template3"},
-			}
+		Context("when creating template input with empty list of existing templates", func() {
+			BeforeEach(func() {
+				opts = &AppCreateOpt{}
+				existingTemplates = []template.Spec{}
+				input = opts.createTemplateInput(existingTemplates)
+			})
 
-			input := opts.createTemplateInput(existingTemplates)
+			It("should handle an empty list of existing templates", func() {
+				prompt, err := input.InteractivePromptFn()
+				Expect(err).NotTo(HaveOccurred())
+				singleSelect, ok := prompt.(*userio.SingleSelect)
+				Expect(ok).To(BeTrue())
+				Expect(singleSelect.Items).To(Equal([]string{"<empty>"}))
 
-			// Check the interactive prompt
-			prompt, err := input.InteractivePromptFn()
+				result, err := input.ValidateAndMap("<empty>")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeNil())
+			})
 
-			Expect(err).NotTo(HaveOccurred())
-			singleSelect, ok := prompt.(*userio.SingleSelect)
-			Expect(ok).To(BeTrue())
-			Expect(singleSelect.Items).To(Equal([]string{"<empty>", "template1", "template2", "template3"}))
+			It("should handle interactive mode", func() {
+				value, err := input.GetValue(userio.NewIOStreamsWithInteractive(nil, nil, false))
 
-			// Test empty selection
-			result, err := input.ValidateAndMap("<empty>")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(BeNil())
-
-			// Test valid template selection
-			result, err = input.ValidateAndMap("template2")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(&existingTemplates[1]))
-
-			// Test invalid template selection
-			result, err = input.ValidateAndMap("nonexistent")
-			Expect(err).To(MatchError("unknown template"))
-			Expect(result).To(BeNil())
-
-		})
-
-		It("should handle an empty list of existing templates", func() {
-			existingTemplates := []template.Spec{}
-
-			input := opts.createTemplateInput(existingTemplates)
-
-			prompt, err := input.InteractivePromptFn()
-			Expect(err).NotTo(HaveOccurred())
-			singleSelect, ok := prompt.(*userio.SingleSelect)
-			Expect(ok).To(BeTrue())
-			Expect(singleSelect.Items).To(Equal([]string{"<empty>"}))
-
-			result, err := input.ValidateAndMap("<empty>")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(BeNil())
-		})
-
-		It("should handle interactive mode", func() {
-			existingTemplates := []template.Spec{}
-
-			input := opts.createTemplateInput(existingTemplates)
-
-			value, err := input.GetValue(userio.NewIOStreamsWithInteractive(nil, nil, false))
-
-			Expect(err).NotTo(HaveOccurred())
-			Expect(value).To(BeNil())
+				Expect(err).NotTo(HaveOccurred())
+				Expect(value).To(BeNil())
+			})
 		})
 	})
 })
