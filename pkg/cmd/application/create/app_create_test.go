@@ -32,6 +32,7 @@ var _ = Describe("AppCreateOpt", func() {
 
 			// Check the interactive prompt
 			prompt, err := input.InteractivePromptFn()
+
 			Expect(err).NotTo(HaveOccurred())
 			singleSelect, ok := prompt.(*userio.SingleSelect)
 			Expect(ok).To(BeTrue())
@@ -68,6 +69,17 @@ var _ = Describe("AppCreateOpt", func() {
 			result, err := input.ValidateAndMap("<empty>")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeNil())
+		})
+
+		It("should handle interactive mode", func() {
+			existingTemplates := []template.Spec{}
+
+			input := opts.createTemplateInput(existingTemplates)
+
+			value, err := input.GetValue(userio.NewIOStreamsWithInteractive(nil, nil, false))
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(value).To(BeNil())
 		})
 	})
 })
