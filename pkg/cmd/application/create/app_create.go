@@ -326,9 +326,10 @@ func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant) use
 }
 
 func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {
-	availableTemplateNames := make([]string, len(existingTemplates))
+	availableTemplateNames := make([]string, len(existingTemplates)+1)
+	availableTemplateNames[0] = "<empty>"
 	for i, t := range existingTemplates {
-		availableTemplateNames[i] = t.Name
+		availableTemplateNames[i+1] = t.Name
 	}
 	return userio.InputSourceSwitch[string, *template.Spec]{
 		DefaultValue: userio.AsZeroable(opts.FromTemplate),
@@ -340,6 +341,9 @@ func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec)
 		},
 		ValidateAndMap: func(inp string) (*template.Spec, error) {
 			inp = strings.TrimSpace(inp)
+			if inp == "<empty>" {
+				return nil, nil
+			}
 			templateIndex := slices.IndexFunc(existingTemplates, func(spec template.Spec) bool {
 				return spec.Name == inp
 			})
