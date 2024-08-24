@@ -222,18 +222,22 @@ func createNewApp(
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
-	fulfilledTemplate := template.FulfilledTemplate{
-		Spec: fromTemplate,
-		Arguments: []template.Argument{
-			{
-				Name:  "name",
-				Value: opts.Name,
+	var fulfilledTemplate *template.FulfilledTemplate
+
+	if fromTemplate != nil {
+		fulfilledTemplate = &template.FulfilledTemplate{
+			Spec: fromTemplate,
+			Arguments: []template.Argument{
+				{
+					Name:  "name",
+					Value: opts.Name,
+				},
+				{
+					Name:  "tenant",
+					Value: opts.Tenant,
+				},
 			},
-			{
-				Name:  "tenant",
-				Value: opts.Tenant,
-			},
-		},
+		}
 	}
 
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
@@ -245,7 +249,7 @@ func createNewApp(
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
-		Template:         &fulfilledTemplate,
+		Template:         fulfilledTemplate,
 		GitAuth:          gitAuth,
 	}
 	if err := application.ValidateCreate(appCreateOp, githubClient); err != nil {
@@ -326,12 +330,14 @@ func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant) use
 }
 
 func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {
-	availableTemplateNames := make([]string, len(existingTemplates))
+	availableTemplateNames := make([]string, len(existingTemplates)+1)
+	availableTemplateNames[0] = "<empty>"
 	for i, t := range existingTemplates {
-		availableTemplateNames[i] = t.Name
+		availableTemplateNames[i+1] = t.Name
 	}
 	return userio.InputSourceSwitch[string, *template.Spec]{
 		DefaultValue: userio.AsZeroable(opts.FromTemplate),
+		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
 				Prompt: "Template:",
@@ -340,6 +346,9 @@ func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec)
 		},
 		ValidateAndMap: func(inp string) (*template.Spec, error) {
 			inp = strings.TrimSpace(inp)
+			if inp == "<empty>" || inp == "" {
+				return nil, nil
+			}
 			templateIndex := slices.IndexFunc(existingTemplates, func(spec template.Spec) bool {
 				return spec.Name == inp
 			})
