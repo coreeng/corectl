@@ -9,15 +9,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type TemplateDescribeOpts struct {
+	IgnoreChecks bool
+}
+
 func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
+	opts := TemplateDescribeOpts{}
 	templateDescribeCmd := &cobra.Command{
 		Use:   "describe <template-name>",
 		Short: "Show detailed information about passed template",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			templateName := args[0]
-			if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-				return err
+			if !opts.IgnoreChecks {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+					return err
+				}
 			}
 			t, err := template.FindByName(cfg.Repositories.Templates.Value, templateName)
 			if err != nil {
@@ -38,6 +45,13 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 			return nil
 		},
 	}
+
+	templateDescribeCmd.Flags().BoolVar(
+		&opts.IgnoreChecks,
+		"ignore-checks",
+		false,
+		"Ignore checks for uncommitted changes and branch status",
+	)
 
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,

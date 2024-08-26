@@ -85,8 +85,6 @@ func (m textInputModel[V]) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = err
 			if err == nil {
 				m.result = v
-			}
-			if m.err == nil {
 				m.model.Cursor.SetMode(cursor.CursorHide)
 				m.quitting = true
 				return m, tea.Quit
@@ -109,6 +107,7 @@ func (m textInputModel[V]) View() string {
 		s.WriteString("\n")
 	} else {
 		s.WriteString(m.styles.err.Render("Error: " + m.err.Error()))
+		s.WriteString("\n")
 	}
 	return s.String()
 }

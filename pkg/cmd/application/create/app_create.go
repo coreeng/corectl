@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/application"
+	templaterender "github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
@@ -23,6 +25,8 @@ type AppCreateOpt struct {
 	NonInteractive bool
 	FromTemplate   string
 	Tenant         string
+	ArgsFile       string
+	Args           []string
 
 	Streams userio.IOStreams
 }
@@ -73,6 +77,19 @@ NOTE: If parent directory is an existing git repository it will add a new applic
 		"",
 		"Tenant to configure for P2P",
 	)
+	appCreateCmd.Flags().StringVar(
+		&opts.ArgsFile,
+		"args-file",
+		"",
+		"Path to YAML file containing template arguments",
+	)
+	appCreateCmd.Flags().StringSliceVarP(
+		&opts.Args,
+		"arg",
+		"a",
+		[]string{},
+		"Template argument in the format: <arg-name>=<arg-value>",
+	)
 	appCreateCmd.Flags().BoolVar(
 		&opts.NonInteractive,
 		"nonint",
@@ -118,12 +135,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	existingTenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
-	if err != nil {
-		return err
-	}
-	tenantInput := opts.createTenantInput(existingTenants)
-	appTenant, err := tenantInput.GetValue(opts.Streams)
+	appTenant, err := selector.Tenant(cfg.Repositories.CPlatform.Value, opts.Tenant, opts.Streams)
 	if err != nil {
 		return err
 	}
@@ -222,18 +234,32 @@ func createNewApp(
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
-	fulfilledTemplate := template.FulfilledTemplate{
-		Spec: fromTemplate,
-		Arguments: []template.Argument{
-			{
-				Name:  "name",
-				Value: opts.Name,
-			},
-			{
-				Name:  "tenant",
-				Value: opts.Tenant,
-			},
-		},
+	var fulfilledTemplate *template.FulfilledTemplate
+
+	if fromTemplate != nil {
+		args, err := templaterender.CollectArgsFromAllSources(
+			fromTemplate,
+			opts.ArgsFile,
+			opts.Args,
+			opts.Streams,
+			[]template.Argument{
+				{
+					Name:  "name",
+					Value: opts.Name,
+				},
+				{
+					Name:  "tenant",
+					Value: opts.Tenant,
+				},
+			})
+		if err != nil {
+			return application.CreateResult{}, err
+		}
+
+		fulfilledTemplate = &template.FulfilledTemplate{
+			Spec:      fromTemplate,
+			Arguments: args,
+		}
 	}
 
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
@@ -245,7 +271,7 @@ func createNewApp(
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
-		Template:         &fulfilledTemplate,
+		Template:         fulfilledTemplate,
 		GitAuth:          gitAuth,
 	}
 	if err := application.ValidateCreate(appCreateOp, githubClient); err != nil {
@@ -297,41 +323,15 @@ func createPRWithUpdatedReposListForTenant(
 	return tenantUpdateResult, err
 }
 
-func (opts *AppCreateOpt) createTenantInput(existingTenant []coretnt.Tenant) userio.InputSourceSwitch[string, *coretnt.Tenant] {
-	availableTenantNames := make([]string, len(existingTenant)+1)
-	availableTenantNames[0] = coretnt.RootName
-	for i, t := range existingTenant {
-		availableTenantNames[i+1] = t.Name
-	}
-	return userio.InputSourceSwitch[string, *coretnt.Tenant]{
-		DefaultValue: userio.AsZeroable(opts.Tenant),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.SingleSelect{
-				Prompt: "Tenant:",
-				Items:  availableTenantNames,
-			}, nil
-		},
-		ValidateAndMap: func(inp string) (*coretnt.Tenant, error) {
-			inpName := strings.TrimSpace(inp)
-			tenantIndex := slices.IndexFunc(existingTenant, func(t coretnt.Tenant) bool {
-				return t.Name == inpName
-			})
-			if tenantIndex < 0 {
-				return nil, errors.New("unknown tenant")
-			}
-			return &existingTenant[tenantIndex], nil
-		},
-		ErrMessage: "invalid tenant",
-	}
-}
-
 func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {
-	availableTemplateNames := make([]string, len(existingTemplates))
+	availableTemplateNames := make([]string, len(existingTemplates)+1)
+	availableTemplateNames[0] = "<empty>"
 	for i, t := range existingTemplates {
-		availableTemplateNames[i] = t.Name
+		availableTemplateNames[i+1] = t.Name
 	}
 	return userio.InputSourceSwitch[string, *template.Spec]{
 		DefaultValue: userio.AsZeroable(opts.FromTemplate),
+		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
 				Prompt: "Template:",
@@ -340,6 +340,9 @@ func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec)
 		},
 		ValidateAndMap: func(inp string) (*template.Spec, error) {
 			inp = strings.TrimSpace(inp)
+			if inp == "<empty>" || inp == "" {
+				return nil, nil
+			}
 			templateIndex := slices.IndexFunc(existingTemplates, func(spec template.Spec) bool {
 				return spec.Name == inp
 			})

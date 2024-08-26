@@ -2,17 +2,19 @@ package render
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"os"
 )
 
 type TemplateRenderOpts struct {
+	Streams userio.IOStreams
+
 	IgnoreChecks  bool
-	ParamsFile    string
+	ArgsFile      string
+	Args          []string
 	TemplateName  string
 	TargetPath    string
 	TemplatesPath string
@@ -25,6 +27,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 		Short: "Render template locally",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Streams = userio.NewIOStreams(cmd.InOrStdin(), cmd.OutOrStdout())
 			opts.TemplateName = args[0]
 			opts.TargetPath = args[1]
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
@@ -47,10 +50,17 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	)
 
 	templateRenderCmd.Flags().StringVar(
-		&opts.ParamsFile,
-		"params-file",
+		&opts.ArgsFile,
+		"args-file",
 		"",
-		"Path to YAML file containing template parameters",
+		"Path to YAML file containing template arguments",
+	)
+	templateRenderCmd.Flags().StringSliceVarP(
+		&opts.Args,
+		"arg",
+		"a",
+		[]string{},
+		"Template argument in the format: <arg-name>=<arg-value>",
 	)
 
 	config.RegisterStringParameterAsFlag(
@@ -79,43 +89,24 @@ func run(opts TemplateRenderOpts) error {
 		return fmt.Errorf("%s: unknown template", opts.TemplateName)
 	}
 
-	arguments, err := parseParamsFileAndConvertToArguments(opts.ParamsFile)
+	args, err := CollectArgsFromAllSources(
+		templ,
+		opts.ArgsFile,
+		opts.Args,
+		opts.Streams,
+		[]template.Argument{},
+	)
 	if err != nil {
 		return err
 	}
 
 	fulfilledT := template.FulfilledTemplate{
 		Spec:      templ,
-		Arguments: arguments,
+		Arguments: args,
 	}
-
 	if err := template.Render(&fulfilledT, opts.TargetPath); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func parseParamsFileAndConvertToArguments(paramsFile string) ([]template.Argument, error) {
-	var params map[string]string
-	var arguments []template.Argument
-
-	if paramsFile != "" {
-		fileContent, err := os.ReadFile(paramsFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read params file: %w", err)
-		}
-		if err := yaml.Unmarshal(fileContent, &params); err != nil {
-			return nil, fmt.Errorf("failed to parse params file: %w", err)
-		}
-	}
-
-	for key, value := range params {
-		arguments = append(arguments, template.Argument{
-			Name:  key,
-			Value: value,
-		})
-	}
-
-	return arguments, nil
 }
