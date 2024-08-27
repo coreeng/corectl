@@ -234,7 +234,7 @@ func createNewApp(
 				},
 				{
 					Name:  "tenant",
-					Value: opts.Tenant,
+					Value: appTenant.Name,
 				},
 			},
 		}
