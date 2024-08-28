@@ -1,0 +1,14 @@
+name: with-args
+description: Test template with args
+skeletonPath: ./skeleton
+parameters:
+  - name: param1
+    description: this is a description
+  - name: param2
+    description: this is int param
+    type: int
+  - name: param3
+    optional: true
+  - name: param4
+    default: 9876
+    type: int

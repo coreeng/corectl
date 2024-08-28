@@ -78,6 +78,10 @@ func BlankTemplate() string {
 	return "blank"
 }
 
+func TemplateWithArgs() string {
+	return "with-args"
+}
+
 func Monorepo() string {
 	return "monorepo"
 }

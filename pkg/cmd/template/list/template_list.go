@@ -7,13 +7,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type TemplateListOpts struct {
+	IgnoreChecks bool
+}
+
 func NewTemplateListCmd(cfg *config.Config) *cobra.Command {
+	opts := TemplateListOpts{}
 	templateListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List templates",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-				return err
+			if !opts.IgnoreChecks {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+					return err
+				}
 			}
 			ts, err := template.List(cfg.Repositories.Templates.Value)
 			if err != nil {
@@ -27,6 +34,13 @@ func NewTemplateListCmd(cfg *config.Config) *cobra.Command {
 			return nil
 		},
 	}
+
+	templateListCmd.Flags().BoolVar(
+		&opts.IgnoreChecks,
+		"ignore-checks",
+		false,
+		"Ignore checks for uncommitted changes and branch status",
+	)
 
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,

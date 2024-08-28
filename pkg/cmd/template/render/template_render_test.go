@@ -39,22 +39,17 @@ var _ = Describe("Template Render", Ordered, func() {
 		targetDir = filepath.Join(tempDir, "target")
 		err = os.MkdirAll(targetDir, 0755)
 		Expect(err).NotTo(HaveOccurred())
-
-	})
-
-	AfterAll(func() {
-		Expect(os.RemoveAll(tempDir)).To(Succeed())
 	})
 
 	It("should render the template correctly when params file is provided", func() {
-		paramsFile = createParamsFile(tempDir, map[string]string{
+		paramsFile = createArgsFile(tempDir, map[string]string{
 			"name":   expectedName,
 			"tenant": expectedTenantName,
 		})
 
 		opts := TemplateRenderOpts{
 			IgnoreChecks:  false,
-			ParamsFile:    paramsFile,
+			ArgsFile:      paramsFile,
 			TemplateName:  testdata.BlankTemplate(),
 			TargetPath:    targetDir,
 			TemplatesPath: templatesLocalRepo.Path(),
@@ -70,10 +65,8 @@ var _ = Describe("Template Render", Ordered, func() {
 	})
 
 	It("should render the template correctly when params file is not provided", func() {
-
 		opts := TemplateRenderOpts{
 			IgnoreChecks:  false,
-			ParamsFile:    "",
 			TemplateName:  testdata.BlankTemplate(),
 			TargetPath:    targetDir,
 			TemplatesPath: templatesLocalRepo.Path(),
@@ -87,13 +80,45 @@ var _ = Describe("Template Render", Ordered, func() {
 		Expect(string(renderedContent)).NotTo(ContainSubstring(expectedName))
 		Expect(string(renderedContent)).NotTo(ContainSubstring(expectedTenantName))
 	})
+
+	It("should render the template correctly when params passed with args", func() {
+		argsFilePath := createArgsFile(tempDir, map[string]string{
+			"name":   "app-name",
+			"tenant": "tenant-name",
+		})
+		opts := TemplateRenderOpts{
+			// param3 is optional parameter
+			// param4 in default parameter
+			ArgsFile:      argsFilePath,
+			Args:          []string{"param1=param1 value", "param2=321"},
+			TemplateName:  testdata.TemplateWithArgs(),
+			TargetPath:    targetDir,
+			TemplatesPath: templatesLocalRepo.Path(),
+		}
+
+		err := run(opts)
+		Expect(err).NotTo(HaveOccurred())
+
+		renderedContent, err := os.ReadFile(filepath.Join(targetDir, "args.txt"))
+		Expect(err).NotTo(HaveOccurred())
+		expectedArgsFileContent :=
+			`app-name
+tenant-name
+param1 value
+321
+param3 default value
+9876
+
+param2 is integer!`
+		Expect(string(renderedContent)).To(Equal(expectedArgsFileContent))
+	})
 })
 
-func createParamsFile(dir string, params map[string]string) string {
-	paramsContent, err := yaml.Marshal(params)
+func createArgsFile(dir string, args map[string]string) string {
+	argsContent, err := yaml.Marshal(args)
 	Expect(err).NotTo(HaveOccurred())
-	paramsFile := filepath.Join(dir, "params.yaml")
-	err = os.WriteFile(paramsFile, paramsContent, 0644)
+	argsFile := filepath.Join(dir, "args.yaml")
+	err = os.WriteFile(argsFile, argsContent, 0644)
 	Expect(err).NotTo(HaveOccurred())
-	return paramsFile
+	return argsFile
 }

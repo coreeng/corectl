@@ -93,10 +93,9 @@ func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *
 		}
 		return &existingTenants[tenantIndex], nil
 	}
-	availableTenantNames := make([]string, len(existingTenants)+1)
-	availableTenantNames[0] = coretnt.RootName
+	availableTenantNames := make([]string, len(existingTenants))
 	for i, t := range existingTenants {
-		availableTenantNames[i+1] = t.Name
+		availableTenantNames[i] = t.Name
 	}
 	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(defaultTenant),

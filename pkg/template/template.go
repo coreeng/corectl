@@ -1,5 +1,7 @@
 package template
 
+import "slices"
+
 const templateFilename = "template.yaml"
 
 type FulfilledTemplate struct {
@@ -9,8 +11,7 @@ type FulfilledTemplate struct {
 
 type Argument struct {
 	Name  string
-	Type  ParameterType
-	Value string
+	Value any
 }
 
 type Spec struct {
@@ -21,19 +22,16 @@ type Spec struct {
 	path         string      `yaml:"-"`
 }
 
-type Parameter struct {
-	Name        string        `yaml:"name"`
-	Description string        `yaml:"description"`
-	Type        ParameterType `yaml:"type"`
-}
-
-type ParameterType string
-
-var (
-	StringType ParameterType = "string"
-	IntType    ParameterType = "string"
-)
-
 func (t *Spec) IsValid() bool {
 	return t.Name != ""
+}
+
+func (t *Spec) GetParameter(name string) *Parameter {
+	paramI := slices.IndexFunc(t.Parameters, func(p Parameter) bool {
+		return p.Name == name
+	})
+	if paramI < 0 {
+		return nil
+	}
+	return &t.Parameters[paramI]
 }

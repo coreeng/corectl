@@ -74,19 +74,20 @@ func templatesIterator(templatesPath string) (func() (Spec, bool, error), func()
 			if err != nil {
 				return err
 			}
-			var t Spec
-			if err = yaml.Unmarshal(fileBytes, &t); err != nil {
+			var s Spec
+			if err = yaml.Unmarshal(fileBytes, &s); err != nil {
 				return err
 			}
-			if !t.IsValid() {
+			if !s.IsValid() {
 				return nil
 			}
-			t.path = filepath.Join(templatesAbsPath, path)
+			s.path = filepath.Join(templatesAbsPath, path)
+			fillDefaultSpecValues(&s)
 
 			select {
 			case <-ctx.Done():
 				return fs.SkipAll
-			case specCh <- t:
+			case specCh <- s:
 				return filepath.SkipDir
 			}
 		}); err != nil {
@@ -107,4 +108,17 @@ func templatesIterator(templatesPath string) (func() (Spec, bool, error), func()
 			return Spec{}, !isReceived, err
 		}
 	}, cancel
+}
+
+func fillDefaultSpecValues(s *Spec) {
+	for i := range s.Parameters {
+		if s.Parameters[i].Type == "" {
+			s.Parameters[i].Type = StringParamType
+		}
+	}
+
+	allParameters := make([]Parameter, 0, len(ImplicitParameters)+len(s.Parameters))
+	allParameters = append(allParameters, ImplicitParameters...)
+	allParameters = append(allParameters, s.Parameters...)
+	s.Parameters = allParameters
 }
