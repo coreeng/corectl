@@ -123,17 +123,20 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	existingTenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
+	tenantsPath := coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value)
+	existingTenants, err := coretnt.List(tenantsPath)
 	if err != nil {
 		return err
 	}
+	rootTenant := coretnt.RootTenant(tenantsPath)
+
 	envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
 		return err
 	}
 
-	nameInput := opt.createNameInputSwitch()
-	parentInput := opt.createParentInputSwitch(existingTenants)
+	nameInput := opt.createNameInputSwitch(existingTenants)
+	parentInput := opt.createParentInputSwitch(rootTenant, existingTenants)
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
 	costCentreInput := opt.createCostCentreInputSwitch()
@@ -181,7 +184,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 
 	t := coretnt.Tenant{
 		Name:          name,
-		Parent:        parent,
+		Parent:        parent.Name,
 		Description:   description,
 		ContactEmail:  contactEmail,
 		CostCentre:    costCentre,
@@ -192,15 +195,12 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	parentTenantI := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
-		return t.Name == parent
-	})
-	result, err := createTenant(opt.Streams, cfg, &t, &existingTenants[parentTenantI])
+	result, err := createTenant(opt.Streams, cfg, &t, &parent)
 	if err != nil {
 		return err
 	}
 	opt.Streams.Info("Created PR link: ", result.PRUrl)
-	opt.Streams.Info("Tenant created successfully: ", string(t.Name))
+	opt.Streams.Info("Tenant created successfully: ", t.Name)
 	return nil
 }
 
@@ -230,7 +230,7 @@ func createTenant(
 	return result, err
 }
 
-func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[string, string] {
+func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
 		t := &coretnt.Tenant{
@@ -238,6 +238,13 @@ func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[str
 		}
 		if err := t.ValidateField("Name"); err != nil {
 			return "", err
+		}
+
+		existingTenantI := slices.IndexFunc(existingTenants, func(tnt coretnt.Tenant) bool {
+			return tnt.Name == inp
+		})
+		if existingTenantI >= 0 || inp == coretnt.RootName {
+			return "", errors.New("tenant already exists")
 		}
 		return inp, nil
 	}
@@ -258,13 +265,13 @@ func (opt *TenantCreateOpt) createNameInputSwitch() userio.InputSourceSwitch[str
 	}
 }
 
-func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
+func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
 	availableTenantNames := make([]string, len(existingTenants)+1)
-	availableTenantNames[0] = coretnt.RootName
+	availableTenantNames[0] = rootTenant.Name
 	for i, t := range existingTenants {
 		availableTenantNames[i+1] = t.Name
 	}
-	return userio.InputSourceSwitch[string, string]{
+	return userio.InputSourceSwitch[string, coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(opt.Parent),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
@@ -272,12 +279,20 @@ func (opt *TenantCreateOpt) createParentInputSwitch(existingTenants []coretnt.Te
 				Items:  availableTenantNames,
 			}, nil
 		},
-		ValidateAndMap: func(inp string) (string, error) {
+		ValidateAndMap: func(inp string) (coretnt.Tenant, error) {
 			inp = strings.TrimSpace(inp)
-			if !slices.Contains(availableTenantNames, inp) {
-				return "", errors.New("unknown tenant")
+			if inp == rootTenant.Name {
+				return *rootTenant, nil
 			}
-			return inp, nil
+
+			tenantIndx := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
+				return t.Name == inp
+			})
+			if tenantIndx >= 0 {
+				return existingTenants[tenantIndx], nil
+			}
+
+			return coretnt.Tenant{}, errors.New("unknown tenant")
 		},
 		ErrMessage: "invalid parent tenant",
 	}
