@@ -26,6 +26,7 @@ type Parameter struct {
 	Name        string        `yaml:"name"`
 	Description string        `yaml:"description"`
 	Type        ParameterType `yaml:"type"`
+	Default     string        `yaml:"default"`
 	Optional    bool          `yaml:"optional"`
 }
 
@@ -38,18 +39,24 @@ var (
 
 func (p Parameter) ValidateAndMap(value string) (any, error) {
 	value = strings.TrimSpace(value)
-	if value == "" {
-		if p.Optional {
-			return nil, nil
-		} else {
-			return nil, errors.New("required")
+	if value != "" {
+		mappedValue, err := p.Type.ValidateAndMap(value)
+		if err != nil {
+			return nil, err
 		}
+		return mappedValue, nil
 	}
-	mappedValue, err := p.Type.ValidateAndMap(value)
-	if err != nil {
-		return nil, err
+	if p.Default != "" {
+		mappedDefaultValue, err := p.Type.ValidateAndMap(p.Default)
+		if err != nil {
+			return nil, err
+		}
+		return mappedDefaultValue, nil
 	}
-	return mappedValue, nil
+	if !p.Optional {
+		return nil, errors.New("required")
+	}
+	return nil, nil
 }
 
 func (t ParameterType) ValidateAndMap(value string) (any, error) {

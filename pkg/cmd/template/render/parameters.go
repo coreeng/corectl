@@ -38,24 +38,45 @@ func CollectArgsFromAllSources(
 	missingParameters := collectAllMissingParameters(spec, passedArgs)
 
 	var promptedArgs []template.Argument
+	var defaultArgs []template.Argument
 	if streams.IsInteractive() {
 		promptedArgs, err = promptForArgs(streams, missingParameters)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		for _, parameter := range missingParameters {
-			if !parameter.Optional {
-				return nil, fmt.Errorf("required argument %s is missing", parameter.Name)
-			}
+		defaultArgs, err = collectDefaultArgs(missingParameters)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	args := make([]template.Argument, 0, len(promptedArgs)+len(promptedArgs))
 	args = append(args, passedArgs...)
+	args = append(args, defaultArgs...)
 	args = append(args, promptedArgs...)
 
 	return args, nil
+}
+
+func collectDefaultArgs(params []template.Parameter) ([]template.Argument, error) {
+	var defaultArgs []template.Argument
+	for _, parameter := range params {
+		if parameter.Default == "" && !parameter.Optional {
+			return nil, fmt.Errorf("required argument %s is missing", parameter.Name)
+		}
+		if parameter.Default != "" {
+			defaultValue, err := parameter.ValidateAndMap(parameter.Default)
+			if err != nil {
+				return nil, fmt.Errorf("default argument %s is invalid: %w", parameter.Name, err)
+			}
+			defaultArgs = append(defaultArgs, template.Argument{
+				Name:  parameter.Name,
+				Value: defaultValue,
+			})
+		}
+	}
+	return defaultArgs, nil
 }
 
 func parseArgsFromFlags(spec *template.Spec, flagArgs []string) ([]template.Argument, error) {
@@ -142,6 +163,7 @@ func promptForArgs(
 		argInput := userio.TextInput[any]{
 			Prompt:         prompt,
 			ValidateAndMap: param.ValidateAndMap,
+			Placeholder:    param.Default,
 		}
 		argValue, err := argInput.GetInput(streams)
 		if err != nil {

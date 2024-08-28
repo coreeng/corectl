@@ -9,3 +9,6 @@ parameters:
     type: int
   - name: param3
     optional: true
+  - name: param4
+    default: 9876
+    type: int

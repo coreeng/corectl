@@ -3,5 +3,6 @@
 {{param1}}
 {{param2}}
 {{param3 | default("param3 default value") }}
+{{param4}}
 
 {% if param2 is integer %}param2 is integer!{% endif %}

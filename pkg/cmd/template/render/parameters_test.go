@@ -131,6 +131,11 @@ var _ = Describe("template arguments are collected", func() {
 					Name:  "param2",
 					Value: 123,
 				},
+				// Default args
+				{
+					Name:  "param4",
+					Value: 9876,
+				},
 				// From input: no args, skipped optional
 			}))
 		}, NodeTimeout(time.Second*10))
@@ -139,6 +144,7 @@ var _ = Describe("template arguments are collected", func() {
 			argsFile := createArgsFile(t.TempDir(), map[string]string{
 				"name":   "app-name",
 				"tenant": "tenant-name",
+				"param4": "3456",
 			})
 			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
 			streams := userio.NewTestIOStreams(
@@ -147,6 +153,7 @@ var _ = Describe("template arguments are collected", func() {
 				true,
 			)
 
+			// param1
 			stdin.WriteString("value")
 			stdin.WriteByte(byte(tea.KeyEnter))
 
@@ -171,6 +178,10 @@ var _ = Describe("template arguments are collected", func() {
 				{
 					Name:  "tenant",
 					Value: "tenant-name",
+				},
+				{
+					Name:  "param4",
+					Value: 3456,
 				},
 				// From flags
 				{

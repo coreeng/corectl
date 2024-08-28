@@ -87,7 +87,8 @@ var _ = Describe("Template Render", Ordered, func() {
 			"tenant": "tenant-name",
 		})
 		opts := TemplateRenderOpts{
-			// params3 is an optional parameter
+			// param3 is optional parameter
+			// param4 in default parameter
 			ArgsFile:      argsFilePath,
 			Args:          []string{"param1=param1 value", "param2=321"},
 			TemplateName:  testdata.TemplateWithArgs(),
@@ -106,6 +107,7 @@ tenant-name
 param1 value
 321
 param3 default value
+9876
 
 param2 is integer!`
 		Expect(string(renderedContent)).To(Equal(expectedArgsFileContent))
