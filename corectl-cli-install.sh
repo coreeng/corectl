@@ -123,7 +123,12 @@ curl -LO --proto '=https' --tlsv1.2 -sSf "$CHECKSUM_URL"
 text_title "Verifying Checksum" ""
 
 EXPECTED_CHECKSUM=$(grep "$BINARY" "$CHECKSUM_FILE" | awk '{print $1}')
-ACTUAL_CHECKSUM=$(shasum -a 256 "$BINARY" | awk '{print $1}')
+ACTUAL_CHECKSUM=""
+if [[ "${OS}" == "Linux" ]]; then
+    ACTUAL_CHECKSUM=$(sha256sum "$BINARY" | awk '{print $1}')
+else
+    ACTUAL_CHECKSUM=$(shasum -a 256 "$BINARY" | awk '{print $1}')
+fi
 
 if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
   text_title_error "" "Checksum verification failed!"
