@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
@@ -13,11 +19,19 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
-	"net/http"
-	"os"
-	"path/filepath"
-	"slices"
 )
+
+type Service struct {
+	TemplateRenderer render.TemplateRenderer
+	GithubClient     *github.Client
+}
+
+func NewService(templateRenderer render.TemplateRenderer, githubClient *github.Client) *Service {
+	return &Service{
+		TemplateRenderer: templateRenderer,
+		GithubClient:     githubClient,
+	}
+}
 
 type CreateOp struct {
 	Name             string
@@ -27,7 +41,7 @@ type CreateOp struct {
 	FastFeedbackEnvs []environment.Environment
 	ExtendedTestEnvs []environment.Environment
 	ProdEnvs         []environment.Environment
-	Template         *template.FulfilledTemplate
+	Template         *template.Spec
 	GitAuth          git.AuthMethod
 }
 
@@ -44,7 +58,7 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	})
 }
 
-func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err error) {
+func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
 	undoSteps := undo.NewSteps()
 	defer undoWhenError(&undoSteps)
 
@@ -58,14 +72,14 @@ func Create(op CreateOp, githubClient *github.Client) (result CreateResult, err 
 	}
 
 	if isMonorepo {
-		return handleMonorepo(op, githubClient, localRepo)
+		return svc.handleMonorepo(op, localRepo)
 	} else {
-		return handleSingleRepo(op, githubClient, localRepo)
+		return svc.handleSingleRepo(op, localRepo)
 	}
 }
 
-func handleSingleRepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
-	if err := renderTemplateMaybe(op); err != nil {
+func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository) (result CreateResult, err error) {
+	if err := svc.renderTemplateMaybe(op); err != nil {
 		return result, err
 	}
 
@@ -73,11 +87,11 @@ func handleSingleRepo(op CreateOp, githubClient *github.Client, localRepo *git.L
 		return result, err
 	}
 
-	repoFullId, err := createRemoteRepository(op, githubClient, localRepo)
+	repoFullId, err := svc.createRemoteRepository(op, localRepo)
 	if err != nil {
 		return result, err
 	}
-	if err := synchronizeRepository(op, repoFullId, githubClient); err != nil {
+	if err := svc.synchronizeRepository(op, repoFullId); err != nil {
 		return result, err
 	}
 
@@ -91,16 +105,26 @@ func handleSingleRepo(op CreateOp, githubClient *github.Client, localRepo *git.L
 	}, nil
 }
 
-func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (result CreateResult, err error) {
+func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) (result CreateResult, err error) {
 	branchName := "add-" + op.Name
 	if err := checkoutNewBranch(localRepo, branchName); err != nil {
 		return result, err
 	}
 
-	if err := renderTemplateMaybe(op); err != nil {
+	additionalArgs := []template.Argument{
+		{
+			Name:  "working_directory",
+			Value: "./" + op.Name,
+		},
+		{
+			Name:  "version_prefix",
+			Value: op.Name + "/v",
+		},
+	}
+	if err := svc.renderTemplateMaybe(op, additionalArgs...); err != nil {
 		return result, err
 	}
-	if err := moveGithubWorkflowsToRootMaybe(op); err != nil {
+	if err := svc.moveGithubWorkflowsToRootMaybe(op); err != nil {
 		return result, err
 	}
 
@@ -112,12 +136,12 @@ func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.Loc
 		return result, err
 	}
 
-	repoFullId, err := getRemoteRepositoryFullId(op, githubClient, localRepo)
+	repoFullId, err := svc.getRemoteRepositoryFullId(op, localRepo)
 	if err != nil {
 		return result, err
 	}
 
-	pullRequest, err := createPR(op.Name, branchName, githubClient, repoFullId)
+	pullRequest, err := svc.createPR(op.Name, branchName, repoFullId)
 	if err != nil {
 		return result, err
 	}
@@ -129,8 +153,8 @@ func handleMonorepo(op CreateOp, githubClient *github.Client, localRepo *git.Loc
 	}, nil
 }
 
-func createPR(name string, branchName string, githubClient *github.Client, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
-	pullRequest, _, err := githubClient.PullRequests.Create(
+func (svc *Service) createPR(name string, branchName string, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
+	pullRequest, _, err := svc.GithubClient.PullRequests.Create(
 		context.Background(),
 		repoFullId.Organization(),
 		repoFullId.Name(),
@@ -143,13 +167,13 @@ func createPR(name string, branchName string, githubClient *github.Client, repoF
 	return pullRequest, err
 }
 
-func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (*git.GithubRepoFullId, error) {
+func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalRepository) (*git.GithubRepoFullId, error) {
 	remoteRepoName, err := localRepo.GetRemoteRepoName()
 	if err != nil {
 		return nil, err
 	}
 
-	githubRepo, _, err := githubClient.Repositories.Get(
+	githubRepo, _, err := svc.GithubClient.Repositories.Get(
 		context.Background(),
 		op.OrgName,
 		remoteRepoName,
@@ -162,8 +186,8 @@ func getRemoteRepositoryFullId(op CreateOp, githubClient *github.Client, localRe
 	return &repo, nil
 }
 
-func createRemoteRepository(op CreateOp, githubClient *github.Client, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
-	githubRepo, err := createGithubRepository(op, githubClient)
+func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+	githubRepo, err := svc.createGithubRepository(op)
 	if err != nil {
 		return git.GithubRepoFullId{}, err
 	}
@@ -219,20 +243,31 @@ func openMonorepoMaybe(localPath string) (localRepo *git.LocalRepository, isMono
 	return localRepo, isMonorepo, nil
 }
 
-func renderTemplateMaybe(op CreateOp) error {
+func (svc *Service) renderTemplateMaybe(op CreateOp, additionalArgs ...template.Argument) error {
 	if op.Template == nil {
 		return nil
 	}
-	return template.Render(op.Template, op.LocalPath)
+	args := []template.Argument{
+		{
+			Name:  "name",
+			Value: op.Name,
+		},
+		{
+			Name:  "tenant",
+			Value: op.Tenant.Name,
+		},
+	}
+	args = append(args, additionalArgs...)
+	return svc.TemplateRenderer.Render(op.Template, op.LocalPath, args...)
 }
 
-func moveGithubWorkflowsToRootMaybe(op CreateOp) error {
+func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
 	exists, err := githubWorkflowsExist(op.LocalPath)
 	if err != nil {
 		return err
 	}
 	if exists {
-		return moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-")
+		return svc.moveGithubWorkflowsToRoot(op.LocalPath, op.Name+"-")
 	}
 	return nil
 }
@@ -244,10 +279,10 @@ func commitAllChanges(localRepo *git.LocalRepository, message string) error {
 	return localRepo.Commit(&git.CommitOp{Message: message})
 }
 
-func createGithubRepository(op CreateOp, githubClient *github.Client) (*github.Repository, error) {
+func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {
 	deleteBranchOnMerge := true
 	visibility := "private"
-	githubRepo, _, err := githubClient.Repositories.Create(
+	githubRepo, _, err := svc.GithubClient.Repositories.Create(
 		context.Background(),
 		op.OrgName,
 		&github.Repository{
@@ -259,16 +294,17 @@ func createGithubRepository(op CreateOp, githubClient *github.Client) (*github.R
 	return githubRepo, err
 }
 
-func synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId, githubClient *github.Client) error {
+func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId) error {
 	return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
 		RepositoryId:     &repoFullId,
 		Tenant:           op.Tenant,
 		FastFeedbackEnvs: op.FastFeedbackEnvs,
 		ExtendedTestEnvs: op.ExtendedTestEnvs,
 		ProdEnvs:         op.ProdEnvs,
-	}, githubClient)
+	}, svc.GithubClient)
 }
-func moveGithubWorkflowsToRoot(path string, filePrefix string) error {
+
+func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) error {
 	githubWorkflowsPath := filepath.Join(path, ".github", "workflows")
 	rootWorkflowsPath := filepath.Join(filepath.Dir(path), ".github", "workflows")
 	dir, err := os.ReadDir(githubWorkflowsPath)
@@ -311,7 +347,7 @@ func githubWorkflowsExist(path string) (bool, error) {
 	return len(dir) > 0, nil
 }
 
-func ValidateCreate(op CreateOp, githubClient *github.Client) error {
+func (svc *Service) ValidateCreate(op CreateOp) error {
 	if op.Tenant == nil {
 		return fmt.Errorf("tenant is missing")
 	}
@@ -339,7 +375,7 @@ func ValidateCreate(op CreateOp, githubClient *github.Client) error {
 	}
 
 	if isMonorepo {
-		_, response, err := githubClient.Repositories.Get(
+		_, response, err := svc.GithubClient.Repositories.Get(
 			context.Background(),
 			op.OrgName,
 			op.Name,

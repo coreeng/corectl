@@ -1,3 +1,5 @@
 # sample fast feedback workflow
-{{ name | default("") }}
-{{ tenant | default("") }}
+name: {{ name | default("") }}
+tenant: {{ tenant | default("") }}
+working_directory: {{ working_directory | default("") }}
+version_prefix: {{ version_prefix | default("") }}
