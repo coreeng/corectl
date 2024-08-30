@@ -12,13 +12,27 @@ var ImplicitParameters = []Parameter{
 		Name:        "name",
 		Description: "application name",
 		Type:        StringParamType,
-		Optional:    true,
+		Optional:    false,
 	},
 	{
 		Name:        "tenant",
 		Description: "tenant used to deploy the application",
 		Type:        StringParamType,
-		Optional:    true,
+		Optional:    false,
+	},
+	{
+		Name:        "working_directory",
+		Description: "working directory where application is located",
+		Type:        StringParamType,
+		Optional:    false,
+		Default:     "./",
+	},
+	{
+		Name:        "version_prefix",
+		Description: "version prefix for application",
+		Type:        StringParamType,
+		Optional:    false,
+		Default:     "v",
 	},
 }
 
