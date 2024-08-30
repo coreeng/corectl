@@ -89,10 +89,6 @@ func run(opts TemplateRenderOpts) error {
 		return fmt.Errorf("%s: unknown template", opts.TemplateName)
 	}
 
-	if err != nil {
-		return err
-	}
-
 	templateRenderer := &FlagsAwareTemplateRenderer{
 		ArgsFile: opts.ArgsFile,
 		Args:     opts.Args,

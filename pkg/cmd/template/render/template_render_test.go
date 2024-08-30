@@ -64,7 +64,7 @@ var _ = Describe("Template Render", Ordered, func() {
 		Expect(string(renderedContent)).To(ContainSubstring(expectedTenantName))
 	})
 
-	It("should render the template correctly when params file is not provided", func() {
+	It("should throw an error when missing required implicit arguments", func() {
 		opts := TemplateRenderOpts{
 			IgnoreChecks:  false,
 			TemplateName:  testdata.BlankTemplate(),
@@ -73,12 +73,8 @@ var _ = Describe("Template Render", Ordered, func() {
 		}
 
 		err := run(opts)
-		Expect(err).NotTo(HaveOccurred())
-
-		renderedContent, err := os.ReadFile(filepath.Join(targetDir, ".github", "workflows", "extended-test.yaml"))
-		Expect(err).NotTo(HaveOccurred())
-		Expect(string(renderedContent)).NotTo(ContainSubstring(expectedName))
-		Expect(string(renderedContent)).NotTo(ContainSubstring(expectedTenantName))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("required argument name is missing"))
 	})
 
 	It("should render the template correctly when params passed with args", func() {

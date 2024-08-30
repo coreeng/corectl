@@ -89,8 +89,10 @@ var _ = Describe("template arguments are collected", func() {
 	Context("from all sources", func() {
 		It("with non-interactive input => skips optional args", func(ctx SpecContext) {
 			argsFile := createArgsFile(t.TempDir(), map[string]string{
-				"name":   "app-name",
-				"tenant": "tenant-name",
+				"name":              "app-name",
+				"tenant":            "tenant-name",
+				"working_directory": "/path/to/app",
+				"version_prefix":    "v",
 			})
 			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
 			streams := userio.NewTestIOStreams(
@@ -121,6 +123,14 @@ var _ = Describe("template arguments are collected", func() {
 					Name:  "tenant",
 					Value: "tenant-name",
 				},
+				{
+					Name:  "working_directory",
+					Value: "/path/to/app",
+				},
+				{
+					Name:  "version_prefix",
+					Value: "v",
+				},
 				// From flags
 				{
 					Name:  "param1",
@@ -142,9 +152,11 @@ var _ = Describe("template arguments are collected", func() {
 
 		It("with interactive input", func(ctx SpecContext) {
 			argsFile := createArgsFile(t.TempDir(), map[string]string{
-				"name":   "app-name",
-				"tenant": "tenant-name",
-				"param4": "3456",
+				"name":              "app-name",
+				"tenant":            "tenant-name",
+				"working_directory": "/path/to/app",
+				"version_prefix":    "v",
+				"param4":            "3456",
 			})
 			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
 			streams := userio.NewTestIOStreams(
@@ -182,6 +194,14 @@ var _ = Describe("template arguments are collected", func() {
 				{
 					Name:  "param4",
 					Value: 3456,
+				},
+				{
+					Name:  "working_directory",
+					Value: "/path/to/app",
+				},
+				{
+					Name:  "version_prefix",
+					Value: "v",
 				},
 				// From flags
 				{
