@@ -3,8 +3,11 @@ package create
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"slices"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/application"
-	templaterender "github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -15,8 +18,6 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
-	"slices"
-	"strings"
 )
 
 type AppCreateOpt struct {
@@ -234,36 +235,14 @@ func createNewApp(
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
 
-	var fulfilledTemplate *template.FulfilledTemplate
-
-	if fromTemplate != nil {
-		args, err := templaterender.CollectArgsFromAllSources(
-			fromTemplate,
-			opts.ArgsFile,
-			opts.Args,
-			opts.Streams,
-			[]template.Argument{
-				{
-					Name:  "name",
-					Value: opts.Name,
-				},
-				{
-					Name:  "tenant",
-					Value: appTenant.Name,
-				},
-			})
-		if err != nil {
-			return application.CreateResult{}, err
-		}
-
-		fulfilledTemplate = &template.FulfilledTemplate{
-			Spec:      fromTemplate,
-			Arguments: args,
-		}
-	}
-
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-	appCreateOp := application.CreateOp{
+	templateRenderer := &render.FlagsAwareTemplateRenderer{
+		ArgsFile: opts.ArgsFile,
+		Args:     opts.Args,
+		Streams:  opts.Streams,
+	}
+	service := application.NewService(templateRenderer, githubClient)
+	createOp := application.CreateOp{
 		Name:             opts.Name,
 		OrgName:          cfg.GitHub.Organization.Value,
 		LocalPath:        opts.LocalPath,
@@ -271,16 +250,13 @@ func createNewApp(
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
-		Template:         fulfilledTemplate,
+		Template:         fromTemplate,
 		GitAuth:          gitAuth,
 	}
-	if err := application.ValidateCreate(appCreateOp, githubClient); err != nil {
+	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err
 	}
-	createResult, err := application.Create(
-		appCreateOp,
-		githubClient,
-	)
+	createResult, err := service.Create(createOp)
 	return createResult, err
 }
 

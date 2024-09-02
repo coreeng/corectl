@@ -89,24 +89,49 @@ func run(opts TemplateRenderOpts) error {
 		return fmt.Errorf("%s: unknown template", opts.TemplateName)
 	}
 
+	templateRenderer := &FlagsAwareTemplateRenderer{
+		ArgsFile: opts.ArgsFile,
+		Args:     opts.Args,
+		Streams:  opts.Streams,
+	}
+
+	if err := templateRenderer.Render(templ, opts.TargetPath); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TemplateRenderer interface {
+	Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error
+}
+
+type FlagsAwareTemplateRenderer struct {
+	ArgsFile string
+	Args     []string
+	Streams  userio.IOStreams
+}
+
+func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+	if spec == nil {
+		return nil
+	}
+
 	args, err := CollectArgsFromAllSources(
-		templ,
-		opts.ArgsFile,
-		opts.Args,
-		opts.Streams,
-		[]template.Argument{},
+		spec,
+		r.ArgsFile,
+		r.Args,
+		r.Streams,
+		additionalArgs,
 	)
 	if err != nil {
 		return err
 	}
 
-	fulfilledT := template.FulfilledTemplate{
-		Spec:      templ,
+	fulfilledTemplate := &template.FulfilledTemplate{
+		Spec:      spec,
 		Arguments: args,
 	}
-	if err := template.Render(&fulfilledT, opts.TargetPath); err != nil {
-		return err
-	}
 
-	return nil
+	return template.Render(fulfilledTemplate, targetDirectory)
 }

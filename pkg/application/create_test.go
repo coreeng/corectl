@@ -2,6 +2,11 @@ package application
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"os"
+	"path/filepath"
+	"slices"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
@@ -13,9 +18,6 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"os"
-	"path/filepath"
-	"slices"
 )
 
 var _ = Describe("Create new application", func() {
@@ -41,6 +43,7 @@ var _ = Describe("Create new application", func() {
 		createEnvCapture     *httpmock.HttpCaptureHandler[httpmock.CreateUpdateEnvRequest]
 		createEnvVarCapture  *httpmock.HttpCaptureHandler[httpmock.ActionEnvVariableRequest]
 		githubClient         *github.Client
+		service              *Service
 	)
 	BeforeEach(OncePerOrdered, func() {
 		newRepoId = 1234
@@ -113,6 +116,7 @@ var _ = Describe("Create new application", func() {
 				createEnvVarCapture.Func(),
 			),
 		))
+		service = NewService(&render.FlagsAwareTemplateRenderer{}, githubClient)
 		Expect(cplatformServerRepo)
 		Expect(templatesServerRepo)
 	})
@@ -128,7 +132,7 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			localAppRepoDir = t.TempDir()
-			createResult, err = Create(CreateOp{
+			createResult, err = service.Create(CreateOp{
 				Name:             "new-app-name",
 				OrgName:          "github-org-name",
 				LocalPath:        localAppRepoDir,
@@ -136,20 +140,8 @@ var _ = Describe("Create new application", func() {
 				FastFeedbackEnvs: []environment.Environment{devEnv},
 				ExtendedTestEnvs: []environment.Environment{devEnv},
 				ProdEnvs:         []environment.Environment{prodEnv},
-				Template: &template.FulfilledTemplate{
-					Spec: templateToUse,
-					Arguments: []template.Argument{
-						{
-							Name:  "name",
-							Value: "new-app-name",
-						},
-						{
-							Name:  "tenant",
-							Value: defaultTenant.Name,
-						},
-					},
-				},
-			}, githubClient)
+				Template:         templateToUse,
+			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -258,6 +250,23 @@ var _ = Describe("Create new application", func() {
 
 			Expect(filepath.Join(localAppRepoDir, "README.md")).To(BeARegularFile())
 		})
+
+		It("renders template with passed arguments", func() {
+			rootWorkflowsPath := filepath.Join(newAppLocalRepo.Path(), ".github", "workflows")
+
+			content := readFileContent(rootWorkflowsPath, "fast-feedback.yaml")
+			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
+			Expect(content).To(ContainSubstring("name: " + newAppName))
+			Expect(content).To(ContainSubstring("working_directory: ./"))
+			Expect(content).To(ContainSubstring("version_prefix: v"))
+
+			content = readFileContent(rootWorkflowsPath, "extended-test.yaml")
+			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
+			Expect(content).To(ContainSubstring("name: " + newAppName))
+			Expect(content).To(ContainSubstring("working_directory: ./"))
+			Expect(content).To(ContainSubstring("version_prefix: v"))
+		})
+
 		It("creates a commit with a rendered template", func() {
 			head, err := newAppLocalRepo.Repository().Head()
 			Expect(err).NotTo(HaveOccurred())
@@ -313,6 +322,7 @@ var _ = Describe("Create new application", func() {
 
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
+			Expect(templateToUse).NotTo(BeNil())
 
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), appName)
 
@@ -324,19 +334,7 @@ var _ = Describe("Create new application", func() {
 				FastFeedbackEnvs: []environment.Environment{devEnv},
 				ExtendedTestEnvs: []environment.Environment{devEnv},
 				ProdEnvs:         []environment.Environment{prodEnv},
-				Template: &template.FulfilledTemplate{
-					Spec: templateToUse,
-					Arguments: []template.Argument{
-						{
-							Name:  "name",
-							Value: appName,
-						},
-						{
-							Name:  "tenant",
-							Value: defaultTenant.Name,
-						},
-					},
-				},
+				Template:         templateToUse,
 			}
 
 			url := monorepoServerRepo.LocalCloneUrl()
@@ -368,8 +366,8 @@ var _ = Describe("Create new application", func() {
 				),
 			))
 
-			// Execute Create function
-			createResult, err = Create(createOp, githubClient)
+			service = NewService(&render.FlagsAwareTemplateRenderer{}, githubClient)
+			createResult, err = service.Create(createOp)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
@@ -391,16 +389,20 @@ var _ = Describe("Create new application", func() {
 			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
 
 			content := readFileContent(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")
-			Expect(content).To(ContainSubstring(defaultTenant.Name))
-			Expect(content).To(ContainSubstring(appName))
+			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
+			Expect(content).To(ContainSubstring("name: " + appName))
+			Expect(content).To(ContainSubstring("working_directory: " + "./" + appName))
+			Expect(content).To(ContainSubstring("version_prefix: " + appName + "/v"))
 
 			content = readFileContent(rootWorkflowsPath, "new-app-name-extended-test.yaml")
-			Expect(content).To(ContainSubstring(defaultTenant.Name))
-			Expect(content).To(ContainSubstring(appName))
+			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
+			Expect(content).To(ContainSubstring("name: " + appName))
+			Expect(content).To(ContainSubstring("working_directory: " + "./" + appName))
+			Expect(content).To(ContainSubstring("version_prefix: " + appName + "/v"))
 		})
 
-		It("does not leave .github directory in the new application directory", func() {
-			Expect(filepath.Join(newAppLocalPath, ".github")).NotTo(BeADirectory())
+		It("don't delete monorepo directory", func() {
+			Expect(monorepoLocalRepo.Path()).To(BeADirectory())
 		})
 
 		It("commits changes to the monorepo", func() {
@@ -438,6 +440,7 @@ var _ = Describe("Create new application", func() {
 			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
 		})
 	})
+
 	Context("monorepo mode - when in error", Ordered, func() {
 		var (
 			newAppLocalPath   string
@@ -451,11 +454,11 @@ var _ = Describe("Create new application", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			templateToUse, _ := template.FindByName(templatesLocalRepo.Path(), "incorrect-template")
+			templateToUse, _ := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 
 			monorepoLocalPath = monorepoLocalRepo.Path()
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")
-
+			service = NewService(&panicTemplateRenderer{}, githubClient)
 			executeCreate := func() {
 				createOp := CreateOp{
 					Name:             "app-with-error",
@@ -465,13 +468,10 @@ var _ = Describe("Create new application", func() {
 					FastFeedbackEnvs: []environment.Environment{devEnv},
 					ExtendedTestEnvs: []environment.Environment{devEnv},
 					ProdEnvs:         []environment.Environment{prodEnv},
-					Template: &template.FulfilledTemplate{
-						Spec:      templateToUse,
-						Arguments: []template.Argument{},
-					},
+					Template:         templateToUse,
 				}
 
-				_, _ = Create(createOp, githubClient)
+				_, _ = service.Create(createOp)
 			}
 
 			Expect(executeCreate).To(Panic())
@@ -494,4 +494,11 @@ func readFileContent(path ...string) string {
 	content, err := os.ReadFile(filePath)
 	Expect(err).NotTo(HaveOccurred())
 	return string(content)
+}
+
+type panicTemplateRenderer struct {
+}
+
+func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ ...template.Argument) error {
+	panic("Panic for test sake")
 }
