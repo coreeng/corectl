@@ -84,7 +84,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
-			return run(opts, &cfg.Repositories.CPlatform)
+			return run(opts, cfg.Repositories.AllowDirty.Value, &cfg.Repositories.CPlatform)
 		},
 	}
 
@@ -115,12 +115,19 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 		"Local repository path to export variables for P2P, defaults to current exec directory",
 	)
 
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		exportCommand.Flags(),
+	)
+
 	return exportCommand, nil
 }
 
-func run(opts *exportOpts, cplatRepoPath *config.Parameter[string]) error {
-	if _, err := config.ResetConfigRepositoryState(cplatRepoPath); err != nil {
-		return err
+func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string]) error {
+	if !allowDirty {
+		if _, err := config.ResetConfigRepositoryState(cplatRepoPath); err != nil {
+			return err
+		}
 	}
 	context, err := opts.processFlags(cplatRepoPath.Value)
 	if err != nil {

@@ -10,13 +10,9 @@ type TableEnv struct {
 	table table.Writer
 }
 
-func NewTable(streams userio.IOStreams, headers ...string) TableEnv {
+func NewTable(streams userio.IOStreams) TableEnv {
 	t := table.NewWriter()
-	row := make(table.Row, len(headers))
-	for i, header := range headers {
-		row[i] = header
-	}
-	t.AppendHeader(row)
+	t.AppendHeader(table.Row{"Name", "ID", "Cloud Platform"})
 	t.Style().Options.DrawBorder = false
 	t.Style().Options.SeparateColumns = false
 	t.Style().Options.SeparateFooter = false

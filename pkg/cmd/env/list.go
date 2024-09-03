@@ -42,20 +42,26 @@ func listCmd(cfg *config.Config) *cobra.Command {
 		&cfg.Repositories.CPlatform,
 		listCmd.Flags(),
 	)
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		listCmd.Flags(),
+	)
 
 	return listCmd
 }
 
 func list(opts ListOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	if !cfg.Repositories.AllowDirty.Value {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+			return err
+		}
 	}
 	existing, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 	if err != nil {
 		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)
 	}
 
-	table := corectlenv.NewTable(opts.Streams, "Name", "ID", "Cloud Platform")
+	table := corectlenv.NewTable(opts.Streams)
 	for _, env := range existing {
 		table.AppendEnv(env)
 	}

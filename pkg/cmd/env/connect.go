@@ -58,14 +58,20 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 		&cfg.Repositories.CPlatform,
 		connectCmd.Flags(),
 	)
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		connectCmd.Flags(),
+	)
 	opts.RepositoryLocation = cfg.Repositories.CPlatform.Value
 
 	return connectCmd
 }
 
 func connect(opts EnvConnectOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	if !cfg.Repositories.AllowDirty.Value {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+			return err
+		}
 	}
 	envs, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 	if err != nil {

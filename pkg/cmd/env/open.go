@@ -37,12 +37,18 @@ func openResource(cfg *config.Config) *cobra.Command {
 		&cfg.Repositories.CPlatform,
 		cmd.Flags(),
 	)
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		cmd.Flags(),
+	)
 	return &cmd
 }
 
 func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	if !cfg.Repositories.AllowDirty.Value {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+			return err
+		}
 	}
 	env, err := environment.FindByName(
 		environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value),
