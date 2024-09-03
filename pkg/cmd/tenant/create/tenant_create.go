@@ -114,13 +114,19 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&cfg.GitHub.Token,
 		tenantCreateCmd.Flags(),
 	)
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		tenantCreateCmd.Flags(),
+	)
 
 	return tenantCreateCmd
 }
 
 func run(opt *TenantCreateOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	if !cfg.Repositories.AllowDirty.Value {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+			return err
+		}
 	}
 
 	tenantsPath := coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value)
