@@ -3,9 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"os"
 	"path/filepath"
+
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
