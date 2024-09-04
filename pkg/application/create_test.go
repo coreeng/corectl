@@ -346,7 +346,6 @@ var _ = Describe("Create new application", func() {
 				},
 				CloneURL: &url,
 			}
-			fmt.Println(response)
 			getRepoCapture = httpmock.NewCaptureHandler[any](response)
 
 			createPrCapture = httpmock.NewCaptureHandler[github.NewPullRequest](

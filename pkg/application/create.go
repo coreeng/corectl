@@ -374,7 +374,7 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 		return fmt.Errorf("checking for monorepo failed with %v", err)
 	}
 
-	if isMonorepo {
+	if !isMonorepo {
 		_, response, err := svc.GithubClient.Repositories.Get(
 			context.Background(),
 			op.OrgName,
