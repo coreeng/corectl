@@ -7,6 +7,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/p2p"
 	"github.com/coreeng/corectl/pkg/cmd/template"
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
+	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
 	rootCmd.AddCommand(env.NewEnvCmd(cfg))
+	rootCmd.AddCommand(version.VersionCmd(cfg))
 
 	return rootCmd
 }
