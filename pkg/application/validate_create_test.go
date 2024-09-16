@@ -115,26 +115,24 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 				)
 			},
 		),
-		Entry("Error while checking repository existence",
-    application.CreateOp{
-        Tenant:    validTenant,
-        LocalPath: "/valid/path",
-        Name:      "new-app",
-        OrgName:   "test-org",
-    },
-    true,
-    `status code 500.*internal server error`, // Using regular expression to match the error
-    func() *http.Client {
-        return mock.NewMockedHTTPClient(
-            mock.WithRequestMatchHandler(
-                mock.GetReposByOwnerByRepo,
-                http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                    w.WriteHeader(http.StatusInternalServerError) // Simulate a 500 error
-                    w.Header().Set("Content-Type", "application/json")
-                    if _, err := w.Write([]byte(`{"message": "internal server error"}`)); err != nil {
-						
-						fmt.Println("Error writing response:", err)
-					} 
+	    Entry("Error while checking repository existence",
+	        application.CreateOp{
+	            Tenant:    validTenant,
+	            LocalPath: "/valid/path",
+	            Name:      "new-app",
+     	        OrgName:   "test-org",
+ 	        },
+   	        true,
+      	         `status code 500.*internal server error`, // Using regular expression to match the error
+      	         func() *http.Client {
+         	          return mock.NewMockedHTTPClient(
+         	              mock.WithRequestMatchHandler(
+               	            mock.GetReposByOwnerByRepo,
+           	                http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                   	            w.WriteHeader(http.StatusInternalServerError) // Simulate a 500 error
+                      	         w.Header().Set("Content-Type", "application/json")
+                      	         _, err := w.Write([]byte(`{"message": "internal server error"}`))
+								Expect(err).NotTo(HaveOccurred())
                 }),
             ),
         )
