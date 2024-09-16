@@ -131,7 +131,10 @@ var _ = Describe("ValidateCreate", Ordered, func() {
                 http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
                     w.WriteHeader(http.StatusInternalServerError) // Simulate a 500 error
                     w.Header().Set("Content-Type", "application/json")
-                    w.Write([]byte(`{"message": "internal server error"}`)) // Return error message in JSON
+                    if _, err := w.Write([]byte(`{"message": "internal server error"}`)); err != nil {
+						
+						fmt.Println("Error writing response:", err)
+					} 
                 }),
             ),
         )
