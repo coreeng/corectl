@@ -104,7 +104,7 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 		return result, err
 	}
 
-	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
+	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]", true); err != nil {
 		return result, err
 	}
 
@@ -155,7 +155,7 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		return result, err
 	}
 
-	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
+	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name), false); err != nil {
 		return result, err
 	}
 
@@ -302,11 +302,14 @@ func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
 	return nil
 }
 
-func commitAllChanges(localRepo *git.LocalRepository, message string) error {
+func commitAllChanges(localRepo *git.LocalRepository, message string, allowEmpty bool) error {
 	if err := localRepo.AddAll(); err != nil {
 		return err
 	}
-	return localRepo.Commit(&git.CommitOp{Message: message})
+	return localRepo.Commit(&git.CommitOp{
+		Message:    message,
+		AllowEmpty: allowEmpty,
+	})
 }
 
 func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {

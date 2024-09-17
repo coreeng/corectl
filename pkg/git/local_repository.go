@@ -160,8 +160,8 @@ func (localRepo *LocalRepository) AddAll() error {
 }
 
 func (localRepo *LocalRepository) AddFiles(paths ...string) error {
-	for _, path := range paths {
-		if _, err := localRepo.worktree.Add(path); err != nil {
+	for _, p := range paths {
+		if _, err := localRepo.worktree.Add(p); err != nil {
 			return err
 		}
 	}
@@ -282,22 +282,14 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 }
 
 type CommitOp struct {
-	Message     string
-	SkipIfEmpty bool
+	Message    string
+	AllowEmpty bool
 }
 
 func (localRepo *LocalRepository) Commit(op *CommitOp) error {
-	if op.SkipIfEmpty {
-		status, err := localRepo.worktree.Status()
-		if err != nil {
-			return err
-		}
-		if status.IsClean() {
-			return nil
-		}
-	}
-
-	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{})
+	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
+		AllowEmptyCommits: op.AllowEmpty,
+	})
 	if err != nil {
 		return err
 	}
