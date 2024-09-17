@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/coreeng/corectl/pkg/cmd/root"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"os"
 )
 
 func Run() int {

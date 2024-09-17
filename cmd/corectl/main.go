@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/coreeng/corectl/pkg/cmd"
 	"os"
+
+	"github.com/coreeng/corectl/pkg/cmd"
 )
 
 func main() {

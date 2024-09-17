@@ -1,17 +1,30 @@
 CORECTL_MAIN=./cmd/corectl
+MODULE_PATH=$$(go list -m)
+GIT_TAG=$$(2> /dev/null git describe --exact-match --tags || echo 'untagged')
+GIT_HASH=$$(git rev-parse HEAD)
+ARCH=$$(uname -m)
+TIMESTAMP=$$(date +"%Y-%m-%dT%H:%M:%S%:z")
+LDFLAGS = "\
+	-X ${MODULE_PATH}/pkg/cmd/version.version=${GIT_TAG} \
+	-X ${MODULE_PATH}/pkg/cmd/version.commit=${GIT_HASH} \
+	-X ${MODULE_PATH}/pkg/cmd/version.date=${TIMESTAMP} \
+	-X ${MODULE_PATH}/pkg/cmd/version.arch=${ARCH}"
+
 
 .PHONY: lint
 lint:
 	golangci-lint run ./...
 
 .PHONY: test
-test:
+test:	
 	go test ./pkg/... -v
 
 .PHONY: build
 build:
-	go build -o corectl $(CORECTL_MAIN)
-
+	go build \
+		-o corectl \
+		-ldflags ${LDFLAGS} \
+		$(CORECTL_MAIN)
 
 .PHONY: integration-test
 integration-test: build
@@ -21,7 +34,9 @@ integration-test: build
 
 .PHONY: install
 install:
-	go install $(CORECTL_MAIN)
+	go install \
+		-ldflags ${LDFLAGS} \
+		$(CORECTL_MAIN)
 
 .PHONY: dev-env
 dev-env:
