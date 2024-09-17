@@ -44,8 +44,10 @@ func NewAppCreateCmd(cfg *config.Config) (*cobra.Command, error) {
 - create a new github repository with p2p related variables
 - create a new PR to environment repository with configuration update for the new application (if necessary)
 
-NOTE: If parent directory is an existing git repository it will add a new application to it 
-      without creating a new remote repository.
+NOTE:
+- If <local-path> is not set, it defaults to ./<app-name>.
+- If <local-path> is an existing git repository it will add a new application to it 
+  without creating a new remote repository.
 `,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {

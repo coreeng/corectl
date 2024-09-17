@@ -63,7 +63,10 @@ func CreateOrUpdate(
 	if err = repository.Commit(&git.CommitOp{Message: op.CommitMessage}); err != nil {
 		return result, err
 	}
-	if err = repository.Push(op.GitAuth); err != nil {
+	if err = repository.Push(git.PushOp{
+		Auth:       op.GitAuth,
+		BranchName: op.BranchName,
+	}); err != nil {
 		return result, err
 	}
 

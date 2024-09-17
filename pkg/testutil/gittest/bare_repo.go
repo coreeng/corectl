@@ -52,7 +52,7 @@ func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepositor
 	if err = localRepo.Commit(&git.CommitOp{Message: "Initial commit"}); err != nil {
 		return nil, nil, err
 	}
-	if err = localRepo.Push(nil); err != nil {
+	if err = localRepo.Push(git.PushOp{}); err != nil {
 		return nil, nil, err
 	}
 
