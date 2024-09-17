@@ -55,7 +55,7 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 
         if expectError {
             Expect(err).To(HaveOccurred())
-            Expect(err.Error()).To(MatchRegexp(errorMsg)) // Change to `MatchRegexp` here
+            Expect(err.Error()).To(MatchRegexp(errorMsg))
         } else {
             Expect(err).NotTo(HaveOccurred())
         }
@@ -123,13 +123,13 @@ var _ = Describe("ValidateCreate", Ordered, func() {
      	        OrgName:   "test-org",
  	        },
    	        true,
-      	         `status code 500.*internal server error`, // Using regular expression to match the error
+      	         `status code 500.*internal server error`, 
       	         func() *http.Client {
          	          return mock.NewMockedHTTPClient(
          	              mock.WithRequestMatchHandler(
                	            mock.GetReposByOwnerByRepo,
            	                http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                   	            w.WriteHeader(http.StatusInternalServerError) // Simulate a 500 error
+                   	            w.WriteHeader(http.StatusInternalServerError) 
                       	         w.Header().Set("Content-Type", "application/json")
                       	         _, err := w.Write([]byte(`{"message": "internal server error"}`))
 								Expect(err).NotTo(HaveOccurred())
