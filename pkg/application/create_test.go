@@ -43,6 +43,7 @@ var _ = Describe("Create new application", func() {
 		createEnvCapture     *httpmock.HttpCaptureHandler[httpmock.CreateUpdateEnvRequest]
 		createEnvVarCapture  *httpmock.HttpCaptureHandler[httpmock.ActionEnvVariableRequest]
 		githubClient         *github.Client
+		renderer             *render.StubTemplateRenderer
 		service              *Service
 	)
 	BeforeEach(OncePerOrdered, func() {
@@ -116,7 +117,6 @@ var _ = Describe("Create new application", func() {
 				createEnvVarCapture.Func(),
 			),
 		))
-		service = NewService(&render.FlagsAwareTemplateRenderer{}, githubClient)
 		Expect(cplatformServerRepo)
 		Expect(templatesServerRepo)
 	})
@@ -128,6 +128,10 @@ var _ = Describe("Create new application", func() {
 			localAppRepoDir string
 		)
 		BeforeAll(func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient)
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
@@ -251,6 +255,29 @@ var _ = Describe("Create new application", func() {
 			Expect(filepath.Join(localAppRepoDir, "README.md")).To(BeARegularFile())
 		})
 
+		It("passes correct arguments to template", func() {
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
+				template.Argument{
+					Name:  "name",
+					Value: newAppName,
+				},
+				template.Argument{
+					Name:  "tenant",
+					Value: "default-tenant",
+				},
+				template.Argument{
+					Name:  "working_directory",
+					Value: "./",
+				},
+				template.Argument{
+					Name:  "version_prefix",
+					Value: "v",
+				},
+			))
+		})
+
 		It("renders template with passed arguments", func() {
 			rootWorkflowsPath := filepath.Join(newAppLocalRepo.Path(), ".github", "workflows")
 
@@ -365,7 +392,10 @@ var _ = Describe("Create new application", func() {
 				),
 			))
 
-			service = NewService(&render.FlagsAwareTemplateRenderer{}, githubClient)
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient)
 			createResult, err = service.Create(createOp)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -382,6 +412,29 @@ var _ = Describe("Create new application", func() {
 			rootWorkflowsPath := filepath.Join(monorepoLocalRepo.Path(), ".github", "workflows")
 			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")).To(BeAnExistingFile())
 			Expect(filepath.Join(rootWorkflowsPath, "new-app-name-extended-test.yaml")).To(BeAnExistingFile())
+		})
+
+		It("passes correct arguments to template", func() {
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
+				template.Argument{
+					Name:  "name",
+					Value: appName,
+				},
+				template.Argument{
+					Name:  "tenant",
+					Value: "default-tenant",
+				},
+				template.Argument{
+					Name:  "working_directory",
+					Value: "./" + appName,
+				},
+				template.Argument{
+					Name:  "version_prefix",
+					Value: appName + "/v",
+				},
+			))
 		})
 
 		It("renders template with passed arguments", func() {
@@ -483,9 +536,68 @@ var _ = Describe("Create new application", func() {
 		It("don't delete monorepo directory", func() {
 			Expect(monorepoLocalPath).To(BeADirectory())
 		})
-
 	})
+	Context("monorepo mode - checkout is done strictly from main", func() {
+		var (
+			localRepo *git.LocalRepository
+		)
+		BeforeEach(func() {
+			var err error
+			localRepo, err = git.InitLocalRepository(GinkgoT().TempDir())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(localRepo.Commit(&git.CommitOp{
+				Message:    "initial commit",
+				AllowEmpty: true,
+			})).To(Succeed())
+		})
 
+		It("checks out normally from main", func() {
+			mainHead, err := localRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			mainHead, err = localRepo.Repository().Reference(mainHead.Name(), true)
+			Expect(err).NotTo(HaveOccurred())
+
+			branchName := "new-branch"
+			Expect(checkoutNewBranch(localRepo, branchName)).To(Succeed())
+			head, err := localRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			head, err = localRepo.Repository().Reference(head.Name(), true)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(head.Name().Short()).To(Equal(branchName))
+			Expect(head.Hash()).To(Equal(mainHead.Hash()))
+		})
+
+		It("if not in main, it checkouts still from main", func() {
+			mainHead, err := localRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			mainHead, err = localRepo.Repository().Reference(mainHead.Name(), true)
+			Expect(err).NotTo(HaveOccurred())
+
+			oldBranchName := "old-branch"
+			newBranchName := "new-branch"
+			Expect(localRepo.CheckoutBranch(&git.CheckoutOp{
+				BranchName:      oldBranchName,
+				CreateIfMissing: true,
+			})).To(Succeed())
+			Expect(localRepo.Commit(&git.CommitOp{
+				Message:    "Just to have different hash from main",
+				AllowEmpty: true,
+			})).To(Succeed())
+
+			oldBranchHead, err := localRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			oldBranchHead, err = localRepo.Repository().Reference(oldBranchHead.Name(), true)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(checkoutNewBranch(localRepo, newBranchName)).To(Succeed())
+			head, err := localRepo.Repository().Head()
+			Expect(err).NotTo(HaveOccurred())
+			head, err = localRepo.Repository().Reference(head.Name(), true)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(head.Name().Short()).To(Equal(newBranchName))
+			Expect(head.Hash()).To(Equal(mainHead.Hash()))
+		})
+	})
 })
 
 func readFileContent(path ...string) string {

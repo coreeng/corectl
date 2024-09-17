@@ -135,3 +135,13 @@ func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory
 
 	return template.Render(fulfilledTemplate, targetDirectory)
 }
+
+type StubTemplateRenderer struct {
+	Renderer             TemplateRenderer
+	PassedAdditionalArgs [][]template.Argument
+}
+
+func (r *StubTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+	r.PassedAdditionalArgs = append(r.PassedAdditionalArgs, additionalArgs)
+	return r.Renderer.Render(spec, targetDirectory, additionalArgs...)
+}
