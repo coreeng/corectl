@@ -384,7 +384,7 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 			return fmt.Errorf("%s/%s repository already exists", op.OrgName, op.Name)
 		}
 		if response.StatusCode != http.StatusNotFound {
-			return fmt.Errorf("error while checking if %s/%s (https://github.com/%s/%s) repository exists: status code %d, error: %v", op.OrgName, op.Name,op.OrgName, op.Name, response.StatusCode, err)
+			return fmt.Errorf("error while checking if %s/%s (https://github.com/%s/%s) repository exists: status code %d, error: %v ", op.OrgName, op.Name,op.OrgName, op.Name, response.StatusCode, err)
 		}
 	}
 	return nil
