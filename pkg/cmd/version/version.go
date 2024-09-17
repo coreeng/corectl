@@ -19,7 +19,8 @@ func VersionCmd(cfg *config.Config) *cobra.Command {
 		Use:   "version",
 		Short: "List corectl version",
 		Long:  `This command allows you to list the currently running corectl version.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, _args []string) {
 			fmt.Printf("corectl %s (commit: %s) %s %s\n", version, commit, date, arch)
 		},
 	}

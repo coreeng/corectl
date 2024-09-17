@@ -1,7 +1,6 @@
 package version
 
 import (
-	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,7 +19,7 @@ var _ = Describe("version", Ordered, func() {
 
 	Context("version", func() {
 		It("returns sensible defaults", func() {
-			output, err := corectl.Run("version", testdata.DevEnvironment())
+			output, err := corectl.Run("version")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).Should(MatchRegexp("corectl (?P<tag>[a-z0-9\\.]+?) \\(commit: (?P<commit>[0-9a-f]+?)\\) (?P<date>.+?) (?P<arch>.+)"))
 		})
