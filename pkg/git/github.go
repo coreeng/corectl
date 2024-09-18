@@ -26,7 +26,7 @@ func DeriveRepositoryFullname(localRepo *LocalRepository) (RepositoryFullname, e
 	}
 	remoteConfig, ok := config.Remotes["origin"]
 	if !ok {
-		return RepositoryFullname{}, fmt.Errorf("origin remote is missing, repo %q", localRepo.path)
+		return RepositoryFullname{}, fmt.Errorf("origin remote is missing, repo %q", localRepo.Path())
 	}
 
 	repoUrl := remoteConfig.URLs[0]

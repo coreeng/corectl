@@ -21,7 +21,6 @@ const MainBranch = "main"
 type LocalRepository struct {
 	repo     *git.Repository
 	worktree *git.Worktree
-	path     string
 }
 
 type RepositoryErr struct {
@@ -53,9 +52,7 @@ func (localRepo *LocalRepository) Worktree() *git.Worktree {
 }
 
 func InitLocalRepository(path string) (*LocalRepository, error) {
-	result := &LocalRepository{
-		path: path,
-	}
+	result := &LocalRepository{}
 
 	repository, err := git.PlainInitWithOptions(
 		path,
@@ -78,9 +75,7 @@ func InitLocalRepository(path string) (*LocalRepository, error) {
 }
 
 func OpenLocalRepository(path string) (*LocalRepository, error) {
-	localRepository := &LocalRepository{
-		path: path,
-	}
+	localRepository := &LocalRepository{}
 	repository, err := git.PlainOpen(path)
 	localRepository.repo = repository
 	if err != nil {
@@ -125,7 +120,6 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 	return &LocalRepository{
 		repo:     repository,
 		worktree: worktree,
-		path:     op.TargetPath,
 	}, nil
 }
 
@@ -158,7 +152,7 @@ func (localRepo *LocalRepository) ResetState() error {
 }
 
 func (localRepo *LocalRepository) Path() string {
-	return localRepo.path
+	return localRepo.worktree.Filesystem.Root()
 }
 
 func (localRepo *LocalRepository) AddAll() error {
@@ -166,8 +160,8 @@ func (localRepo *LocalRepository) AddAll() error {
 }
 
 func (localRepo *LocalRepository) AddFiles(paths ...string) error {
-	for _, path := range paths {
-		if _, err := localRepo.worktree.Add(path); err != nil {
+	for _, p := range paths {
+		if _, err := localRepo.worktree.Add(p); err != nil {
 			return err
 		}
 	}
@@ -262,13 +256,25 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
 	return PullResult{IsUpdated: err == nil}, nil
 }
 
-func (localRepo *LocalRepository) Push(auth AuthMethod) error {
+type PushOp struct {
+	Auth       AuthMethod
+	BranchName string
+}
+
+func (localRepo *LocalRepository) Push(op PushOp) error {
 	var gitAuth transport.AuthMethod
-	if auth != nil {
-		gitAuth = auth.toGitAuthMethod()
+	if op.Auth != nil {
+		gitAuth = op.Auth.toGitAuthMethod()
+	}
+	var refSpecs []config.RefSpec
+	if op.BranchName != "" {
+		refSpecs = append(refSpecs, config.RefSpec(
+			fmt.Sprintf("+refs/heads/%s:refs/heads/%s", op.BranchName, op.BranchName),
+		))
 	}
 	if err := localRepo.repo.Push(&git.PushOptions{
-		Auth: gitAuth,
+		Auth:     gitAuth,
+		RefSpecs: refSpecs,
 	}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return err
 	}
@@ -276,23 +282,13 @@ func (localRepo *LocalRepository) Push(auth AuthMethod) error {
 }
 
 type CommitOp struct {
-	Message     string
-	SkipIfEmpty bool
+	Message    string
+	AllowEmpty bool
 }
 
 func (localRepo *LocalRepository) Commit(op *CommitOp) error {
-	if op.SkipIfEmpty {
-		status, err := localRepo.worktree.Status()
-		if err != nil {
-			return err
-		}
-		if status.IsClean() {
-			return nil
-		}
-	}
-
 	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
-		AllowEmptyCommits: true,
+		AllowEmptyCommits: op.AllowEmpty,
 	})
 	if err != nil {
 		return err

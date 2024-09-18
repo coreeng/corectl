@@ -105,6 +105,8 @@ func prepareTestRepository(
 	Expect(
 		localRepo.SetRemote(githubRepo.GetCloneURL()),
 	).To(Succeed())
-	Expect(localRepo.Push(gitAuth)).To(Succeed())
+	Expect(localRepo.Push(git.PushOp{
+		Auth: gitAuth,
+	})).To(Succeed())
 	return repoFullId
 }

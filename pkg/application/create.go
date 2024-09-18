@@ -52,6 +52,17 @@ type CreateResult struct {
 }
 
 func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error {
+	currentBranch, err := localRepo.CurrentBranch()
+	if err != nil {
+		return err
+	}
+	if currentBranch != git.MainBranch {
+		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
+			BranchName: git.MainBranch,
+		}); err != nil {
+			return err
+		}
+	}
 	return localRepo.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      branchName,
 		CreateIfMissing: true,
@@ -79,11 +90,21 @@ func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
 }
 
 func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository) (result CreateResult, err error) {
-	if err := svc.renderTemplateMaybe(op); err != nil {
+	additionalArgs := []template.Argument{
+		{
+			Name:  "working_directory",
+			Value: "./",
+		},
+		{
+			Name:  "version_prefix",
+			Value: "v",
+		},
+	}
+	if err := svc.renderTemplateMaybe(op, additionalArgs...); err != nil {
 		return result, err
 	}
 
-	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]"); err != nil {
+	if err := commitAllChanges(localRepo, "Initial commit\n[skip ci]", true); err != nil {
 		return result, err
 	}
 
@@ -95,7 +116,9 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 		return result, err
 	}
 
-	if err := localRepo.Push(op.GitAuth); err != nil {
+	if err := localRepo.Push(git.PushOp{
+		Auth: op.GitAuth,
+	}); err != nil {
 		return result, err
 	}
 
@@ -111,10 +134,14 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		return result, err
 	}
 
+	appRelPath, err := filepath.Rel(localRepo.Path(), op.LocalPath)
+	if err != nil {
+		return CreateResult{}, err
+	}
 	additionalArgs := []template.Argument{
 		{
 			Name:  "working_directory",
-			Value: "./" + op.Name,
+			Value: "./" + appRelPath,
 		},
 		{
 			Name:  "version_prefix",
@@ -128,11 +155,14 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		return result, err
 	}
 
-	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name)); err != nil {
+	if err := commitAllChanges(localRepo, fmt.Sprintf("New app: %s\n[skip ci]", op.Name), false); err != nil {
 		return result, err
 	}
 
-	if err := localRepo.Push(op.GitAuth); err != nil {
+	if err := localRepo.Push(git.PushOp{
+		Auth:       op.GitAuth,
+		BranchName: branchName,
+	}); err != nil {
 		return result, err
 	}
 
@@ -272,11 +302,14 @@ func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
 	return nil
 }
 
-func commitAllChanges(localRepo *git.LocalRepository, message string) error {
+func commitAllChanges(localRepo *git.LocalRepository, message string, allowEmpty bool) error {
 	if err := localRepo.AddAll(); err != nil {
 		return err
 	}
-	return localRepo.Commit(&git.CommitOp{Message: message})
+	return localRepo.Commit(&git.CommitOp{
+		Message:    message,
+		AllowEmpty: allowEmpty,
+	})
 }
 
 func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {
