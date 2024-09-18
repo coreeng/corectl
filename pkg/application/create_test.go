@@ -588,6 +588,7 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 			oldBranchHead, err = localRepo.Repository().Reference(oldBranchHead.Name(), true)
 			Expect(err).NotTo(HaveOccurred())
+			Expect(oldBranchHead).NotTo(Equal(mainHead))
 
 			Expect(checkoutNewBranch(localRepo, newBranchName)).To(Succeed())
 			head, err := localRepo.Repository().Head()
