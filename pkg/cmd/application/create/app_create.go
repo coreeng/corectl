@@ -3,9 +3,10 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -17,6 +18,7 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +26,7 @@ type AppCreateOpt struct {
 	Name           string
 	LocalPath      string
 	NonInteractive bool
+	DryRun         bool
 	FromTemplate   string
 	Tenant         string
 	ArgsFile       string
@@ -51,6 +54,7 @@ NOTE:
 `,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			log.Trace().Msg("Starting app create")
 			opts.Name = args[0]
 			if len(args) > 1 {
 				opts.LocalPath = args[1]
@@ -66,6 +70,13 @@ NOTE:
 		},
 	}
 
+	appCreateCmd.Flags().BoolVarP(
+		&opts.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
+	)
 	appCreateCmd.Flags().StringVarP(
 		&opts.FromTemplate,
 		"from-template",
@@ -121,10 +132,10 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
 		return err
 	}
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
 		return err
 	}
 

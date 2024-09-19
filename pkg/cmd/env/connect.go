@@ -2,8 +2,9 @@ package env
 
 import (
 	"errors"
-	"github.com/coreeng/corectl/pkg/command"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -69,7 +70,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 
 func connect(opts EnvConnectOpt, cfg *config.Config) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

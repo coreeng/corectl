@@ -3,6 +3,7 @@ package userio
 import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type SpinnerHandler interface {
@@ -23,7 +24,10 @@ func (sh asyncSpinnerHandler) Done() {
 func newSpinner(message string, streams IOStreams) SpinnerHandler {
 	doneChan := make(chan bool)
 	quittedChan := make(chan bool)
-	m := spinner.New(spinner.WithSpinner(spinner.Dot))
+	m := spinner.New(
+		spinner.WithSpinner(spinner.Dot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("#0404ff"))), // CECG Blue
+	)
 	sm := spinnerModel{
 		message:  message,
 		doneChan: doneChan,

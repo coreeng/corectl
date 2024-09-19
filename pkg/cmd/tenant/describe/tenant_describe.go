@@ -2,6 +2,7 @@ package describe
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/developer-platform/pkg/tenant"
@@ -36,7 +37,7 @@ func NewTenantDescribeCmd(cfg *config.Config) *cobra.Command {
 
 func run(opts *TenantDescribeOpts, cfg *config.Config) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

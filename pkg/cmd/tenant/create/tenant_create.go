@@ -3,6 +3,9 @@ package create
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -11,8 +14,6 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
-	"slices"
-	"strings"
 )
 
 type TenantCreateOpt struct {
@@ -124,7 +125,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 
 func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

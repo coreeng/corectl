@@ -3,10 +3,11 @@ package tenant
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"path/filepath"
 )
 
 type CreateOrUpdateOp struct {
@@ -30,7 +31,7 @@ func CreateOrUpdate(
 ) (result CreateOrUpdateResult, err error) {
 	result = CreateOrUpdateResult{}
 
-	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath)
+	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath, false)
 	if err != nil {
 		return result, fmt.Errorf("couldn't open cplatform repository: %v", err)
 	}
@@ -38,11 +39,11 @@ func CreateOrUpdate(
 	if err = repository.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      op.BranchName,
 		CreateIfMissing: true,
-	}); err != nil {
+	}, false); err != nil {
 		return result, err
 	}
 	defer func() {
-		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch})
+		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch}, false)
 	}()
 
 	if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{

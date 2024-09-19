@@ -24,12 +24,11 @@ func ConfigureGlobalLogger(logLevelFlag string) {
 	}
 	zerolog.SetGlobalLevel(logLevel)
 
-	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).With().
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.TimeOnly}).With().
 		Timestamp().
 		Caller().
 		Logger()
 
-	log.Logger = logger
 	log.Trace().Msgf("Log level set to %s", logLevelFlag)
 }
 

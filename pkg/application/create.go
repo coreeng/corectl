@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -14,11 +20,6 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
-	"net/http"
-	"os"
-	"path/filepath"
-	"slices"
-	"strings"
 )
 
 type Service struct {
@@ -59,14 +60,14 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	if currentBranch != git.MainBranch {
 		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
 			BranchName: git.MainBranch,
-		}); err != nil {
+		}, false); err != nil {
 			return err
 		}
 	}
 	return localRepo.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      branchName,
 		CreateIfMissing: true,
-	})
+	}, false)
 }
 
 func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
