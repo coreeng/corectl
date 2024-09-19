@@ -599,6 +599,37 @@ var _ = Describe("Create new application", func() {
 			Expect(head.Hash()).To(Equal(mainHead.Hash()))
 		})
 	})
+
+	DescribeTable("monorepo mode - app directory calculation",
+		func(appPath string, workingDirRelToMonorepo string, expectedAppRelPath string, success bool) {
+			cwd, err := os.Getwd()
+			Expect(err).NotTo(HaveOccurred())
+			defer func() {
+				Expect(os.Chdir(cwd)).To(Succeed())
+				Expect(os.Getwd()).To(Equal(cwd))
+			}()
+
+			monorepoDir, err := filepath.EvalSymlinks(GinkgoT().TempDir())
+			Expect(err).NotTo(HaveOccurred())
+			monorepoSubDir := filepath.Join(monorepoDir, workingDirRelToMonorepo)
+			Expect(os.MkdirAll(monorepoSubDir, 0755)).To(Succeed())
+			Expect(os.Chdir(monorepoSubDir)).To(Succeed())
+
+			appRelPath, err := calculateWorkingDirForMonorepo(monorepoDir, appPath)
+			if success {
+				Expect(err).NotTo(HaveOccurred())
+				Expect(appRelPath).To(Equal(expectedAppRelPath))
+			} else {
+				Expect(err).To(HaveOccurred())
+				Expect(appRelPath).To(Equal(""))
+			}
+		},
+		Entry("from repo root", "app-path", "./", "app-path", true),
+		Entry("from repo root with dir embedding", "subdir/app-path", "./", "subdir/app-path", true),
+		Entry("from repo subdir", "app-path", "./subdir", "subdir/app-path", true),
+		Entry("from repo subdir with return", "../app-path", "./subdir", "app-path", true),
+		Entry("result is outside of monorepo – error", "../app-path", "./", "", false),
+	)
 })
 
 func readFileContent(path ...string) string {
