@@ -5,11 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
-	"net/http"
-	"os"
-	"path/filepath"
-	"slices"
-
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
@@ -19,6 +14,11 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
+	"net/http"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
 )
 
 type Service struct {
@@ -100,7 +100,7 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 			Value: "v",
 		},
 	}
-	if err := svc.renderTemplateMaybe(op, additionalArgs...); err != nil {
+	if err := svc.renderTemplateMaybe(op, op.LocalPath, additionalArgs...); err != nil {
 		return result, err
 	}
 
@@ -134,9 +134,9 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		return result, err
 	}
 
-	appRelPath, err := filepath.Rel(localRepo.Path(), op.LocalPath)
+	appRelPath, err := calculateWorkingDirForMonorepo(localRepo.Path(), op.LocalPath)
 	if err != nil {
-		return CreateResult{}, err
+		return result, err
 	}
 	additionalArgs := []template.Argument{
 		{
@@ -148,7 +148,8 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 			Value: op.Name + "/v",
 		},
 	}
-	if err := svc.renderTemplateMaybe(op, additionalArgs...); err != nil {
+	appAbsPath := filepath.Join(localRepo.Path(), appRelPath)
+	if err := svc.renderTemplateMaybe(op, appAbsPath, additionalArgs...); err != nil {
 		return result, err
 	}
 	if err := svc.moveGithubWorkflowsToRootMaybe(op); err != nil {
@@ -181,6 +182,18 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		RepositoryFullname: repoFullId.RepositoryFullname,
 		PRUrl:              pullRequest.GetHTMLURL(),
 	}, nil
+}
+
+func calculateWorkingDirForMonorepo(repoPath string, path string) (string, error) {
+	absAppPath, err := filepath.Abs(path)
+	appRelPath, err := filepath.Rel(repoPath, absAppPath)
+	if err != nil {
+		return "", err
+	}
+	if strings.HasPrefix(appRelPath, "..") {
+		return "", fmt.Errorf("app relative path is not inside the monorepo: %s", appRelPath)
+	}
+	return appRelPath, nil
 }
 
 func (svc *Service) createPR(name string, branchName string, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
@@ -273,7 +286,7 @@ func openMonorepoMaybe(localPath string) (localRepo *git.LocalRepository, isMono
 	return localRepo, isMonorepo, nil
 }
 
-func (svc *Service) renderTemplateMaybe(op CreateOp, additionalArgs ...template.Argument) error {
+func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additionalArgs ...template.Argument) error {
 	if op.Template == nil {
 		return nil
 	}
@@ -288,7 +301,7 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, additionalArgs ...template.
 		},
 	}
 	args = append(args, additionalArgs...)
-	return svc.TemplateRenderer.Render(op.Template, op.LocalPath, args...)
+	return svc.TemplateRenderer.Render(op.Template, targetDir, args...)
 }
 
 func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
