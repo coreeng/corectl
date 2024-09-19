@@ -186,6 +186,9 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 
 func calculateWorkingDirForMonorepo(repoPath string, path string) (string, error) {
 	absAppPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
 	appRelPath, err := filepath.Rel(repoPath, absAppPath)
 	if err != nil {
 		return "", err
