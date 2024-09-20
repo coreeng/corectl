@@ -2,11 +2,12 @@ package render
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type TemplateRenderOpts struct {
@@ -33,7 +34,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
 
 			if !opts.IgnoreChecks {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
 					return err
 				}
 			}

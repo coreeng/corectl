@@ -2,12 +2,13 @@ package env
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 type EnvOpenResourceOpt struct {
@@ -46,7 +47,7 @@ func openResource(cfg *config.Config) *cobra.Command {
 
 func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

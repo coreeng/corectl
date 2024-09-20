@@ -3,6 +3,8 @@ package userio
 import (
 	"fmt"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func (streams IOStreams) InfoE(messages ...string) error {
@@ -32,10 +34,21 @@ func (streams IOStreams) Spinner(message string) SpinnerHandler {
 		return newSpinner(message, streams)
 	} else {
 		streams.Info(message)
-		return dummySpinnerHandler{}
+		return dummySpinnerHandler{streams: streams}
 	}
 }
 
-type dummySpinnerHandler struct{}
+type dummySpinnerHandler struct {
+	streams IOStreams
+}
+
+func InfoLog(message string) string {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("123"))
+	return fmt.Sprintf("%s %s", style.Render("INFO:"), message)
+}
 
 func (dummySpinnerHandler) Done() {}
+func (dsh dummySpinnerHandler) Info(message string) {
+	dsh.streams.out.Output().Write([]byte(InfoLog(message) + "\n"))
+}
+func (dummySpinnerHandler) SetTitle(string) {}

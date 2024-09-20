@@ -3,12 +3,15 @@ package git
 import (
 	"errors"
 	"fmt"
+	"path"
+	"strings"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"path"
-	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -123,19 +126,19 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 	}, nil
 }
 
-func OpenAndResetRepositoryState(path string) (*LocalRepository, error) {
+func OpenAndResetRepositoryState(path string, dryRun bool) (*LocalRepository, error) {
 	localRepo, err := OpenLocalRepository(path)
 	if err != nil {
 		return nil, err
 	}
-	err = localRepo.ResetState()
+	err = localRepo.ResetState(dryRun)
 	if err != nil {
 		return nil, err
 	}
 	return localRepo, nil
 }
 
-func (localRepo *LocalRepository) ResetState() error {
+func (localRepo *LocalRepository) ResetState(dryRun bool) error {
 	localChangesPresent, err := localRepo.IsLocalChangesPresent()
 	if err != nil {
 		return err
@@ -145,7 +148,7 @@ func (localRepo *LocalRepository) ResetState() error {
 	}
 	if err = localRepo.CheckoutBranch(&CheckoutOp{
 		BranchName: MainBranch,
-	}); err != nil {
+	}, dryRun); err != nil {
 		return err
 	}
 	return nil
@@ -181,7 +184,7 @@ type CheckoutOp struct {
 	CreateIfMissing bool
 }
 
-func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
+func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp, dryRun bool) error {
 	branchRefName := plumbing.NewBranchReferenceName(op.BranchName)
 
 	_, err := localRepo.repo.Storer.Reference(branchRefName)
@@ -191,8 +194,12 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 			return err
 		}
 		branchReference := plumbing.NewHashReference(branchRefName, head.Hash())
-		if err = localRepo.repo.Storer.SetReference(branchReference); err != nil {
-			return err
+
+		log.Trace().Msgf("git: [%s] branch ref -> HEAD: %s -> %s", localRepo.Path(), branchReference.Name().Short(), branchReference.Hash().String())
+		if !dryRun {
+			if err = localRepo.repo.Storer.SetReference(branchReference); err != nil {
+				return err
+			}
 		}
 	} else if err != nil {
 		return err
@@ -205,15 +212,22 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 			Remote: OriginRemote,
 			Merge:  branchRefName,
 		}
-		if err = localRepo.repo.CreateBranch(branch); err != nil {
-			return err
+		log.Info().Str("repo", localRepo.Path()).Str("branch", branch.Name).Msg("(git) create branch")
+		if !dryRun {
+			if err = localRepo.repo.CreateBranch(branch); err != nil {
+				return err
+			}
 		}
 	} else if err != nil {
 		return err
 	}
 
-	if err = localRepo.worktree.Checkout(&git.CheckoutOptions{Branch: branch.Merge}); err != nil {
-		return err
+	// TODO: We could use `git.CheckoutOptions{Branch: branch.Merge, Create: true, Hash: branchReference}` to refactor
+	log.Info().Str("repo", localRepo.Path()).Str("branch", branch.Name).Msg("(git) checkout branch")
+	if !dryRun {
+		if err = localRepo.worktree.Checkout(&git.CheckoutOptions{Branch: branch.Merge}); err != nil {
+			return err
+		}
 	}
 
 	return nil

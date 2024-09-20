@@ -2,9 +2,10 @@ package git
 
 import (
 	"fmt"
-	"github.com/google/go-github/v59/github"
 	"regexp"
 	"strings"
+
+	"github.com/google/go-github/v59/github"
 )
 
 var gitRepoRegexp = regexp.MustCompile(`^.*[:/]([\w-.]+)/([\w-.]+)(\.git)?$`)

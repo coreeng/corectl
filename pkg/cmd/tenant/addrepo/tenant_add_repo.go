@@ -2,6 +2,7 @@ package addrepo
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -44,7 +45,7 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 
 func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

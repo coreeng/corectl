@@ -3,9 +3,10 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -20,15 +21,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type AppCreateUI struct {
+	spinner userio.SpinnerHandler
+}
 type AppCreateOpt struct {
 	Name           string
 	LocalPath      string
 	NonInteractive bool
+	DryRun         bool
 	FromTemplate   string
 	Tenant         string
 	ArgsFile       string
 	Args           []string
 
+	UI      AppCreateUI
 	Streams userio.IOStreams
 }
 
@@ -62,10 +68,21 @@ NOTE:
 				cmd.OutOrStdout(),
 				!opts.NonInteractive,
 			)
+			opts.UI = AppCreateUI{
+				spinner: opts.Streams.Spinner("Creating new application..."),
+			}
+			opts.UI.spinner.Info("starting app create")
 			return run(&opts, cfg)
 		},
 	}
 
+	appCreateCmd.Flags().BoolVarP(
+		&opts.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
+	)
 	appCreateCmd.Flags().StringVarP(
 		&opts.FromTemplate,
 		"from-template",
@@ -121,11 +138,17 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	opts.UI.spinner.Info(fmt.Sprintf("resetting repository [repo=%s]", cfg.Repositories.CPlatform.Value))
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
+			return err
+		}
 	}
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-		return err
+	opts.UI.spinner.Info(fmt.Sprintf("resetting repository [repo=%s]", cfg.Repositories.Templates.Value))
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
+			return err
+		}
 	}
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
@@ -163,9 +186,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.Info("Added ", opts.Name, " to repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+		opts.UI.spinner.Info(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
 	} else {
-		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+		opts.UI.spinner.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
 	nextStepsMessage := fmt.Sprintf(
@@ -191,7 +214,8 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		)
 	}
 
-	opts.Streams.Info(nextStepsMessage)
+	opts.UI.spinner.Info(strings.TrimSpace(nextStepsMessage))
+	defer opts.UI.spinner.Done()
 	return nil
 }
 
@@ -230,8 +254,7 @@ func createNewApp(
 	fromTemplate *template.Spec,
 	existingEnvs []environment.Environment,
 ) (application.CreateResult, error) {
-	spinnerHandler := opts.Streams.Spinner("Creating new application...")
-	defer spinnerHandler.Done()
+	opts.UI.spinner.SetTitle("Creating new application...")
 
 	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
@@ -254,6 +277,7 @@ func createNewApp(
 		ProdEnvs:         prodEnvs,
 		Template:         fromTemplate,
 		GitAuth:          gitAuth,
+		DryRun:           opts.DryRun,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err
@@ -295,6 +319,7 @@ func createPRWithUpdatedReposListForTenant(
 			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
+			DryRun:            opts.DryRun,
 		},
 		githubClient,
 	)

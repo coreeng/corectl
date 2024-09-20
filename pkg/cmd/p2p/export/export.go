@@ -2,14 +2,15 @@ package export
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 type exportOpts struct {
@@ -125,7 +126,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 
 func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string]) error {
 	if !allowDirty {
-		if _, err := config.ResetConfigRepositoryState(cplatRepoPath); err != nil {
+		if _, err := config.ResetConfigRepositoryState(cplatRepoPath, false); err != nil {
 			return err
 		}
 	}
