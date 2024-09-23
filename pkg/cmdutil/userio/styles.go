@@ -25,7 +25,7 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 	return &styles{
 		title:        renderer.NewStyle().MarginLeft(2),
 		item:         renderer.NewStyle().PaddingLeft(2),
-		selectedItem: renderer.NewStyle().PaddingLeft(4).Foreground(blueColor),
+		selectedItem: renderer.NewStyle().Foreground(blueColor),
 		pagination:   renderer.NewStyle().PaddingLeft(4),
 		help:         renderer.NewStyle().Padding(1, 0, 0, 4),
 		suggestion:   renderer.NewStyle().Faint(true),

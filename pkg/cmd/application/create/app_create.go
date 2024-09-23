@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"github.com/rs/zerolog/log"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -21,9 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AppCreateUI struct {
-	spinner userio.SpinnerHandler
-}
 type AppCreateOpt struct {
 	Name           string
 	LocalPath      string
@@ -34,7 +32,6 @@ type AppCreateOpt struct {
 	ArgsFile       string
 	Args           []string
 
-	UI      AppCreateUI
 	Streams userio.IOStreams
 }
 
@@ -68,10 +65,10 @@ NOTE:
 				cmd.OutOrStdout(),
 				!opts.NonInteractive,
 			)
-			opts.UI = AppCreateUI{
-				spinner: opts.Streams.Spinner("Creating new application..."),
-			}
-			opts.UI.spinner.Info("starting app create")
+
+			spinnerHandler := opts.Streams.Spinner("Creating new application...")
+			opts.Streams.CurrentHandler = spinnerHandler
+			opts.Streams.CurrentHandler.Info("starting app create")
 			return run(&opts, cfg)
 		},
 	}
@@ -138,13 +135,15 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	opts.UI.spinner.Info(fmt.Sprintf("resetting repository [repo=%s]", cfg.Repositories.CPlatform.Value))
+	defer opts.Streams.CurrentHandler.Done()
+
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
 	if !opts.DryRun {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
 			return err
 		}
 	}
-	opts.UI.spinner.Info(fmt.Sprintf("resetting repository [repo=%s]", cfg.Repositories.Templates.Value))
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
 	if !opts.DryRun {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
 			return err
@@ -157,6 +156,8 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	templateInput := opts.createTemplateInput(existingTemplates)
 	fromTemplate, err := templateInput.GetValue(opts.Streams)
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+
 	if err != nil {
 		return err
 	}
@@ -165,6 +166,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("tenant selected: %s", appTenant.Name))
 
 	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
@@ -186,9 +188,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.UI.spinner.Info(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
 	} else {
-		opts.UI.spinner.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
 	nextStepsMessage := fmt.Sprintf(
@@ -214,14 +216,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		)
 	}
 
-	opts.UI.spinner.Info(strings.TrimSpace(nextStepsMessage))
-	defer opts.UI.spinner.Done()
+	opts.Streams.CurrentHandler.Warn(strings.TrimSpace(nextStepsMessage))
+	log.Info().Msg("nextStepsMessage")
 	return nil
 }
 
 const (
 	nextStepsMessageTemplateWithPR = `
-Note: to complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
+To complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
@@ -233,7 +235,7 @@ GitHub CLI commands:
   gh workflow run <workflow-id> -R %s
 `
 	nextStepsMessageTemplateWithoutPR = `
-Note: to complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
+To complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
@@ -254,7 +256,6 @@ func createNewApp(
 	fromTemplate *template.Spec,
 	existingEnvs []environment.Environment,
 ) (application.CreateResult, error) {
-	opts.UI.spinner.SetTitle("Creating new application...")
 
 	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
@@ -303,13 +304,13 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (tenant.CreateOrUpdateResult, error) {
-	spinnerHandler := opts.Streams.Spinner("Creating PR with new application for tenant...")
-	defer spinnerHandler.Done()
+	opts.Streams.CurrentHandler.SetTask("Creating PR with new application for tenant...")
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
 		return tenant.CreateOrUpdateResult{}, err
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,

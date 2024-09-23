@@ -16,10 +16,12 @@ var (
 )
 
 type IOStreams struct {
-	in            io.Reader
-	out           *lipgloss.Renderer
-	styles        *styles
-	isInteractive bool
+	in             io.Reader
+	out            *lipgloss.Renderer
+	outRaw         io.Writer
+	styles         *styles
+	isInteractive  bool
+	CurrentHandler SpinnerHandler
 }
 
 func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
@@ -29,10 +31,12 @@ func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
 func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool) IOStreams {
 	renderer := lipgloss.NewRenderer(out, termenv.WithColorCache(true))
 	return IOStreams{
-		in:            in,
-		out:           renderer,
-		styles:        newStyles(renderer),
-		isInteractive: isInteractive && isTerminalInteractive(in, out),
+		in:             in,
+		out:            renderer,
+		outRaw:         out,
+		styles:         newStyles(renderer),
+		isInteractive:  isInteractive && isTerminalInteractive(in, out),
+		CurrentHandler: nil,
 	}
 }
 
@@ -58,12 +62,11 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams IOStreams) execute(model tea.Model) (tea.Model, error) {
-	return tea.NewProgram(
-		model,
-		tea.WithInput(streams.in),
-		tea.WithOutput(streams.out.Output()),
-	).Run()
+func (streams IOStreams) execute(model tea.Model, handler SpinnerHandler) (tea.Model, error) {
+	if handler != nil {
+		streams.CurrentHandler = handler
+	}
+	return tea.NewProgram(model).Run()
 }
 
 type InputPrompt[V any] interface {

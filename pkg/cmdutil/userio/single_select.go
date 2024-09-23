@@ -2,11 +2,12 @@ package userio
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"slices"
 	"strconv"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const blankListHeight = 6
@@ -45,10 +46,18 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 		prompt: op.Prompt,
 		model:  m,
 	}
-	result, err := streams.execute(model)
-	if err != nil {
-		return "", err
+
+	var result tea.Model
+	var err error
+	if streams.CurrentHandler != nil {
+		result = streams.CurrentHandler.SetInputModel(model)
+	} else {
+		result, err = streams.execute(model, nil)
+		if err != nil {
+			return "", err
+		}
 	}
+
 	sSResult := result.(singleSelectModel)
 	choice := ""
 	if sSResult.choice != nil {
@@ -99,7 +108,7 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
-			return m, tea.Quit
+			return m, func() tea.Msg { return InputCompleted{model: m} }
 		}
 	}
 
@@ -150,7 +159,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	str := strconv.Itoa(index+1) + ". " + string(it)
 
 	if index == m.Index() {
-		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render(str))
+		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
 	} else {
 		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
 	}

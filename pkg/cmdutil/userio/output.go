@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -33,8 +34,9 @@ func (streams IOStreams) Spinner(message string) SpinnerHandler {
 	if streams.IsInteractive() {
 		return newSpinner(message, streams)
 	} else {
-		streams.Info(message)
-		return dummySpinnerHandler{streams: streams}
+		dsh := dummySpinnerHandler{streams: streams}
+		dsh.SetTask(message)
+		return dsh
 	}
 }
 
@@ -46,9 +48,22 @@ func InfoLog(message string) string {
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("123"))
 	return fmt.Sprintf("%s %s", style.Render("INFO:"), message)
 }
+func WarnLog(message string) string {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("227"))
+	messageStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("228"))
+	return fmt.Sprintf("%s %s", style.Render("WARN:"), messageStyle.Render(message))
+}
 
 func (dummySpinnerHandler) Done() {}
 func (dsh dummySpinnerHandler) Info(message string) {
-	dsh.streams.out.Output().Write([]byte(InfoLog(message) + "\n"))
+	dsh.streams.outRaw.Write([]byte(InfoLog(message) + "\n"))
 }
-func (dummySpinnerHandler) SetTitle(string) {}
+func (dsh dummySpinnerHandler) Warn(message string) {
+	dsh.streams.outRaw.Write([]byte(WarnLog(message) + "\n"))
+}
+func (dsh dummySpinnerHandler) SetTask(message string) {
+	dsh.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(message)))
+}
+func (dsh dummySpinnerHandler) SetInputModel(message tea.Model) tea.Model {
+	return nil
+}
