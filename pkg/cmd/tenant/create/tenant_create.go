@@ -217,7 +217,10 @@ func createTenant(
 	t *coretnt.Tenant,
 	parentTenant *coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
-	spinnerHandler := streams.Spinner("Creating tenant...")
+	spinnerHandler := streams.Wizard(
+		fmt.Sprintf("Creating tenant: %s", t.Name),
+		fmt.Sprintf("Created tenant: %s", t.Name),
+	)
 	defer spinnerHandler.Done()
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)

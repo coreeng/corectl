@@ -27,12 +27,12 @@ func (streams IOStreams) Info(messages ...string) {
 	}
 }
 
-func (streams IOStreams) Spinner(message string) WizardHandler {
+func (streams *IOStreams) Wizard(title string, completedTitle string) WizardHandler {
 	if streams.IsInteractive() {
-		return newWizard(message, streams)
+		streams.CurrentHandler = newWizard(streams)
 	} else {
-		nih := nonInteractiveHandler{streams: streams}
-		nih.SetTask(message)
-		return nih
+		streams.CurrentHandler = nonInteractiveHandler{streams: streams}
 	}
+	streams.CurrentHandler.SetTask(title, completedTitle)
+	return streams.CurrentHandler
 }

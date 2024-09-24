@@ -52,20 +52,20 @@ var _ = Describe("export", Ordered, func() {
 
 		Context("print out env variables", func() {
 			It("as export statements", func() {
-				output, err := corectl.Run("p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--log-level=panic")
+				output, err := corectl.Run("p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir)
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
 			})
 			It("with shorthand flags", func() {
-				output, err := corectl.Run("p2p", "export", "-t", testconfig.Cfg.Tenant, "-e", testdata.DevEnvironment(), "-r", appDir, "--log-level=panic")
+				output, err := corectl.Run("p2p", "export", "-t", testconfig.Cfg.Tenant, "-e", testdata.DevEnvironment(), "-r", appDir)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).ToNot(BeEmpty())
 			})
 
 			It("defaulting to local dir when no repoPath flag passed", func() {
-				output, err := corectl.RunInDir(appDir, "p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--log-level=panic")
+				output, err := corectl.RunInDir(appDir, "p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment())
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)

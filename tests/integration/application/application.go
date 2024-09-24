@@ -72,8 +72,7 @@ var _ = Describe("application", Ordered, func() {
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
 				"--tenant", testconfig.Cfg.Tenant,
-				"--nonint",
-				"--log-level=panic")
+				"--nonint")
 			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
@@ -215,8 +214,7 @@ var _ = Describe("application", Ordered, func() {
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
 				"--tenant", testconfig.Cfg.Tenant,
-				"--nonint",
-				"--log-level=panic")
+				"--nonint")
 			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(2*time.Minute))
 

@@ -65,8 +65,10 @@ NOTE:
 				!opts.NonInteractive,
 			)
 
-			spinnerHandler := opts.Streams.Spinner("Creating new application...")
-			opts.Streams.CurrentHandler = spinnerHandler
+			opts.Streams.Wizard(
+				fmt.Sprintf("Creating new application: %s", opts.Name),
+				fmt.Sprintf("Created new application: %s", opts.Name),
+			)
 			opts.Streams.CurrentHandler.Info("starting app create")
 			return run(&opts, cfg)
 		},
@@ -300,7 +302,10 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (tenant.CreateOrUpdateResult, error) {
-	opts.Streams.CurrentHandler.SetTask("Creating PR with new application for tenant...")
+	opts.Streams.CurrentHandler.SetTask(
+		fmt.Sprintf("Creating PR with new application %s for tenant %s", opts.Name, opts.Tenant),
+		fmt.Sprintf("Created PR with new application %s for tenant %s", opts.Name, opts.Tenant),
+	)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
 		return tenant.CreateOrUpdateResult{}, err

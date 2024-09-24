@@ -28,7 +28,7 @@ var _ = Describe("env", Ordered, func() {
 			It("returns meaningful error when no credentials provided", func() {
 				Expect(os.Setenv("CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE", "/tmp/not-exist")).NotTo(HaveOccurred())
 
-				_, err := corectl.Run("env", "connect", testdata.DevEnvironment(), "--log-level=panic")
+				_, err := corectl.Run("env", "connect", testdata.DevEnvironment())
 
 				Expect(err.Error()).To(SatisfyAll(
 					ContainSubstring("Error: create google cluster client: credentials: could not find default credentials"),

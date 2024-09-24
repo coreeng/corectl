@@ -12,7 +12,7 @@ type InputCompleted struct {
 }
 
 type nonInteractiveHandler struct {
-	streams IOStreams
+	streams *IOStreams
 }
 
 func InfoLog(message string) string {
@@ -32,8 +32,8 @@ func (nih nonInteractiveHandler) Info(message string) {
 func (nih nonInteractiveHandler) Warn(message string) {
 	_, _ = nih.streams.outRaw.Write([]byte(WarnLog(message) + "\n"))
 }
-func (nih nonInteractiveHandler) SetTask(message string) {
-	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(message)))
+func (nih nonInteractiveHandler) SetTask(title string, completedTitle string) {
+	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(title)))
 }
 func (nih nonInteractiveHandler) SetInputModel(message tea.Model) tea.Model {
 	return nil

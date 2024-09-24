@@ -134,7 +134,7 @@ var _ = Describe("config", Ordered, func() {
 			originalTemplatesPullTimestamp, err = getLastPullTime(cfg.Repositories.Templates.Value)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = corectl.Run("config", "update", "--log-level=panic")
+			_, err = corectl.Run("config", "update")
 			Expect(err).ToNot(HaveOccurred())
 		})
 

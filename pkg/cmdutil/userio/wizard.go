@@ -15,7 +15,7 @@ type WizardHandler interface {
 	Done()
 	Info(string)
 	Warn(string)
-	SetTask(string)
+	SetTask(string, string)
 	SetInputModel(tea.Model) tea.Model
 }
 
@@ -53,11 +53,11 @@ func (sh asyncWizardHandler) update(message tea.Msg) {
 	sh.messageChan <- message
 }
 
-func (sh asyncWizardHandler) SetTask(title string) {
-	sh.update(task{title: title, logs: []logMsg{}, completed: false})
+func (sh asyncWizardHandler) SetTask(title string, completedTitle string) {
+	sh.update(task{title: title, completedTitle: completedTitle, logs: []logMsg{}, completed: false})
 }
 
-func newWizard(message string, streams IOStreams) WizardHandler {
+func newWizard(streams *IOStreams) WizardHandler {
 	messageChan := make(chan tea.Msg)
 	inputResultChan := make(chan tea.Model)
 	done := make(chan bool)
@@ -70,7 +70,7 @@ func newWizard(message string, streams IOStreams) WizardHandler {
 		messageChan:     messageChan,
 		inputResultChan: inputResultChan,
 		model:           m,
-		tasks:           []task{{title: message, logs: []logMsg{}, completed: false}},
+		tasks:           []task{},
 	}
 	handler := asyncWizardHandler{
 		messageChan:     messageChan,
@@ -100,9 +100,10 @@ type wizardModel struct {
 }
 
 type task struct {
-	title     string
-	completed bool
-	logs      []logMsg
+	title          string
+	completedTitle string
+	completed      bool
+	logs           []logMsg
 }
 
 type logMsg struct {
@@ -194,22 +195,22 @@ func (sm wizardModel) View() string {
 		if taskIndex > 0 {
 			buffer += "\n"
 		}
-		if task.completed {
-			buffer += fmt.Sprintf("%s %s\n", checkMark, bold.Render(task.title))
-		} else {
-			if sm.inputModel != nil {
-				buffer += fmt.Sprintf("%s%s\n", "📝 ", bold.Render(task.title))
-			} else {
-				// show spinner for incomplete tasks
-				buffer += fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(task.title))
-			}
-		}
 		for _, message := range task.logs {
 			switch message.level {
 			case zerolog.InfoLevel:
 				buffer += wordwrap.String(InfoLog(message.message), sm.width) + "\n"
 			case zerolog.WarnLevel:
 				buffer += wordwrap.String(WarnLog(message.message), sm.width) + "\n"
+			}
+		}
+		if task.completed {
+			buffer += fmt.Sprintf("%s %s\n", checkMark, bold.Render(task.completedTitle))
+		} else {
+			if sm.inputModel != nil {
+				buffer += fmt.Sprintf("%s%s\n", "📝 ", bold.Render(task.title))
+			} else {
+				// show spinner for incomplete tasks
+				buffer += fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(task.title))
 			}
 		}
 	}

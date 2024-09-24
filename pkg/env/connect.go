@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+
 	. "github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -29,9 +30,13 @@ func Connect(s userio.IOStreams, env *environment.Environment, c Commander, port
 	return nil
 }
 
-func setupConnection(s userio.IOStreams, c Commander, env *environment.Environment, port int) (string, error) {
-	spinner := s.Spinner("Connecting to cluster...")
-	defer spinner.Done()
+func setupConnection(streams userio.IOStreams, c Commander, env *environment.Environment, port int) (string, error) {
+	streams.Wizard(
+		fmt.Sprintf("Connecting to cluster: %s (%s)", env.Environment, env.Domain),
+		fmt.Sprintf("Connected to cluster: %s (%s)", env.Environment, env.Domain),
+	)
+	// TODO: update to use wizard for Info calls and prompts
+	defer streams.CurrentHandler.Done()
 
 	e := env.Platform.(*environment.GCPVendor)
 	// generate credentials and update kubeconfig
