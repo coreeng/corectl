@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreeng/corectl/pkg/cmd/root"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -15,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
+	"github.com/rs/zerolog"
 	"github.com/thanhpk/randstr"
 
 	// Test cases import
@@ -32,6 +34,7 @@ func TestSuite(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
+	root.ConfigureGlobalLogger(zerolog.PanicLevel.String())
 	testRunId := randstr.String(6)
 	testconfig.SetTestRunId(testRunId)
 	fmt.Println("Test Run ID: ", testRunId)

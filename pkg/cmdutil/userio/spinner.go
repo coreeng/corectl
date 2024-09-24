@@ -79,7 +79,10 @@ func newSpinner(message string, streams IOStreams) SpinnerHandler {
 	}
 
 	go func() {
-		streams.execute(sm, handler)
+		_, err := streams.execute(sm, handler)
+		if err != nil {
+			log.Panic().Msgf("Error in Wizard execution: %s", err.Error())
+		}
 		done <- true
 	}()
 	return handler

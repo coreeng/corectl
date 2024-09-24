@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
 	"github.com/spf13/pflag"
@@ -100,23 +101,29 @@ func hideDefaultValueFromHelp[V any](p *Parameter[V], fs *pflag.FlagSet) {
 }
 
 type Config struct {
-	GitHub struct {
-		Token        Parameter[string] `yaml:"token"`
-		Organization Parameter[string] `yaml:"organization"`
-	} `yaml:"github"`
-	Repositories struct {
-		CPlatform  Parameter[string] `yaml:"cplatform"`
-		Templates  Parameter[string] `yaml:"templates"`
-		AllowDirty Parameter[bool]   `yaml:"allow-dirty"`
-	} `yaml:"repositories"`
-	P2P struct {
-		FastFeedback P2PStageConfig `yaml:"fast-feedback"`
-		ExtendedTest P2PStageConfig `yaml:"extended-test"`
-		Prod         P2PStageConfig `yaml:"prod"`
-	} `yaml:"p2p"`
-	path     string
-	DryRun   bool
-	LogLevel string
+	GitHub       GitHubConfig       `yaml:"github"`
+	Repositories RepositoriesConfig `yaml:"repositories"`
+	P2P          P2PConfig          `yaml:"p2p"`
+	path         string
+	DryRun       bool
+	LogLevel     string
+}
+
+type GitHubConfig struct {
+	Token        Parameter[string] `yaml:"token"`
+	Organization Parameter[string] `yaml:"organization"`
+}
+
+type RepositoriesConfig struct {
+	CPlatform  Parameter[string] `yaml:"cplatform"`
+	Templates  Parameter[string] `yaml:"templates"`
+	AllowDirty Parameter[bool]   `yaml:"allow-dirty"`
+}
+
+type P2PConfig struct {
+	FastFeedback P2PStageConfig `yaml:"fast-feedback"`
+	ExtendedTest P2PStageConfig `yaml:"extended-test"`
+	Prod         P2PStageConfig `yaml:"prod"`
 }
 
 type P2PStageConfig struct {
@@ -124,28 +131,37 @@ type P2PStageConfig struct {
 }
 
 func NewConfig() *Config {
-	config := Config{
+	return &Config{
 		DryRun:   false,
-		LogLevel: "panic",
+		LogLevel: zerolog.PanicLevel.String(),
+		GitHub: GitHubConfig{
+			Token: Parameter[string]{
+				flag: "github-token",
+				help: "Personal GitHub token to use for GitHub authentication",
+			},
+			Organization: Parameter[string]{
+				flag: "github-org",
+				help: "GitHub organization your company is using",
+			},
+		},
+		Repositories: RepositoriesConfig{
+			CPlatform: Parameter[string]{
+				name: "cplatform repository",
+				flag: "cplatform",
+				help: "Path to local repository with core-platform configuration",
+			},
+			Templates: Parameter[string]{
+				name: "template repository",
+				flag: "templates",
+				help: "Path to local repository with software templates",
+			},
+			AllowDirty: Parameter[bool]{
+				name: "Allow dirty config repositories",
+				flag: "allow-dirty-config-repos",
+				help: "Allow local changes in configuration repositories",
+			},
+		},
 	}
-	config.GitHub.Token.flag = "github-token"
-	config.GitHub.Token.help = "Personal GitHub token to use for GitHub authentication"
-
-	config.GitHub.Organization.flag = "github-org"
-	config.GitHub.Organization.help = "Github organization your company is using"
-
-	config.Repositories.CPlatform.name = "cplatform repository"
-	config.Repositories.CPlatform.flag = "cplatform"
-	config.Repositories.CPlatform.help = "Path to local repository with core-platform configuration"
-
-	config.Repositories.Templates.name = "template repository"
-	config.Repositories.Templates.flag = "templates"
-	config.Repositories.Templates.help = "Path to local repository with software templates"
-
-	config.Repositories.AllowDirty.name = "Allow dirty config repositories"
-	config.Repositories.AllowDirty.flag = "allow-dirty-config-repos"
-	config.Repositories.AllowDirty.help = "Allow local changes in configuration repositories"
-	return &config
 }
 
 func NewTestPersistedConfig() *Config {

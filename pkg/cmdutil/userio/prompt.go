@@ -62,7 +62,7 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams IOStreams) execute(model tea.Model, handler SpinnerHandler) (tea.Model, error) {
+func (streams *IOStreams) execute(model tea.Model, handler SpinnerHandler) (tea.Model, error) {
 	if handler != nil {
 		streams.CurrentHandler = handler
 	}

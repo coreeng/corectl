@@ -13,10 +13,16 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/otiai10/copy"
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
+
+func TestMain(m *testing.M) {
+	zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	m.Run()
+}
 
 func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 	var output bytes.Buffer
@@ -34,7 +40,6 @@ func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 
 func TestRunExportNonExistingAppRepo(t *testing.T) {
 	appRepoPath := t.TempDir()
-
 	err := run(&exportOpts{
 		tenant:          testdata.DefaultTenant(),
 		environmentName: testdata.DevEnvironment(),

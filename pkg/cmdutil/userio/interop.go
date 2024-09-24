@@ -27,10 +27,10 @@ func WarnLog(message string) string {
 
 func (nonInteractiveHandler) Done() {}
 func (nih nonInteractiveHandler) Info(message string) {
-	nih.streams.outRaw.Write([]byte(InfoLog(message) + "\n"))
+	_, _ = nih.streams.outRaw.Write([]byte(InfoLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) Warn(message string) {
-	nih.streams.outRaw.Write([]byte(WarnLog(message) + "\n"))
+	_, _ = nih.streams.outRaw.Write([]byte(WarnLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) SetTask(message string) {
 	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(message)))
