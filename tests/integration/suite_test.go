@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreeng/corectl/pkg/cmd/root"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -34,7 +33,7 @@ func TestSuite(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
-	root.ConfigureGlobalLogger(zerolog.PanicLevel.String())
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	testRunId := randstr.String(6)
 	testconfig.SetTestRunId(testRunId)
 	fmt.Println("Test Run ID: ", testRunId)

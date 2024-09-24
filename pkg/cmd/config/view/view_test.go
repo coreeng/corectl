@@ -2,6 +2,7 @@ package view
 
 import (
 	"bytes"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	. "github.com/onsi/ginkgo/v2"
