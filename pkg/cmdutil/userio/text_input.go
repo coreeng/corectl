@@ -48,11 +48,20 @@ func (ti *TextInput[V]) GetInput(streams IOStreams) (V, error) {
 		validateAndMap: ti.ValidateAndMap,
 		styles:         streams.styles,
 	}
-	result, err := streams.execute(tiModel, nil)
-	if err != nil {
-		var noop V
-		return noop, err
+
+	// Allow nesting inside other components
+	var result tea.Model
+	var err error
+	if streams.CurrentHandler != nil {
+		result = streams.CurrentHandler.SetInputModel(tiModel)
+	} else {
+		result, err = streams.execute(tiModel, nil)
+		if err != nil {
+			var noop V
+			return noop, err
+		}
 	}
+
 	tiModel = result.(textInputModel[V])
 	return tiModel.result, tiModel.err
 }

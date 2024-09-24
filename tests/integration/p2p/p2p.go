@@ -69,7 +69,8 @@ var _ = Describe("p2p", Ordered, func() {
 			_, err := corectl.Run(
 				"p2p", "env", "sync",
 				appRepo,
-				tenant)
+				tenant,
+				"--log-level=panic")
 			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 

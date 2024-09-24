@@ -1,12 +1,13 @@
 package testsetup
 
 import (
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	. "github.com/onsi/gomega"
-	"path/filepath"
 )
 
 type CorectlConfigDetails struct {
@@ -32,6 +33,7 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 		"--github-token", testconfig.Cfg.GitHubToken,
 		"--github-organization", testconfig.Cfg.GitHubOrg,
 		"--nonint",
+		"--log-level=panic",
 	)
 	if err != nil {
 		return nil, nil, err

@@ -114,7 +114,9 @@ type Config struct {
 		ExtendedTest P2PStageConfig `yaml:"extended-test"`
 		Prod         P2PStageConfig `yaml:"prod"`
 	} `yaml:"p2p"`
-	path string
+	path     string
+	DryRun   bool
+	LogLevel string
 }
 
 type P2PStageConfig struct {
@@ -122,7 +124,10 @@ type P2PStageConfig struct {
 }
 
 func NewConfig() *Config {
-	config := Config{}
+	config := Config{
+		DryRun:   false,
+		LogLevel: "panic",
+	}
 	config.GitHub.Token.flag = "github-token"
 	config.GitHub.Token.help = "Personal GitHub token to use for GitHub authentication"
 

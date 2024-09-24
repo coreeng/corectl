@@ -232,6 +232,7 @@ func createTenant(
 			PRName:            fmt.Sprintf("New tenant: %s", t.Name),
 			PRBody:            fmt.Sprintf("Adds new tenant '%s'", t.Name),
 			GitAuth:           gitAuth,
+			DryRun:            cfg.DryRun,
 		}, githubClient,
 	)
 	return result, err

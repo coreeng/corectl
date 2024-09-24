@@ -30,13 +30,11 @@ func ConfigureGlobalLogger(logLevelFlag string) {
 }
 
 func NewRootCmd(cfg *config.Config) *cobra.Command {
-	var logLevelFlag string
-
 	rootCmd := &cobra.Command{
 		Use:   "corectl",
 		Short: "CLI interface for the CECG core platform.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			ConfigureGlobalLogger(logLevelFlag)
+			ConfigureGlobalLogger(cfg.LogLevel)
 			cmd.SilenceErrors = true
 			return nil
 		},
@@ -49,11 +47,19 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	rootCmd.PersistentFlags().StringVarP(
-		&logLevelFlag,
+		&cfg.LogLevel,
 		"log-level",
 		"l",
 		"INFO",
 		"Log level",
+	)
+
+	rootCmd.PersistentFlags().BoolVarP(
+		&cfg.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
 	)
 
 	appCmd, err := application.NewAppCmd(cfg)

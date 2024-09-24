@@ -26,7 +26,6 @@ type AppCreateOpt struct {
 	Name           string
 	LocalPath      string
 	NonInteractive bool
-	DryRun         bool
 	FromTemplate   string
 	Tenant         string
 	ArgsFile       string
@@ -73,13 +72,6 @@ NOTE:
 		},
 	}
 
-	appCreateCmd.Flags().BoolVarP(
-		&opts.DryRun,
-		"dry-run",
-		"n",
-		false,
-		"Dry run",
-	)
 	appCreateCmd.Flags().StringVarP(
 		&opts.FromTemplate,
 		"from-template",
@@ -138,14 +130,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	defer opts.Streams.CurrentHandler.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
-	if !opts.DryRun {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
+	if !cfg.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, cfg.DryRun); err != nil {
 			return err
 		}
 	}
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
-	if !opts.DryRun {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
+	if !cfg.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, cfg.DryRun); err != nil {
 			return err
 		}
 	}
@@ -156,7 +148,11 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	templateInput := opts.createTemplateInput(existingTemplates)
 	fromTemplate, err := templateInput.GetValue(opts.Streams)
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+	if fromTemplate != nil {
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+	} else {
+		opts.Streams.CurrentHandler.Info("no template selected")
+	}
 
 	if err != nil {
 		return err
@@ -278,7 +274,7 @@ func createNewApp(
 		ProdEnvs:         prodEnvs,
 		Template:         fromTemplate,
 		GitAuth:          gitAuth,
-		DryRun:           opts.DryRun,
+		DryRun:           cfg.DryRun,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err
@@ -320,7 +316,7 @@ func createPRWithUpdatedReposListForTenant(
 			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
-			DryRun:            opts.DryRun,
+			DryRun:            cfg.DryRun,
 		},
 		githubClient,
 	)

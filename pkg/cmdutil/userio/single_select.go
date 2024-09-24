@@ -47,6 +47,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 		model:  m,
 	}
 
+	// Allow nesting inside other components
 	var result tea.Model
 	var err error
 	if streams.CurrentHandler != nil {

@@ -2,6 +2,9 @@ package selector
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
@@ -9,8 +12,6 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
@@ -85,6 +86,7 @@ func testLocalRepo(t *testing.T, path string) *git.LocalRepository {
 		SourceDir:          path,
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
+		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo

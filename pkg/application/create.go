@@ -62,14 +62,16 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	if currentBranch != git.MainBranch {
 		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
 			BranchName: git.MainBranch,
-		}, false); err != nil {
+			DryRun:     false,
+		}); err != nil {
 			return err
 		}
 	}
 	return localRepo.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      branchName,
 		CreateIfMissing: true,
-	}, false)
+		DryRun:          false,
+	})
 }
 
 func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
@@ -289,7 +291,7 @@ func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) 
 
 	if localRepo.Repository() == nil {
 		var err error
-		localRepo, err = git.InitLocalRepository(localPath)
+		localRepo, err = git.InitLocalRepository(localPath, false)
 		if err != nil {
 			return nil, false, err
 		}

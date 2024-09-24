@@ -74,7 +74,7 @@ func prepareTestRepository(
 	Expect(
 		copy.Copy(src, dest),
 	).To(Succeed())
-	localRepo, err := git.InitLocalRepository(dest)
+	localRepo, err := git.InitLocalRepository(dest, false)
 	Expect(err).NotTo(HaveOccurred())
 	testsetup.SetupGitRepoConfigFromOtherRepo(".", localRepo.Repository())
 	Expect(localRepo.AddAll()).To(Succeed())

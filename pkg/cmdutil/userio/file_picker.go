@@ -54,10 +54,18 @@ func (ifp *FilePicker) GetInput(streams IOStreams) (string, error) {
 		expandedValue:  expandedValue,
 		styles:         streams.styles,
 	}
-	result, err := streams.execute(ifpModel, nil)
-	if err != nil {
-		return "", err
+
+	// Allow nesting inside other components
+	var result tea.Model
+	if streams.CurrentHandler != nil {
+		result = streams.CurrentHandler.SetInputModel(ifpModel)
+	} else {
+		result, err = streams.execute(ifpModel, nil)
+		if err != nil {
+			return "", err
+		}
 	}
+
 	ifpModel = result.(inlineFilePickerModel)
 	return ifpModel.expandedValue, ifpModel.err
 }

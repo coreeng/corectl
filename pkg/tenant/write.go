@@ -41,11 +41,12 @@ func CreateOrUpdate(
 	if err = repository.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      op.BranchName,
 		CreateIfMissing: true,
-	}, op.DryRun); err != nil {
+		DryRun:          op.DryRun,
+	}); err != nil {
 		return result, err
 	}
 	defer func() {
-		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch}, op.DryRun)
+		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch, DryRun: op.DryRun})
 	}()
 
 	log.Debug().Msg("writing tenant definition to cplatform repo")

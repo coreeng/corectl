@@ -1,6 +1,8 @@
 package tenant
 
 import (
+	"time"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
@@ -8,7 +10,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
-	"time"
 )
 
 var _ = Describe("tenant", Ordered, func() {
@@ -48,7 +49,8 @@ var _ = Describe("tenant", Ordered, func() {
 				// Omitting repositories parameter
 				"--admin-group", "ag",
 				"--readonly-group", "rg",
-				"--nonint")
+				"--nonint",
+				"--log-level=panic")
 			Expect(err).ToNot(HaveOccurred())
 		})
 

@@ -2,13 +2,14 @@ package render
 
 import (
 	"bytes"
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/testdata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var _ = Describe("template arguments are collected", func() {

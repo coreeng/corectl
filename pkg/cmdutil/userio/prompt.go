@@ -66,7 +66,10 @@ func (streams IOStreams) execute(model tea.Model, handler SpinnerHandler) (tea.M
 	if handler != nil {
 		streams.CurrentHandler = handler
 	}
-	return tea.NewProgram(model).Run()
+	return tea.NewProgram(model,
+		tea.WithInput(streams.in),
+		tea.WithOutput(streams.out.Output()),
+	).Run()
 }
 
 type InputPrompt[V any] interface {

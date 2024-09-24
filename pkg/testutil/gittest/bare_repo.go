@@ -1,15 +1,16 @@
 package gittest
 
 import (
+	"os"
+	"path/filepath"
+	"slices"
+
 	"github.com/coreeng/corectl/pkg/git"
 	gitcore "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
-	"os"
-	"path/filepath"
-	"slices"
 )
 
 type BareRepository struct {
@@ -21,6 +22,7 @@ type CreateBareAndLocalRepoOp struct {
 	SourceDir          string
 	TargetBareRepoDir  string
 	TargetLocalRepoDir string
+	DryRun             bool
 }
 
 func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepository, *git.LocalRepository, error) {
@@ -34,7 +36,7 @@ func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepositor
 	if err != nil {
 		return nil, nil, err
 	}
-	localRepo, err := git.InitLocalRepository(op.TargetLocalRepoDir)
+	localRepo, err := git.InitLocalRepository(op.TargetLocalRepoDir, op.DryRun)
 	if err != nil {
 		return nil, nil, err
 	}

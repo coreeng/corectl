@@ -2,10 +2,11 @@ package application
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
@@ -56,6 +57,7 @@ var _ = Describe("Create new application", func() {
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
+			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -63,6 +65,7 @@ var _ = Describe("Create new application", func() {
 			SourceDir:          testdata.TemplatesPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
+			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -344,6 +347,7 @@ var _ = Describe("Create new application", func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
+				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -503,6 +507,7 @@ var _ = Describe("Create new application", func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
+				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -543,7 +548,7 @@ var _ = Describe("Create new application", func() {
 		)
 		BeforeEach(func() {
 			var err error
-			localRepo, err = git.InitLocalRepository(GinkgoT().TempDir())
+			localRepo, err = git.InitLocalRepository(GinkgoT().TempDir(), false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(localRepo.Commit(&git.CommitOp{
 				Message:    "initial commit",
@@ -578,10 +583,12 @@ var _ = Describe("Create new application", func() {
 			Expect(localRepo.CheckoutBranch(&git.CheckoutOp{
 				BranchName:      oldBranchName,
 				CreateIfMissing: true,
+				DryRun:          false,
 			})).To(Succeed())
 			Expect(localRepo.Commit(&git.CommitOp{
 				Message:    "Just to have different hash from main",
 				AllowEmpty: true,
+				DryRun:     false,
 			})).To(Succeed())
 
 			oldBranchHead, err := localRepo.Repository().Head()

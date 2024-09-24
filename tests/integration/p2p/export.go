@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -10,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
-	"path/filepath"
 )
 
 var _ = Describe("export", Ordered, func() {
@@ -51,20 +52,20 @@ var _ = Describe("export", Ordered, func() {
 
 		Context("print out env variables", func() {
 			It("as export statements", func() {
-				output, err := corectl.Run("p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir)
+				output, err := corectl.Run("p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--log-level=panic")
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
 			})
 			It("with shorthand flags", func() {
-				output, err := corectl.Run("p2p", "export", "-t", testconfig.Cfg.Tenant, "-e", testdata.DevEnvironment(), "-r", appDir)
+				output, err := corectl.Run("p2p", "export", "-t", testconfig.Cfg.Tenant, "-e", testdata.DevEnvironment(), "-r", appDir, "--log-level=panic")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).ToNot(BeEmpty())
 			})
 
 			It("defaulting to local dir when no repoPath flag passed", func() {
-				output, err := corectl.RunInDir(appDir, "p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment())
+				output, err := corectl.RunInDir(appDir, "p2p", "export", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--log-level=panic")
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
@@ -88,7 +89,8 @@ func onboardTestApp(homeDir string, corectl *testconfig.CorectlClient) string {
 		"application", "create", newAppName, appDir,
 		"-t", testdata.BlankTemplate(),
 		"--tenant", testconfig.Cfg.Tenant,
-		"--nonint")
+		"--nonint",
+		"--log-level=panic")
 	Expect(err).ToNot(HaveOccurred())
 	return appDir
 }

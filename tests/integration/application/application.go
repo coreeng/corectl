@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"slices"
 
+	"time"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
@@ -15,7 +17,6 @@ import (
 	"github.com/google/go-github/v59/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var _ = Describe("application", Ordered, func() {
@@ -71,7 +72,8 @@ var _ = Describe("application", Ordered, func() {
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
 				"--tenant", testconfig.Cfg.Tenant,
-				"--nonint")
+				"--nonint",
+				"--log-level=panic")
 			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
@@ -213,7 +215,8 @@ var _ = Describe("application", Ordered, func() {
 				"application", "create", newAppName, appDir,
 				"-t", testdata.BlankTemplate(),
 				"--tenant", testconfig.Cfg.Tenant,
-				"--nonint")
+				"--nonint",
+				"--log-level=panic")
 			Expect(err).ToNot(HaveOccurred())
 		}, NodeTimeout(2*time.Minute))
 

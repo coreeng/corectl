@@ -3,6 +3,9 @@ package export
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -11,8 +14,6 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/otiai10/copy"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
@@ -105,6 +106,7 @@ func testLocalRepo(t *testing.T, path string) *git.LocalRepository {
 		SourceDir:          path,
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
+		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo

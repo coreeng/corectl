@@ -1,10 +1,11 @@
 package render
 
 import (
-	"github.com/coreeng/corectl/pkg/git"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/git"
+	"gopkg.in/yaml.v3"
 
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
@@ -31,6 +32,7 @@ var _ = Describe("Template Render", Ordered, func() {
 			SourceDir:          testdata.TemplatesPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
+			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 

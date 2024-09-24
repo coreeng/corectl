@@ -1,6 +1,9 @@
 package application_test
 
 import (
+	"net/http"
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
@@ -11,8 +14,6 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"net/http"
-	"path/filepath"
 )
 
 var _ = Describe("ValidateCreate", Ordered, func() {
@@ -45,21 +46,21 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 	)
 
 	DescribeTable("single app:",
-	func(op application.CreateOp, expectError bool, errorMsg string, setupMockedClient func() *http.Client) {
-        mockedClient := setupMockedClient()
-        svc = &application.Service{
-            GithubClient: github.NewClient(mockedClient),
-        }
+		func(op application.CreateOp, expectError bool, errorMsg string, setupMockedClient func() *http.Client) {
+			mockedClient := setupMockedClient()
+			svc = &application.Service{
+				GithubClient: github.NewClient(mockedClient),
+			}
 
-        err := svc.ValidateCreate(op)
+			err := svc.ValidateCreate(op)
 
-        if expectError {
-            Expect(err).To(HaveOccurred())
-            Expect(err.Error()).To(MatchRegexp(errorMsg))
-        } else {
-            Expect(err).NotTo(HaveOccurred())
-        }
-    },
+			if expectError {
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(MatchRegexp(errorMsg))
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+		},
 		Entry("Valid operation",
 			application.CreateOp{
 				Tenant:    validTenant,
@@ -115,29 +116,29 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 				)
 			},
 		),
-	    Entry("Error while checking repository existence",
-	        application.CreateOp{
-	            Tenant:    validTenant,
-	            LocalPath: "/valid/path",
-	            Name:      "new-app",
-     	        OrgName:   "test-org",
- 	        },
-   	        true,
-      	         `status code 500.*internal server error`, 
-      	         func() *http.Client {
-         	          return mock.NewMockedHTTPClient(
-         	              mock.WithRequestMatchHandler(
-               	            mock.GetReposByOwnerByRepo,
-           	                http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-                   	            w.WriteHeader(http.StatusInternalServerError) 
-                      	         w.Header().Set("Content-Type", "application/json")
-                      	         _, err := w.Write([]byte(`{"message": "internal server error"}`))
-								Expect(err).NotTo(HaveOccurred())
-                }),
-            ),
-        )
-    },
-),
+		Entry("Error while checking repository existence",
+			application.CreateOp{
+				Tenant:    validTenant,
+				LocalPath: "/valid/path",
+				Name:      "new-app",
+				OrgName:   "test-org",
+			},
+			true,
+			`status code 500.*internal server error`,
+			func() *http.Client {
+				return mock.NewMockedHTTPClient(
+					mock.WithRequestMatchHandler(
+						mock.GetReposByOwnerByRepo,
+						http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+							w.WriteHeader(http.StatusInternalServerError)
+							w.Header().Set("Content-Type", "application/json")
+							_, err := w.Write([]byte(`{"message": "internal server error"}`))
+							Expect(err).NotTo(HaveOccurred())
+						}),
+					),
+				)
+			},
+		),
 	)
 
 	Describe("monorepo", func() {
@@ -150,6 +151,7 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
+				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			monorepoPath = monorepoLocalRepo.Path()

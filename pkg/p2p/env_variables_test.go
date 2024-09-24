@@ -2,13 +2,14 @@ package p2p
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestCreateEnvVarsAsMap(t *testing.T) {
@@ -80,6 +81,7 @@ func testLocalRepo(t *testing.T) *git.LocalRepository {
 		SourceDir:          testdata.CPlatformEnvsPath(),
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
+		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo
