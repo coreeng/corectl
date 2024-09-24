@@ -27,9 +27,9 @@ func (streams IOStreams) Info(messages ...string) {
 	}
 }
 
-func (streams IOStreams) Spinner(message string) SpinnerHandler {
+func (streams IOStreams) Spinner(message string) WizardHandler {
 	if streams.IsInteractive() {
-		return newSpinner(message, streams)
+		return newWizard(message, streams)
 	} else {
 		nih := nonInteractiveHandler{streams: streams}
 		nih.SetTask(message)

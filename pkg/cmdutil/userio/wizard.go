@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type SpinnerHandler interface {
+type WizardHandler interface {
 	Done()
 	Info(string)
 	Warn(string)
@@ -19,45 +19,45 @@ type SpinnerHandler interface {
 	SetInputModel(tea.Model) tea.Model
 }
 
-type asyncSpinnerHandler struct {
+type asyncWizardHandler struct {
 	messageChan     chan<- tea.Msg
 	inputResultChan <-chan tea.Model
 	done            <-chan bool
 }
 
-func (sh asyncSpinnerHandler) Done() {
+func (sh asyncWizardHandler) Done() {
 	sh.update(doneMsg(true))
 	<-sh.done
 }
 
-func (sh asyncSpinnerHandler) SetInputModel(input tea.Model) tea.Model {
+func (sh asyncWizardHandler) SetInputModel(input tea.Model) tea.Model {
 	sh.update(input)
 	modelResult := <-sh.inputResultChan
 	return modelResult
 }
 
-func (sh asyncSpinnerHandler) Info(message string) {
+func (sh asyncWizardHandler) Info(message string) {
 	sh.update(logMsg{
 		level:   zerolog.InfoLevel,
 		message: message,
 	})
 }
-func (sh asyncSpinnerHandler) Warn(message string) {
+func (sh asyncWizardHandler) Warn(message string) {
 	sh.update(logMsg{
 		level:   zerolog.WarnLevel,
 		message: message,
 	})
 }
 
-func (sh asyncSpinnerHandler) update(message tea.Msg) {
+func (sh asyncWizardHandler) update(message tea.Msg) {
 	sh.messageChan <- message
 }
 
-func (sh asyncSpinnerHandler) SetTask(title string) {
+func (sh asyncWizardHandler) SetTask(title string) {
 	sh.update(task{title: title, logs: []logMsg{}, completed: false})
 }
 
-func newSpinner(message string, streams IOStreams) SpinnerHandler {
+func newWizard(message string, streams IOStreams) WizardHandler {
 	messageChan := make(chan tea.Msg)
 	inputResultChan := make(chan tea.Model)
 	done := make(chan bool)
@@ -66,13 +66,13 @@ func newSpinner(message string, streams IOStreams) SpinnerHandler {
 		spinner.WithSpinner(spinner.Dot),
 		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("#0404ff"))), // CECG Blue
 	)
-	sm := spinnerModel{
+	sm := wizardModel{
 		messageChan:     messageChan,
 		inputResultChan: inputResultChan,
 		model:           m,
 		tasks:           []task{{title: message, logs: []logMsg{}, completed: false}},
 	}
-	handler := asyncSpinnerHandler{
+	handler := asyncWizardHandler{
 		messageChan:     messageChan,
 		inputResultChan: inputResultChan,
 		done:            done,
@@ -88,7 +88,7 @@ func newSpinner(message string, streams IOStreams) SpinnerHandler {
 	return handler
 }
 
-type spinnerModel struct {
+type wizardModel struct {
 	messageChan     <-chan tea.Msg
 	inputResultChan chan<- tea.Model
 	model           spinner.Model
@@ -113,19 +113,19 @@ type doneMsg bool
 
 var checkMark = fmt.Sprint(lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("✓"))
 
-func (sm spinnerModel) ReceiveUpdateMessages() tea.Msg {
+func (sm wizardModel) ReceiveUpdateMessages() tea.Msg {
 	message := <-sm.messageChan
 	return message
 }
 
-func (sm spinnerModel) Init() tea.Cmd {
+func (sm wizardModel) Init() tea.Cmd {
 	return tea.Batch(
 		sm.model.Tick,
 		sm.ReceiveUpdateMessages,
 	)
 }
 
-func (sm spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(spinner.TickMsg); !ok {
 		log.Debug().Msgf("Spinner: Received msg [%T] %s", msg, msg)
 	}
@@ -187,7 +187,7 @@ func (sm spinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return sm, tea.Batch(cmd, inputCmd)
 }
 
-func (sm spinnerModel) View() string {
+func (sm wizardModel) View() string {
 	bold := lipgloss.NewStyle().Bold(true)
 	buffer := ""
 	for taskIndex, task := range sm.tasks {

@@ -21,7 +21,7 @@ type IOStreams struct {
 	outRaw         io.Writer
 	styles         *styles
 	isInteractive  bool
-	CurrentHandler SpinnerHandler
+	CurrentHandler WizardHandler
 }
 
 func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
@@ -62,7 +62,7 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams *IOStreams) execute(model tea.Model, handler SpinnerHandler) (tea.Model, error) {
+func (streams *IOStreams) execute(model tea.Model, handler WizardHandler) (tea.Model, error) {
 	if handler != nil {
 		streams.CurrentHandler = handler
 	}
