@@ -193,6 +193,34 @@ var _ = Describe("application", Ordered, func() {
 		}, SpecTimeout(time.Minute))
 	})
 
+	Context("create with --dry-run", Ordered, func() {
+		var (
+			newAppName string
+			appDir     string
+		)
+
+		BeforeAll(func(ctx SpecContext) {
+			newAppName = "new-test-app-dryrun-" + testRunId
+			appDir = filepath.Join(homeDir, newAppName)
+			_, err := corectl.Run(
+				"application", "create", newAppName, appDir,
+				"-t", testdata.BlankTemplate(),
+				"--tenant", testconfig.Cfg.Tenant,
+				"--nonint",
+				"--dry-run")
+			Expect(err).ToNot(HaveOccurred())
+		}, NodeTimeout(time.Minute))
+
+		It("did not create a new repository for the new app", func(ctx SpecContext) {
+			_, _, err := githubClient.Repositories.Get(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				newAppName,
+			)
+			Expect(err.Error()).To(Equal(fmt.Sprintf("GET https://api.github.com/repos/%s/%s: 404 Not Found []", cfg.GitHub.Organization.Value, newAppName)))
+		}, NodeTimeout(time.Minute))
+	})
+
 	Context("create in monorepo mode", Ordered, func() {
 		var (
 			monorepoName string
