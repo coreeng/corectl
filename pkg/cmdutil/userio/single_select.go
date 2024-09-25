@@ -43,14 +43,16 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	}
 
 	model := singleSelectModel{
-		prompt: op.Prompt,
-		model:  m,
+		prompt:   op.Prompt,
+		model:    m,
+		embedded: false,
 	}
 
 	// Allow nesting inside other components
 	var result tea.Model
 	var err error
 	if streams.CurrentHandler != nil {
+		model.embedded = true
 		result = streams.CurrentHandler.SetInputModel(model)
 	} else {
 		result, err = streams.execute(model, nil)
@@ -75,6 +77,7 @@ type singleSelectModel struct {
 	choice   *item
 	err      error
 	quitting bool
+	embedded bool
 }
 
 func (m singleSelectModel) Init() tea.Cmd {
@@ -89,15 +92,23 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.model.SetHeight(msg.Height)
 		}
-		return m, nil
+		newListModel, cmd := m.model.Update(msg)
+		m.model = newListModel
+		return m, cmd
 
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.choice = nil
 			m.err = ErrInterrupted
-			m.quitting = true
-			return m, tea.Quit
+			if m.embedded {
+				return m, func() tea.Msg {
+					return InputCompleted{model: m}
+				}
+			} else {
+				m.quitting = true
+				return m, tea.Quit
+			}
 		case tea.KeyEnter:
 			if m.model.FilterState() == list.Filtering {
 				break
@@ -109,7 +120,13 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
-			return m, func() tea.Msg { return InputCompleted{model: m} }
+			if m.embedded {
+				return m, func() tea.Msg {
+					return InputCompleted{model: m}
+				}
+			} else {
+				return m, tea.Quit
+			}
 		}
 	}
 

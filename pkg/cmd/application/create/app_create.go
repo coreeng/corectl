@@ -3,6 +3,7 @@ package create
 import (
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -60,8 +61,8 @@ NOTE:
 				opts.LocalPath = "./" + opts.Name
 			}
 			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
+				os.Stdin,
+				os.Stdout,
 				!opts.NonInteractive,
 			)
 
@@ -69,7 +70,6 @@ NOTE:
 				fmt.Sprintf("Creating new application: %s", opts.Name),
 				fmt.Sprintf("Created new application: %s", opts.Name),
 			)
-			opts.Streams.CurrentHandler.Info("starting app create")
 			return run(&opts, cfg)
 		},
 	}

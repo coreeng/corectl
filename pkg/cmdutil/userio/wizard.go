@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/reflow/wordwrap"
+	"github.com/muesli/reflow/wrap"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -96,6 +96,7 @@ type wizardModel struct {
 	err             error
 	tasks           []task
 	inputModel      tea.Model
+	height          int
 	width           int
 }
 
@@ -128,7 +129,7 @@ func (sm wizardModel) Init() tea.Cmd {
 
 func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(spinner.TickMsg); !ok {
-		log.Debug().Msgf("Spinner: Received msg [%T] %s", msg, msg)
+		log.Debug().Msgf("Wizard: Received msg [%T] %s", msg, msg)
 	}
 
 	updateListener := sm.ReceiveUpdateMessages
@@ -136,6 +137,13 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		sm.width = msg.Width
+		sm.height = msg.Height
+		if sm.inputModel != nil {
+			newInputModel, inputCmd := sm.inputModel.Update(msg)
+			sm.inputModel = newInputModel
+			return sm, inputCmd
+		}
+		return sm, nil
 	case doneMsg:
 		if len(sm.messageChan) > 0 {
 			return sm, updateListener
@@ -167,8 +175,9 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sm.inputModel = nil
 		return sm, updateListener
 	case tea.Model:
-		sm.inputModel = msg
-		return sm, updateListener
+		var cmd tea.Cmd
+		sm.inputModel, cmd = msg.Update(tea.WindowSizeMsg{Width: sm.width, Height: sm.height})
+		return sm, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -198,9 +207,9 @@ func (sm wizardModel) View() string {
 		for _, message := range task.logs {
 			switch message.level {
 			case zerolog.InfoLevel:
-				buffer += wordwrap.String(InfoLog(message.message), sm.width) + "\n"
+				buffer += wrap.String(InfoLog(message.message), sm.width) + "\n"
 			case zerolog.WarnLevel:
-				buffer += wordwrap.String(WarnLog(message.message), sm.width) + "\n"
+				buffer += wrap.String(WarnLog(message.message), sm.width) + "\n"
 			}
 		}
 		if task.completed {

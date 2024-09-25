@@ -66,9 +66,10 @@ func (streams *IOStreams) execute(model tea.Model, handler WizardHandler) (tea.M
 	if handler != nil {
 		streams.CurrentHandler = handler
 	}
-	return tea.NewProgram(model,
+	return tea.NewProgram(
+		model,
 		tea.WithInput(streams.in),
-		tea.WithOutput(streams.out.Output()),
+		tea.WithOutput(streams.outRaw),
 	).Run()
 }
 
