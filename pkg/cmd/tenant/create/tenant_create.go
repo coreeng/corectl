@@ -217,11 +217,11 @@ func createTenant(
 	t *coretnt.Tenant,
 	parentTenant *coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
-	spinnerHandler := streams.Wizard(
-		fmt.Sprintf("Creating tenant: %s", t.Name),
-		fmt.Sprintf("Created tenant: %s", t.Name),
+	wizardHandler := streams.Wizard(
+		fmt.Sprintf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value),
+		"", // We don't know the PR URL yet, using SetCurrentTaskCompletedTitle
 	)
-	defer spinnerHandler.Done()
+	defer wizardHandler.Done()
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
@@ -238,6 +238,7 @@ func createTenant(
 			DryRun:            cfg.DryRun,
 		}, githubClient,
 	)
+	wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))
 	return result, err
 }
 

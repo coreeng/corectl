@@ -14,9 +14,10 @@ import (
 type WizardHandler interface {
 	Done()
 	Info(string)
-	Warn(string)
-	SetTask(string, string)
+	SetCurrentTaskCompletedTitle(string)
 	SetInputModel(tea.Model) tea.Model
+	SetTask(string, string)
+	Warn(string)
 }
 
 type asyncWizardHandler struct {
@@ -51,6 +52,10 @@ func (sh asyncWizardHandler) Warn(message string) {
 
 func (sh asyncWizardHandler) update(message tea.Msg) {
 	sh.messageChan <- message
+}
+
+func (sh asyncWizardHandler) SetCurrentTaskCompletedTitle(completedTitle string) {
+	sh.update(updateCurrentTaskCompletedTitle(completedTitle))
 }
 
 func (sh asyncWizardHandler) SetTask(title string, completedTitle string) {
@@ -107,6 +112,7 @@ type task struct {
 	logs           []logMsg
 }
 
+type updateCurrentTaskCompletedTitle string
 type logMsg struct {
 	message string
 	level   zerolog.Level
@@ -129,7 +135,11 @@ func (sm wizardModel) Init() tea.Cmd {
 
 func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if _, ok := msg.(spinner.TickMsg); !ok {
-		log.Debug().Msgf("Wizard: Received msg [%T] %s", msg, msg)
+		if _, ok := msg.(tea.Model); ok {
+			log.Debug().Msgf("Wizard: Received msg [%T]", msg)
+		} else {
+			log.Debug().Msgf("Wizard: Received msg [%T] %s", msg, msg)
+		}
 	}
 
 	updateListener := sm.ReceiveUpdateMessages
@@ -168,6 +178,11 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sm.tasks[len(sm.tasks)-1].logs = append(sm.tasks[len(sm.tasks)-1].logs, msg)
 		} else {
 			log.Warn().Msgf("Could not add log, no active tasks [%s: %s]", msg.level, msg.message)
+		}
+		return sm, updateListener
+	case updateCurrentTaskCompletedTitle:
+		if len(sm.tasks) > 0 {
+			sm.tasks[len(sm.tasks)-1].completedTitle = string(msg)
 		}
 		return sm, updateListener
 	case InputCompleted:
@@ -213,13 +228,13 @@ func (sm wizardModel) View() string {
 			}
 		}
 		if task.completed {
-			buffer += fmt.Sprintf("%s %s\n", checkMark, bold.Render(task.completedTitle))
+			buffer += fmt.Sprintf("%s %s\n", checkMark, bold.Render(wrap.String(task.completedTitle, sm.width)))
 		} else {
 			if sm.inputModel != nil {
-				buffer += fmt.Sprintf("%s%s\n", "📝 ", bold.Render(task.title))
+				buffer += fmt.Sprintf("%s%s\n", "📝 ", bold.Render(wrap.String(task.title, sm.width)))
 			} else {
 				// show spinner for incomplete tasks
-				buffer += fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(task.title))
+				buffer += fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(wrap.String(task.title, sm.width)))
 			}
 		}
 	}

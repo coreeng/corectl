@@ -74,7 +74,7 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		return err
 	}
 
-	spinnerHandler := opts.Streams.Wizard("Configuring environments", "Configured environments")
+	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
 	defer spinnerHandler.Done()
 
 	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)

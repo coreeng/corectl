@@ -67,8 +67,8 @@ NOTE:
 			)
 
 			opts.Streams.Wizard(
-				fmt.Sprintf("Creating new application: %s", opts.Name),
-				fmt.Sprintf("Created new application: %s", opts.Name),
+				fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+				fmt.Sprintf("Created new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
 			)
 			return run(&opts, cfg)
 		},
@@ -134,13 +134,13 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
 	if !cfg.DryRun {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, cfg.DryRun); err != nil {
-			return err
+			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
 		}
 	}
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
 	if !cfg.DryRun {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, cfg.DryRun); err != nil {
-			return err
+			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
 		}
 	}
 
@@ -303,8 +303,8 @@ func createPRWithUpdatedReposListForTenant(
 	createdAppResult application.CreateResult,
 ) (tenant.CreateOrUpdateResult, error) {
 	opts.Streams.CurrentHandler.SetTask(
-		fmt.Sprintf("Creating PR with new application %s for tenant %s", opts.Name, opts.Tenant),
-		fmt.Sprintf("Created PR with new application %s for tenant %s", opts.Name, opts.Tenant),
+		fmt.Sprintf("Creating PR with new application %s for tenant %s in platform repo %s", opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value),
+		"",
 	)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
@@ -312,6 +312,7 @@ func createPRWithUpdatedReposListForTenant(
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
+
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
@@ -325,6 +326,10 @@ func createPRWithUpdatedReposListForTenant(
 		},
 		githubClient,
 	)
+	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
+		"Created PR with new application %s for tenant %s: %s",
+		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
+	))
 	return tenantUpdateResult, err
 }
 

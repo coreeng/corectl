@@ -46,8 +46,8 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 
 func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	opts.Streams.Wizard(
-		fmt.Sprintf("Adding repository to tenant: %s", opts.TenantName),
-		fmt.Sprintf("Added repository to tenant: %s", opts.TenantName),
+		fmt.Sprintf("Adding repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
+		fmt.Sprintf("Added repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 	)
 
 	defer opts.Streams.CurrentHandler.Done()

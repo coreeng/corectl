@@ -35,6 +35,9 @@ func (nih nonInteractiveHandler) Warn(message string) {
 func (nih nonInteractiveHandler) SetTask(title string, completedTitle string) {
 	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(title)))
 }
+func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitle(completedTitle string) {
+	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(completedTitle)))
+}
 func (nih nonInteractiveHandler) SetInputModel(message tea.Model) tea.Model {
 	return nil
 }

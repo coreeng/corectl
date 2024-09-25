@@ -78,11 +78,16 @@ func CreateOrUpdate(
 	}
 
 	log.Debug().Msg("creating github PR")
-	if !op.DryRun {
-		fullname, err := git.DeriveRepositoryFullname(repository)
-		if err != nil {
-			return result, err
-		}
+	fullname, err := git.DeriveRepositoryFullname(repository)
+	if err != nil {
+		return result, err
+	}
+	if op.DryRun {
+		result.PRUrl = fmt.Sprintf(
+			"https://github.com/%s/%s/pull/dry-run-dummy",
+			fullname.Organization(), fullname.Name(),
+		)
+	} else {
 		mainBaseBranch := git.MainBranch
 		pullRequest, _, err := githubClient.PullRequests.Create(
 			context.Background(),

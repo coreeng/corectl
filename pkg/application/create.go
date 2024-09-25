@@ -246,7 +246,10 @@ func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalR
 }
 
 func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
-	log.Info().Str("name", op.Name).Str("org", op.OrgName).Msg("creating github repository")
+	log.Info().
+		Str("name", op.Name).
+		Str("org", op.OrgName).
+		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, op.Name)
 	if !op.DryRun {
 		githubRepo, err := svc.createGithubRepository(op)
 		if err != nil {
@@ -456,7 +459,7 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 		log.Info().
 			Str("org", op.OrgName).
 			Str("name", op.Name).
-			Msg("checking github repo availability")
+			Msgf("checking github repo availability: https://github.com/%s/%s", op.OrgName, op.Name)
 		_, response, err := svc.GithubClient.Repositories.Get(
 			context.Background(),
 			op.OrgName,
