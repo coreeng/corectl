@@ -19,6 +19,9 @@ func NewP2PCmd(cfg *config.Config) (*cobra.Command, error) {
 			return nil
 		},
 	}
+	if cfg.DryRun {
+		panic("Cannot dry-run p2p commands")
+	}
 
 	p2pCommand, err := p2penv.NewP2PEnvCmd(cfg)
 	if err != nil {
