@@ -20,7 +20,7 @@ import (
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	m.Run()
 }
 

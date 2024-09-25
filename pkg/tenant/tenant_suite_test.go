@@ -9,7 +9,7 @@ import (
 )
 
 func TestTenant(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.PanicLevel)
+	zerolog.SetGlobalLevel(zerolog.Disabled)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Tenant tests")
 }
