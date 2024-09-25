@@ -33,7 +33,6 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 		"--github-token", testconfig.Cfg.GitHubToken,
 		"--github-organization", testconfig.Cfg.GitHubOrg,
 		"--nonint",
-		"--log-level=panic",
 	)
 	if err != nil {
 		return nil, nil, err
