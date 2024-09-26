@@ -22,7 +22,6 @@ type CreateBareAndLocalRepoOp struct {
 	SourceDir          string
 	TargetBareRepoDir  string
 	TargetLocalRepoDir string
-	DryRun             bool
 }
 
 func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepository, *git.LocalRepository, error) {
@@ -36,7 +35,7 @@ func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepositor
 	if err != nil {
 		return nil, nil, err
 	}
-	localRepo, err := git.InitLocalRepository(op.TargetLocalRepoDir, op.DryRun)
+	localRepo, err := git.InitLocalRepository(op.TargetLocalRepoDir, false)
 	if err != nil {
 		return nil, nil, err
 	}

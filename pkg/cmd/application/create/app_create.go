@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -64,11 +64,6 @@ NOTE:
 				os.Stdin,
 				os.Stdout,
 				!opts.NonInteractive,
-			)
-
-			opts.Streams.Wizard(
-				fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
-				fmt.Sprintf("Created new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
 			)
 			return run(&opts, cfg)
 		},
@@ -129,7 +124,12 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	defer opts.Streams.CurrentHandler.Done()
+	wizard := opts.Streams.Wizard(
+		fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+		fmt.Sprintf("Created new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+	)
+
+	defer wizard.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
 	if !cfg.DryRun {
@@ -191,22 +191,23 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		opts.Streams.CurrentHandler.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
-	nextStepsMessage := fmt.Sprintf(
-		nextStepsMessageTemplateWithoutPR,
-		createdAppResult.PRUrl,
-		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-		createdAppResult.RepositoryFullname.String(),
-		createdAppResult.RepositoryFullname.String(),
-	)
-
+	var nextStepsMessage string
 	var tenantUpdateResult tenant.CreateOrUpdateResult
-	if !createdAppResult.MonorepoMode {
+	if createdAppResult.MonorepoMode {
+		nextStepsMessage = fmt.Sprintf(
+			nextStepsMessageTemplateMonoRepo,
+			createdAppResult.PRUrl,
+			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+			createdAppResult.RepositoryFullname.String(),
+			createdAppResult.RepositoryFullname.String(),
+		)
+	} else {
 		tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 		if err != nil {
 			return err
 		}
 		nextStepsMessage = fmt.Sprintf(
-			nextStepsMessageTemplateWithPR,
+			nextStepsMessageTemplateSingleRepo,
 			tenantUpdateResult.PRUrl,
 			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
 			createdAppResult.RepositoryFullname.String(),
@@ -220,7 +221,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 }
 
 const (
-	nextStepsMessageTemplateWithPR = `
+	nextStepsMessageTemplateSingleRepo = `
 To complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
 PR url: %s
 
@@ -232,7 +233,7 @@ GitHub CLI commands:
   gh workflow list -R %s
   gh workflow run <workflow-id> -R %s
 `
-	nextStepsMessageTemplateWithoutPR = `
+	nextStepsMessageTemplateMonoRepo = `
 To complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
 PR url: %s
 
@@ -265,7 +266,7 @@ func createNewApp(
 		Args:     opts.Args,
 		Streams:  opts.Streams,
 	}
-	service := application.NewService(templateRenderer, githubClient)
+	service := application.NewService(templateRenderer, githubClient, cfg.DryRun)
 	createOp := application.CreateOp{
 		Name:             opts.Name,
 		OrgName:          cfg.GitHub.Organization.Value,
@@ -276,7 +277,6 @@ func createNewApp(
 		ProdEnvs:         prodEnvs,
 		Template:         fromTemplate,
 		GitAuth:          gitAuth,
-		DryRun:           cfg.DryRun,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err

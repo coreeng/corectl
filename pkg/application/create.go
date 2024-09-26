@@ -20,18 +20,20 @@ import (
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 )
 
 type Service struct {
 	TemplateRenderer render.TemplateRenderer
 	GithubClient     *github.Client
+	DryRun           bool
 }
 
-func NewService(templateRenderer render.TemplateRenderer, githubClient *github.Client) *Service {
+func NewService(templateRenderer render.TemplateRenderer, githubClient *github.Client, dryRun bool) *Service {
 	return &Service{
 		TemplateRenderer: templateRenderer,
 		GithubClient:     githubClient,
+		DryRun:           dryRun,
 	}
 }
 
@@ -45,7 +47,6 @@ type CreateOp struct {
 	ProdEnvs         []environment.Environment
 	Template         *template.Spec
 	GitAuth          git.AuthMethod
-	DryRun           bool
 }
 
 type CreateResult struct {
@@ -62,7 +63,7 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	if currentBranch != git.MainBranch {
 		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
 			BranchName: git.MainBranch,
-			DryRun:     false,
+			DryRun:     localRepo.DryRun,
 		}); err != nil {
 			return err
 		}
@@ -70,7 +71,7 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	return localRepo.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      branchName,
 		CreateIfMissing: true,
-		DryRun:          false,
+		DryRun:          localRepo.DryRun,
 	})
 }
 
@@ -87,7 +88,7 @@ func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
 		return result, err
 	}
 
-	localRepo, isMonorepo, err := setupLocalRepository(op.LocalPath)
+	localRepo, isMonorepo, err := setupLocalRepository(op.LocalPath, svc.DryRun)
 	if err != nil {
 		return result, err
 	}
@@ -126,13 +127,10 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 		return result, err
 	}
 
-	log.Info().Msg("(git) pushing to remote")
-	if !op.DryRun {
-		if err := localRepo.Push(git.PushOp{
-			Auth: op.GitAuth,
-		}); err != nil {
-			return result, err
-		}
+	if err := localRepo.Push(git.PushOp{
+		Auth: op.GitAuth,
+	}); err != nil {
+		return result, err
 	}
 
 	return CreateResult{
@@ -250,23 +248,18 @@ func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepo
 		Str("name", op.Name).
 		Str("org", op.OrgName).
 		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, op.Name)
-	if !op.DryRun {
-		githubRepo, err := svc.createGithubRepository(op)
-		if err != nil {
-			return git.GithubRepoFullId{}, err
-		}
-
-		repoFullId := git.NewGithubRepoFullId(githubRepo)
-
-		if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
-			return git.GithubRepoFullId{}, err
-		}
-		return repoFullId, nil
-	} else {
-		return git.GithubRepoFullId{
-			RepositoryFullname: git.RepositoryFullname{},
-		}, nil
+	githubRepo, err := svc.createGithubRepository(op)
+	if err != nil {
+		return git.GithubRepoFullId{}, err
 	}
+
+	repoFullId := git.NewGithubRepoFullId(githubRepo)
+
+	if err := localRepo.SetRemote(githubRepo.GetCloneURL()); err != nil {
+		return git.GithubRepoFullId{}, err
+	}
+	return repoFullId, nil
+
 }
 
 func undoWhenError(undoSteps *undo.Steps) {
@@ -286,7 +279,7 @@ func prepareLocalPath(localPath string, undoSteps *undo.Steps) error {
 	return nil
 }
 
-func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) {
+func setupLocalRepository(localPath string, dryRun bool) (*git.LocalRepository, bool, error) {
 	localRepo, isMonorepo, err := openMonorepoMaybe(localPath)
 	if err != nil {
 		return nil, false, err
@@ -294,7 +287,7 @@ func setupLocalRepository(localPath string) (*git.LocalRepository, bool, error) 
 
 	if localRepo.Repository() == nil {
 		var err error
-		localRepo, err = git.InitLocalRepository(localPath, false)
+		localRepo, err = git.InitLocalRepository(localPath, dryRun)
 		if err != nil {
 			return nil, false, err
 		}
@@ -357,23 +350,39 @@ func commitAllChanges(localRepo *git.LocalRepository, message string, allowEmpty
 }
 
 func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {
+	log.Debug().
+		Str("name", op.Name).
+		Str("org", op.OrgName).
+		Msg("github: create repository")
 	deleteBranchOnMerge := true
 	visibility := "private"
-	githubRepo, _, err := svc.GithubClient.Repositories.Create(
-		context.Background(),
-		op.OrgName,
-		&github.Repository{
-			Name:                &op.Name,
-			DeleteBranchOnMerge: &deleteBranchOnMerge,
-			Visibility:          &visibility,
-		},
-	)
-	return githubRepo, err
+	repo := github.Repository{
+		Name:                &op.Name,
+		DeleteBranchOnMerge: &deleteBranchOnMerge,
+		Visibility:          &visibility,
+	}
+	if !svc.DryRun {
+		githubRepo, _, err := svc.GithubClient.Repositories.Create(
+			context.Background(),
+			op.OrgName,
+			&repo,
+		)
+		return githubRepo, err
+	} else {
+		return &repo, nil
+	}
 }
 
 func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId) error {
-	log.Info().Msg("syncing repo variables")
-	if !op.DryRun {
+	log.Debug().
+		Str("name", op.Name).
+		Str("org", op.OrgName).
+		Str("tenant", op.Tenant.Name).
+		Objects("fast_feedback_envs", op.FastFeedbackEnvs).
+		Objects("extended_test_envs", op.ExtendedTestEnvs).
+		Objects("prod_envs", op.ProdEnvs).
+		Msg("github: setting repository variables")
+	if !svc.DryRun {
 		return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
 			RepositoryId:     &repoFullId,
 			Tenant:           op.Tenant,

@@ -39,5 +39,5 @@ func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitle(completedTitle str
 	nih.Info(fmt.Sprintf("[%s]", lipgloss.NewStyle().Bold(true).Render(completedTitle)))
 }
 func (nih nonInteractiveHandler) SetInputModel(message tea.Model) tea.Model {
-	return nil
+	panic("cannot take input in non-interactive mode")
 }

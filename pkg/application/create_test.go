@@ -57,7 +57,6 @@ var _ = Describe("Create new application", func() {
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
-			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -65,7 +64,6 @@ var _ = Describe("Create new application", func() {
 			SourceDir:          testdata.TemplatesPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
-			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -134,7 +132,7 @@ var _ = Describe("Create new application", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
-			service = NewService(renderer, githubClient)
+			service = NewService(renderer, githubClient, false)
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
@@ -347,7 +345,6 @@ var _ = Describe("Create new application", func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
-				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -399,7 +396,7 @@ var _ = Describe("Create new application", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
-			service = NewService(renderer, githubClient)
+			service = NewService(renderer, githubClient, false)
 			createResult, err = service.Create(createOp)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -507,7 +504,6 @@ var _ = Describe("Create new application", func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
-				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -515,7 +511,7 @@ var _ = Describe("Create new application", func() {
 
 			monorepoLocalPath = monorepoLocalRepo.Path()
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")
-			service = NewService(&panicTemplateRenderer{}, githubClient)
+			service = NewService(&panicTemplateRenderer{}, githubClient, false)
 			executeCreate := func() {
 				createOp := CreateOp{
 					Name:             "app-with-error",

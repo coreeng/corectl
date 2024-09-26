@@ -52,7 +52,6 @@ repos: []
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),
 			TargetLocalRepoDir: t.TempDir(),
-			DryRun:             false,
 		})
 		Expect(err).NotTo(HaveOccurred())
 

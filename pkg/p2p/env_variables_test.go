@@ -9,8 +9,14 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMain(m *testing.M) {
+	log.DefaultLogger.SetLevel(log.PanicLevel)
+	m.Run()
+}
 
 func TestCreateEnvVarsAsMap(t *testing.T) {
 	testRepo := testLocalRepo(t)
@@ -81,13 +87,12 @@ func testLocalRepo(t *testing.T) *git.LocalRepository {
 		SourceDir:          testdata.CPlatformEnvsPath(),
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
-		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo
 }
 
-var envVarFormat = func(t *testing.T, k, v string) string {
+var envVarFormat = func(_ *testing.T, k, v string) string {
 	return fmt.Sprintf("export %s=\"%s\"", k, v)
 }
 
@@ -103,6 +108,6 @@ var asExportCmd = func(t *testing.T, vars *EnvVars) string {
 	return cmd
 }
 
-var toRegistry = func(t *testing.T, vendor *environment.GCPVendor, tenantName string) string {
+var toRegistry = func(_ *testing.T, vendor *environment.GCPVendor, tenantName string) string {
 	return fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s", vendor.Region, vendor.ProjectId, tenantName)
 }

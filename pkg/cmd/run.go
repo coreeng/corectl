@@ -8,8 +8,6 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 )
 
-var logFile *os.File
-
 func Run() int {
 	cfg, err := config.DiscoverConfig()
 	if err != nil {
@@ -17,15 +15,9 @@ func Run() int {
 		return 10
 	}
 
-	rootCmd := root.NewRootCmd(cfg, logFile)
+	rootCmd := root.NewRootCmd(cfg)
 
 	err = rootCmd.Execute()
-
-	defer func() {
-		if logFile != nil {
-			logFile.Close()
-		}
-	}()
 
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())

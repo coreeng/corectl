@@ -11,10 +11,16 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
+
+func TestMain(m *testing.M) {
+	log.DefaultLogger.SetLevel(log.PanicLevel)
+	m.Run()
+}
 
 func TestTenantSelectorReturnsTenant(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
@@ -86,7 +92,6 @@ func testLocalRepo(t *testing.T, path string) *git.LocalRepository {
 		SourceDir:          path,
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
-		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo

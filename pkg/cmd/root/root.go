@@ -1,7 +1,6 @@
 package root
 
 import (
-	"os"
 	"time"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
@@ -12,39 +11,38 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
 	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
-func ConfigureGlobalLogger(logLevelFlag string, logFile *os.File) {
-	logLevel, logLevelParseError := zerolog.ParseLevel(logLevelFlag)
-	if logLevelParseError != nil {
-		logLevel = zerolog.Disabled
-	}
-	zerolog.SetGlobalLevel(logLevel)
-	if logFile == nil && !(logLevel == zerolog.Disabled) {
-		var err error
-		logFile, err = os.OpenFile("corectl.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatal().Err(err).Msg("Failed to open log file")
+func ConfigureGlobalLogger(logLevelFlag string) {
+	logLevel := log.ParseLevel(logLevelFlag)
+	log.DefaultLogger.SetLevel(logLevel)
+	if !(logLevel == log.Level(8)) {
+		log.DefaultLogger = log.Logger{
+			Level:      logLevel,
+			Caller:     1,
+			TimeField:  "time",
+			TimeFormat: time.TimeOnly,
+			Writer: &log.FileWriter{
+				Filename: "corectl.log",
+			},
 		}
-
-		log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: logFile, TimeFormat: time.TimeOnly}).With().
-			Timestamp().
-			Caller().
-			Logger()
+	} else {
+		log.DefaultLogger = log.Logger{
+			Level: log.PanicLevel,
+		}
 	}
 
 	log.Trace().Msgf("Log level set to %s", logLevelFlag)
 }
 
-func NewRootCmd(cfg *config.Config, logFile *os.File) *cobra.Command {
+func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "corectl",
 		Short: "CLI interface for the CECG core platform.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			ConfigureGlobalLogger(cfg.LogLevel, logFile)
+			ConfigureGlobalLogger(cfg.LogLevel)
 			cmd.SilenceErrors = true
 			return nil
 		},

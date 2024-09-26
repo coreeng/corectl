@@ -216,7 +216,7 @@ func cloneRepositories(
 	templatesRepoFullname git.RepositoryFullname,
 ) (cloneRepositoriesResult, error) {
 	streams.Wizard("Cloning repositories", "Cloned repositories")
-	streams.CurrentHandler.Done()
+	defer streams.CurrentHandler.Done()
 	cplatformGitHubRepo, _, err := githubClient.Repositories.Get(
 		context.Background(),
 		cplatformRepoFullname.Organization(),

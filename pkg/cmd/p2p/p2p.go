@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"fmt"
+
 	p2penv "github.com/coreeng/corectl/pkg/cmd/p2p/env"
 	"github.com/coreeng/corectl/pkg/cmd/p2p/export"
 	"github.com/coreeng/corectl/pkg/cmd/p2p/promote"
@@ -20,7 +22,7 @@ func NewP2PCmd(cfg *config.Config) (*cobra.Command, error) {
 		},
 	}
 	if cfg.DryRun {
-		panic("Cannot dry-run p2p commands")
+		return nil, fmt.Errorf("cannot dry-run p2p commands")
 	}
 
 	p2pCommand, err := p2penv.NewP2PEnvCmd(cfg)

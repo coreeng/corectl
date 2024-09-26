@@ -8,7 +8,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 )
 
 type CreateOrUpdateOp struct {

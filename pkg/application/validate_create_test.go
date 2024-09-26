@@ -151,7 +151,6 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 				SourceDir:          filepath.Join(testdata.TemplatesPath(), testdata.Monorepo()),
 				TargetBareRepoDir:  t.TempDir(),
 				TargetLocalRepoDir: t.TempDir(),
-				DryRun:             false,
 			})
 			Expect(err).NotTo(HaveOccurred())
 			monorepoPath = monorepoLocalRepo.Path()

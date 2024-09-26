@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog"
+	"github.com/phuslu/log"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
 	"github.com/spf13/pflag"
@@ -133,7 +133,7 @@ type P2PStageConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		DryRun:   false,
-		LogLevel: zerolog.PanicLevel.String(),
+		LogLevel: log.PanicLevel.String(),
 		GitHub: GitHubConfig{
 			Token: Parameter[string]{
 				flag: "github-token",

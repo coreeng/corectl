@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 )
 
 func ResetConfigRepositoryState(repositoryParam *Parameter[string], dryRun bool) (*git.LocalRepository, error) {

@@ -2,13 +2,13 @@ package userio
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wrap"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
+	"github.com/phuslu/log"
 )
 
 type WizardHandler interface {
@@ -39,13 +39,13 @@ func (sh asyncWizardHandler) SetInputModel(input tea.Model) tea.Model {
 
 func (sh asyncWizardHandler) Info(message string) {
 	sh.update(logMsg{
-		level:   zerolog.InfoLevel,
+		level:   log.InfoLevel,
 		message: message,
 	})
 }
 func (sh asyncWizardHandler) Warn(message string) {
 	sh.update(logMsg{
-		level:   zerolog.WarnLevel,
+		level:   log.WarnLevel,
 		message: message,
 	})
 }
@@ -86,7 +86,7 @@ func newWizard(streams *IOStreams) WizardHandler {
 	go func() {
 		_, err := streams.execute(sm, handler)
 		if err != nil {
-			log.Panic().Msgf("Error in Wizard execution: %s", err.Error())
+			log.Error().Msgf("Error in Wizard execution: %s", err.Error())
 		}
 		done <- true
 	}()
@@ -115,7 +115,7 @@ type task struct {
 type updateCurrentTaskCompletedTitle string
 type logMsg struct {
 	message string
-	level   zerolog.Level
+	level   log.Level
 }
 type doneMsg bool
 
@@ -214,34 +214,36 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (sm wizardModel) View() string {
 	bold := lipgloss.NewStyle().Bold(true)
-	buffer := ""
+	var buffer strings.Builder
 	for taskIndex, task := range sm.tasks {
 		if taskIndex > 0 {
-			buffer += "\n"
+			buffer.WriteString("\n")
 		}
 		for _, message := range task.logs {
 			switch message.level {
-			case zerolog.InfoLevel:
-				buffer += wrap.String(InfoLog(message.message), sm.width) + "\n"
-			case zerolog.WarnLevel:
-				buffer += wrap.String(WarnLog(message.message), sm.width) + "\n"
+			case log.InfoLevel:
+				buffer.WriteString(wrap.String(InfoLog(message.message), sm.width) + "\n")
+			case log.WarnLevel:
+				buffer.WriteString(wrap.String(WarnLog(message.message), sm.width) + "\n")
+			default:
+				log.Warn().Str("log", message.message).Msg("Wizard: log level not set")
+				buffer.WriteString(wrap.String("[LEVEL NOT SET] "+message.message, sm.width) + "\n")
 			}
 		}
 		if task.completed {
-			buffer += fmt.Sprintf("%s %s\n", checkMark, bold.Render(wrap.String(task.completedTitle, sm.width)))
+			buffer.WriteString(fmt.Sprintf("%s %s\n", checkMark, bold.Render(wrap.String(task.completedTitle, sm.width))))
+		} else if sm.inputModel != nil {
+			// show editing icon if an input component has been injected
+			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", bold.Render(wrap.String(task.title, sm.width))))
 		} else {
-			if sm.inputModel != nil {
-				buffer += fmt.Sprintf("%s%s\n", "📝 ", bold.Render(wrap.String(task.title, sm.width)))
-			} else {
-				// show spinner for incomplete tasks
-				buffer += fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(wrap.String(task.title, sm.width)))
-			}
+			// show spinner for incomplete tasks
+			buffer.WriteString(fmt.Sprintf("%s%s\n", sm.model.View(), bold.Render(wrap.String(task.title, sm.width))))
 		}
 	}
 
 	log.Trace().Msgf("sm.tasks: %v", sm.tasks)
 	if sm.inputModel != nil {
-		buffer += sm.inputModel.View()
+		buffer.WriteString(sm.inputModel.View())
 	}
-	return buffer
+	return buffer.String()
 }

@@ -13,14 +13,14 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/otiai10/copy"
-	"github.com/rs/zerolog"
+	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	log.DefaultLogger.SetLevel(log.PanicLevel)
 	m.Run()
 }
 
@@ -111,7 +111,6 @@ func testLocalRepo(t *testing.T, path string) *git.LocalRepository {
 		SourceDir:          path,
 		TargetBareRepoDir:  t.TempDir(),
 		TargetLocalRepoDir: t.TempDir(),
-		DryRun:             false,
 	})
 	assert.NoError(t, err)
 	return repo

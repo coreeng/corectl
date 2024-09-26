@@ -1,28 +1,28 @@
 package root
 
 import (
-	"os"
 	"testing"
 
-	"github.com/rs/zerolog"
+	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
 	m.Run()
 }
 
 func TestRootIgnoresInvalidLogLevel(t *testing.T) {
-	assert.Equal(t, zerolog.Disabled, zerolog.GlobalLevel())
+	log.DefaultLogger.SetLevel(log.Level(8))
+	assert.Equal(t, log.Level(8), log.DefaultLogger.Level)
 
-	ConfigureGlobalLogger("invalid", os.Stdout)
-	assert.Equal(t, zerolog.Disabled, zerolog.GlobalLevel())
+	ConfigureGlobalLogger("invalid")
+	assert.Equal(t, log.PanicLevel, log.DefaultLogger.Level)
 }
 
 func TestRootSetsValidLogLevel(t *testing.T) {
-	assert.Equal(t, zerolog.Disabled, zerolog.GlobalLevel())
+	log.DefaultLogger.SetLevel(log.Level(8))
+	assert.Equal(t, log.Level(8), log.DefaultLogger.Level)
 
-	ConfigureGlobalLogger("error", os.Stdout)
-	assert.Equal(t, zerolog.ErrorLevel, zerolog.GlobalLevel())
+	ConfigureGlobalLogger("panic")
+	assert.Equal(t, log.PanicLevel, log.DefaultLogger.Level)
 }

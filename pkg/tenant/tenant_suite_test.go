@@ -5,11 +5,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/rs/zerolog"
+	"github.com/phuslu/log"
 )
 
 func TestTenant(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.Disabled)
+	log.DefaultLogger.SetLevel(log.PanicLevel)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Tenant tests")
 }
