@@ -2,8 +2,8 @@ package env
 
 import (
 	"errors"
+
 	"github.com/coreeng/developer-platform/pkg/environment"
-	"github.com/pkg/browser"
 )
 
 var (
@@ -24,23 +24,21 @@ func ResourceStringList() []string {
 	}
 }
 
-func OpenResource(resourceType ResourceType, env *environment.Environment) error {
+func OpenResource(resourceType ResourceType, env *environment.Environment) (string, error) {
 	switch resourceType {
 	case GrafanaResourceType:
-		return openGrafana(env)
+		return openGrafana(env), nil
 	case GrafanaContinuousLoadResourceType:
-		return openGrafanaContinuousLoad(env)
+		return openGrafanaContinuousLoad(env), nil
 	default:
-		return ErrorUnknownResourceType
+		return "", ErrorUnknownResourceType
 	}
 }
 
-func openGrafana(env *environment.Environment) error {
-	url := "https://grafana." + env.InternalServices.Domain
-	return browser.OpenURL(url)
+func openGrafana(env *environment.Environment) string {
+	return "https://grafana." + env.InternalServices.Domain
 }
 
-func openGrafanaContinuousLoad(env *environment.Environment) error {
-	url := "https://grafana." + env.InternalServices.Domain + "/d/zDpLnqaMz/continuous-load?orgId=1&refresh=5s"
-	return browser.OpenURL(url)
+func openGrafanaContinuousLoad(env *environment.Environment) string {
+	return "https://grafana." + env.InternalServices.Domain + "/d/zDpLnqaMz/continuous-load?orgId=1&refresh=5s"
 }
