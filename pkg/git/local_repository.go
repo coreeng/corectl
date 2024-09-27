@@ -56,6 +56,10 @@ func (localRepo *LocalRepository) Worktree() *git.Worktree {
 }
 
 func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
+	log.Debug().
+		Str("repo", path).
+		Bool("dry_run", dryRun).
+		Msg("git: init")
 	result := &LocalRepository{
 		DryRun: dryRun,
 	}
@@ -81,8 +85,12 @@ func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 	return result, nil
 }
 
-func OpenLocalRepository(path string) (*LocalRepository, error) {
-	localRepository := &LocalRepository{}
+func OpenLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
+	log.Debug().
+		Str("repo", path).
+		Bool("dry_run", dryRun).
+		Msg("git: opening repository")
+	localRepository := &LocalRepository{DryRun: dryRun}
 	repository, err := git.PlainOpen(path)
 	localRepository.repo = repository
 	if err != nil {
@@ -103,6 +111,10 @@ type CloneOp struct {
 }
 
 func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
+	log.Debug().
+		Str("url", op.URL).
+		Str("target_path", op.TargetPath).
+		Msg("git: cloning repository")
 	var gitAuth transport.AuthMethod
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
@@ -131,18 +143,23 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 }
 
 func OpenAndResetRepositoryState(path string, dryRun bool) (*LocalRepository, error) {
-	localRepo, err := OpenLocalRepository(path)
+	localRepo, err := OpenLocalRepository(path, dryRun)
 	if err != nil {
 		return nil, err
 	}
-	err = localRepo.ResetState(dryRun)
+	err = localRepo.ResetState()
 	if err != nil {
 		return nil, err
 	}
 	return localRepo, nil
 }
 
-func (localRepo *LocalRepository) ResetState(dryRun bool) error {
+func (localRepo *LocalRepository) ResetState() error {
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("branch", MainBranch).
+		Msg("git: resetting to branch")
 	localChangesPresent, err := localRepo.IsLocalChangesPresent()
 	if err != nil {
 		return err
@@ -150,6 +167,7 @@ func (localRepo *LocalRepository) ResetState(dryRun bool) error {
 	if localChangesPresent {
 		return ErrLocalChangesIsPresent
 	}
+	// CheckoutBranch will respect DryRun
 	if err = localRepo.CheckoutBranch(&CheckoutOp{
 		BranchName: MainBranch,
 	}); err != nil {
@@ -194,13 +212,17 @@ func (localRepo *LocalRepository) IsLocalChangesPresent() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Bool("is_clean", status.IsClean()).
+		Msg("git: status")
 	return !status.IsClean(), nil
 }
 
 type CheckoutOp struct {
 	BranchName      string
 	CreateIfMissing bool
-	DryRun          bool
 }
 
 func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
@@ -221,7 +243,7 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 				"git: [%s] branch ref -> HEAD: %s -> %s",
 				localRepo.Path(), branchReference.Name().Short(), branchReference.Hash().String(),
 			)
-		if !op.DryRun {
+		if !localRepo.DryRun {
 			if err = localRepo.repo.Storer.SetReference(branchReference); err != nil {
 				return err
 			}
@@ -242,7 +264,7 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 			Bool("dry_run", localRepo.DryRun).
 			Str("branch", branch.Name).
 			Msg("git: create branch")
-		if !op.DryRun {
+		if !localRepo.DryRun {
 			if err = localRepo.repo.CreateBranch(branch); err != nil {
 				return err
 			}
@@ -257,7 +279,7 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 		Bool("dry_run", localRepo.DryRun).
 		Str("branch", branch.Name).
 		Msg("git: checkout branch")
-	if !op.DryRun {
+	if !localRepo.DryRun {
 		if err = localRepo.worktree.Checkout(&git.CheckoutOptions{Branch: branch.Merge}); err != nil {
 			return err
 		}
@@ -290,16 +312,13 @@ type PullResult struct {
 
 func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
 	var gitAuth transport.AuthMethod
-	gitAuthString := ""
 	if auth != nil {
 		gitAuth = auth.toGitAuthMethod()
-		gitAuthString = gitAuth.String()
 	}
 	var err error
 	log.Debug().
 		Str("repo", localRepo.Path()).
 		Bool("dry_run", localRepo.DryRun).
-		Str("auth", gitAuthString).
 		Msg("git: pull")
 	if !localRepo.DryRun {
 		err = localRepo.worktree.Pull(&git.PullOptions{
@@ -321,10 +340,8 @@ type PushOp struct {
 func (localRepo *LocalRepository) Push(op PushOp) error {
 
 	var gitAuth transport.AuthMethod
-	gitAuthString := ""
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
-		gitAuthString = gitAuth.String()
 	}
 	var refSpecs []config.RefSpec
 	if op.BranchName != "" {
@@ -335,7 +352,6 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 	log.Debug().
 		Str("repo", localRepo.Path()).
 		Bool("dry_run", localRepo.DryRun).
-		Str("auth", gitAuthString).
 		Str("branch_name", op.BranchName).
 		Msg("git: pushing branch to remote")
 	if !localRepo.DryRun {

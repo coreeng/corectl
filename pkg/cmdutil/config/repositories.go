@@ -5,11 +5,9 @@ import (
 	"fmt"
 
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/phuslu/log"
 )
 
 func ResetConfigRepositoryState(repositoryParam *Parameter[string], dryRun bool) (*git.LocalRepository, error) {
-	log.Trace().Msgf("Resetting config repo state")
 	if repositoryParam.Value == "" {
 		return nil, fmt.Errorf("%s path is not set. consider initializing corectl first:\n  corectl config init", repositoryParam.name)
 	}

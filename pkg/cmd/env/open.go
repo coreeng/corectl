@@ -72,7 +72,6 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 			fmt.Sprintf("Opened %s for env %s: %s", resourceType, env.Environment, url),
 		)
 		defer wizard.Done()
-		browser.OpenURL(url)
+		return browser.OpenURL(url)
 	}
-	return nil
 }

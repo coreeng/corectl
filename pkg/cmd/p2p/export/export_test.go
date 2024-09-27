@@ -32,7 +32,7 @@ func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		streams:         userio.NewIOStreams(os.Stdin, &output),
-	}, false, &config.Parameter[string]{Value: testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()})
+	}, false, &config.Parameter[string]{Value: testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()}, false)
 
 	assert.NoError(t, err)
 	assert.Contains(t, output.String(), "export", p2p.BaseDomain, p2p.Registry, p2p.Version, p2p.RepoPath, p2p.TenantName, p2p.Region)
@@ -45,7 +45,7 @@ func TestRunExportNonExistingAppRepo(t *testing.T) {
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        appRepoPath,
 		streams:         streams,
-	}, false, &config.Parameter[string]{Value: testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()})
+	}, false, &config.Parameter[string]{Value: testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()}, false)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("repository on path %s not found: repository does not exist", appRepoPath))
 }
@@ -59,7 +59,7 @@ func TestRunExportNonExistingTenant(t *testing.T) {
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		streams:         streams,
-	}, false, &config.Parameter[string]{Value: cPlatRepoPath})
+	}, false, &config.Parameter[string]{Value: cPlatRepoPath}, false)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent]", cPlatRepoPath, tenantName, tenantName))
 }
@@ -73,7 +73,7 @@ func TestRunExportNonExistingEnvironment(t *testing.T) {
 		environmentName: envName,
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		streams:         streams,
-	}, false, &config.Parameter[string]{Value: cPlatRepoPath})
+	}, false, &config.Parameter[string]{Value: cPlatRepoPath}, false)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/environments: environment %s invalid: cannot find %s environment, available envs: [dev prod]", cPlatRepoPath, envName, envName))
 }
@@ -84,7 +84,7 @@ func TestRunExportCPlatformRepoNotExist(t *testing.T) {
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		streams:         streams,
-	}, false, &config.Parameter[string]{})
+	}, false, &config.Parameter[string]{}, false)
 
 	assert.ErrorContains(t, err, "path is not set. consider initializing corectl first:\n  corectl config init")
 }
@@ -101,7 +101,7 @@ func TestRunExportCPlatRepoWithUncommitedChanges(t *testing.T) {
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        appRepo.Path(),
 		streams:         streams,
-	}, false, &config.Parameter[string]{Value: cPlatRepo.Path()})
+	}, false, &config.Parameter[string]{Value: cPlatRepo.Path()}, false)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("local changes are present in repo on path %s. consider removing it before using corectl", cPlatRepo.Path()))
 }

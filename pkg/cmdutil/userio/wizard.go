@@ -86,7 +86,7 @@ func newWizard(streams *IOStreams) WizardHandler {
 	go func() {
 		_, err := streams.execute(sm, handler)
 		if err != nil {
-			log.Error().Msgf("Error in Wizard execution: %s", err.Error())
+			log.Error().Err(err).Msgf("Error in Wizard execution")
 		}
 		done <- true
 	}()
@@ -133,19 +133,32 @@ func (sm wizardModel) Init() tea.Cmd {
 	)
 }
 
-func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if _, ok := msg.(spinner.TickMsg); !ok {
-		if _, ok := msg.(tea.Model); ok {
-			log.Debug().Msgf("Wizard: Received msg [%T]", msg)
-		} else {
-			log.Debug().Msgf("Wizard: Received msg [%T] %s", msg, msg)
-		}
+func (sm wizardModel) getLatestTask() *task {
+	var task *task
+	if len(sm.tasks) > 0 {
+		task = &sm.tasks[len(sm.tasks)-1]
+	}
+	return task
+}
+
+func (sm wizardModel) markLatestTaskComplete() *task {
+	task := sm.getLatestTask()
+	if task == nil {
+		log.Warn().Msgf("Wizard: Marking task complete, but no tasks found")
+	} else {
+		log.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
+		task.completed = true
 	}
 
+	return task
+}
+
+func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updateListener := sm.ReceiveUpdateMessages
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		log.Debug().Msgf("Wizard: Received [%T], (w:%d, h:%d)", msg, msg.Width, msg.Height)
 		sm.width = msg.Width
 		sm.height = msg.Height
 		if sm.inputModel != nil {
@@ -155,45 +168,47 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return sm, nil
 	case doneMsg:
-		if len(sm.messageChan) > 0 {
+		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		if messageLen := len(sm.messageChan); messageLen > 0 {
+			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return sm, updateListener
 		} else {
-			// Mark previous tasks as complete if we are done
-			if len(sm.tasks) > 0 {
-				sm.tasks[len(sm.tasks)-1].completed = true
-			}
+			sm.markLatestTaskComplete()
 			sm.quitting = true
 			return sm, tea.Quit
 		}
 	case task:
-		// Mark previous tasks as complete if we add another
-		if len(sm.tasks) > 0 {
-			sm.tasks[len(sm.tasks)-1].completed = true
-		}
+		sm.markLatestTaskComplete()
+		log.Debug().Msgf("Wizard: New task: %s", msg.title)
 		sm.tasks = append(sm.tasks, msg)
 		return sm, updateListener
 	case logMsg:
 		if len(sm.tasks) > 0 {
+			log.Debug().Msgf("Wizard: Log received %s: %s", msg.level, msg.message)
 			// Adds logs as children of the most recent task
-			sm.tasks[len(sm.tasks)-1].logs = append(sm.tasks[len(sm.tasks)-1].logs, msg)
+			latestTask := sm.getLatestTask()
+			latestTask.logs = append(latestTask.logs, msg)
 		} else {
-			log.Warn().Msgf("Could not add log, no active tasks [%s: %s]", msg.level, msg.message)
+			log.Warn().Msgf("Wizard: Could not add log, no active tasks [%s: %s]", msg.level, msg.message)
 		}
 		return sm, updateListener
 	case updateCurrentTaskCompletedTitle:
-		if len(sm.tasks) > 0 {
-			sm.tasks[len(sm.tasks)-1].completedTitle = string(msg)
-		}
+		log.Debug().Msgf("Wizard: Update current task title -> %s", msg)
+		latestTask := sm.getLatestTask()
+		latestTask.completedTitle = string(msg)
 		return sm, updateListener
 	case InputCompleted:
+		log.Debug().Msgf("Wizard: Input completed")
 		sm.inputResultChan <- sm.inputModel
 		sm.inputModel = nil
 		return sm, updateListener
 	case tea.Model:
+		log.Debug().Msgf("Wizard: Input component injected")
 		var cmd tea.Cmd
 		sm.inputModel, cmd = msg.Update(tea.WindowSizeMsg{Width: sm.width, Height: sm.height})
 		return sm, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
+		log.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			sm.err = ErrInterrupted

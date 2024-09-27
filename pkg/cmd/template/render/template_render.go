@@ -19,6 +19,7 @@ type TemplateRenderOpts struct {
 	TemplateName  string
 	TargetPath    string
 	TemplatesPath string
+	DryRun        bool
 }
 
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
@@ -96,7 +97,7 @@ func run(opts TemplateRenderOpts) error {
 		Streams:  opts.Streams,
 	}
 
-	if err := templateRenderer.Render(templ, opts.TargetPath); err != nil {
+	if err := templateRenderer.Render(templ, opts.TargetPath, opts.DryRun); err != nil {
 		return err
 	}
 
@@ -104,7 +105,7 @@ func run(opts TemplateRenderOpts) error {
 }
 
 type TemplateRenderer interface {
-	Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error
+	Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error
 }
 
 type FlagsAwareTemplateRenderer struct {
@@ -113,7 +114,7 @@ type FlagsAwareTemplateRenderer struct {
 	Streams  userio.IOStreams
 }
 
-func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error {
 	if spec == nil {
 		return nil
 	}
@@ -134,7 +135,10 @@ func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory
 		Arguments: args,
 	}
 
-	return template.Render(fulfilledTemplate, targetDirectory)
+	if !dryRun {
+		err = template.Render(fulfilledTemplate, targetDirectory)
+	}
+	return err
 }
 
 type StubTemplateRenderer struct {
@@ -142,7 +146,7 @@ type StubTemplateRenderer struct {
 	PassedAdditionalArgs [][]template.Argument
 }
 
-func (r *StubTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+func (r *StubTemplateRenderer) Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error {
 	r.PassedAdditionalArgs = append(r.PassedAdditionalArgs, additionalArgs)
-	return r.Renderer.Render(spec, targetDirectory, additionalArgs...)
+	return r.Renderer.Render(spec, targetDirectory, dryRun, additionalArgs...)
 }

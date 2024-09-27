@@ -63,7 +63,6 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	if currentBranch != git.MainBranch {
 		if err := localRepo.CheckoutBranch(&git.CheckoutOp{
 			BranchName: git.MainBranch,
-			DryRun:     localRepo.DryRun,
 		}); err != nil {
 			return err
 		}
@@ -71,7 +70,6 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 	return localRepo.CheckoutBranch(&git.CheckoutOp{
 		BranchName:      branchName,
 		CreateIfMissing: true,
-		DryRun:          localRepo.DryRun,
 	})
 }
 
@@ -183,7 +181,16 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 		return result, err
 	}
 
-	pullRequest, err := svc.createPR(op.Name, branchName, repoFullId)
+	pullRequest, err := git.CreateGitHubPR(
+		svc.GithubClient,
+		fmt.Sprintf("Add %s application", op.Name),
+		fmt.Sprintf("Adding `%s` application", op.Name),
+		branchName,
+		repoFullId.Name(),
+		repoFullId.Organization(),
+		svc.DryRun,
+	)
+
 	if err != nil {
 		return result, err
 	}
@@ -208,20 +215,6 @@ func calculateWorkingDirForMonorepo(repoPath string, path string) (string, error
 		return "", fmt.Errorf("app relative path is not inside the monorepo: %s", appRelPath)
 	}
 	return appRelPath, nil
-}
-
-func (svc *Service) createPR(name string, branchName string, repoFullId *git.GithubRepoFullId) (*github.PullRequest, error) {
-	pullRequest, _, err := svc.GithubClient.PullRequests.Create(
-		context.Background(),
-		repoFullId.Organization(),
-		repoFullId.Name(),
-		&github.NewPullRequest{
-			Base:  github.String(git.MainBranch),
-			Head:  github.String(branchName),
-			Title: github.String("Add " + name + " application"),
-			Body:  github.String(fmt.Sprintf("Adding `%s` application", name)),
-		})
-	return pullRequest, err
 }
 
 func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalRepository) (*git.GithubRepoFullId, error) {
@@ -280,7 +273,7 @@ func prepareLocalPath(localPath string, undoSteps *undo.Steps) error {
 }
 
 func setupLocalRepository(localPath string, dryRun bool) (*git.LocalRepository, bool, error) {
-	localRepo, isMonorepo, err := openMonorepoMaybe(localPath)
+	localRepo, isMonorepo, err := openMonorepoMaybe(localPath, dryRun)
 	if err != nil {
 		return nil, false, err
 	}
@@ -296,16 +289,16 @@ func setupLocalRepository(localPath string, dryRun bool) (*git.LocalRepository, 
 	return localRepo, isMonorepo, nil
 }
 
-func openMonorepoMaybe(localPath string) (localRepo *git.LocalRepository, isMonorepo bool, err error) {
-	localRepo, err = git.OpenLocalRepository(filepath.Dir(localPath))
+func openMonorepoMaybe(localPath string, dryRun bool) (localRepo *git.LocalRepository, isMonorepo bool, err error) {
+	localRepo, err = git.OpenLocalRepository(filepath.Dir(localPath), dryRun)
 	if err != nil && !errors.Is(err, gogit.ErrRepositoryNotExists) {
 		return nil, false, err
 	}
 	isMonorepo = localRepo.Repository() != nil
 	if isMonorepo {
-		log.Debug().Msg("(git) repository is monorepo")
+		log.Debug().Msg("git: repository is monorepo")
 	} else {
-		log.Debug().Msg("(git) repository is single repo")
+		log.Debug().Msg("git: repository is single repo")
 	}
 	return localRepo, isMonorepo, nil
 }
@@ -325,7 +318,13 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		},
 	}
 	args = append(args, additionalArgs...)
-	return svc.TemplateRenderer.Render(op.Template, targetDir, args...)
+	log.Debug().
+		Str("tenant", op.Tenant.Name).
+		Str("app", op.Name).
+		Str("target_dir", targetDir).
+		Msg("rendering template")
+
+	return svc.TemplateRenderer.Render(op.Template, targetDir, svc.DryRun, args...)
 }
 
 func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
@@ -459,7 +458,7 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 		return fmt.Errorf("%s: %v", op.LocalPath, err)
 	}
 
-	_, isMonorepo, err := openMonorepoMaybe(op.LocalPath)
+	_, isMonorepo, err := openMonorepoMaybe(op.LocalPath, svc.DryRun)
 	if err != nil {
 		return fmt.Errorf("checking for monorepo failed with %v", err)
 	}

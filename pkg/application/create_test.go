@@ -238,7 +238,7 @@ var _ = Describe("Create new application", func() {
 		})
 		It("local repository is present and correct", func() {
 			var err error
-			newAppLocalRepo, err = git.OpenLocalRepository(localAppRepoDir)
+			newAppLocalRepo, err = git.OpenLocalRepository(localAppRepoDir, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			remote, err := newAppLocalRepo.Repository().Remote(git.OriginRemote)
@@ -579,7 +579,6 @@ var _ = Describe("Create new application", func() {
 			Expect(localRepo.CheckoutBranch(&git.CheckoutOp{
 				BranchName:      oldBranchName,
 				CreateIfMissing: true,
-				DryRun:          false,
 			})).To(Succeed())
 			Expect(localRepo.Commit(&git.CommitOp{
 				Message:    "Just to have different hash from main",
@@ -645,6 +644,6 @@ func readFileContent(path ...string) string {
 type panicTemplateRenderer struct {
 }
 
-func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ ...template.Argument) error {
+func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ bool, _ ...template.Argument) error {
 	panic("Panic for test sake")
 }
