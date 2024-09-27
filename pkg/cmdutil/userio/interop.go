@@ -26,6 +26,9 @@ func WarnLog(message string) string {
 }
 
 func (nonInteractiveHandler) Done() {}
+func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
+	panic("cannot take input in non-interactive mode")
+}
 func (nih nonInteractiveHandler) Info(message string) {
 	_, _ = nih.streams.outRaw.Write([]byte(InfoLog(message) + "\n"))
 }

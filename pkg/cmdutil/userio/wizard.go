@@ -18,6 +18,7 @@ type WizardHandler interface {
 	SetInputModel(tea.Model) tea.Model
 	SetTask(string, string)
 	Warn(string)
+	OnQuit(tea.Model, tea.Msg) tea.Msg
 }
 
 type asyncWizardHandler struct {
@@ -29,6 +30,26 @@ type asyncWizardHandler struct {
 func (sh asyncWizardHandler) Done() {
 	sh.update(doneMsg(true))
 	<-sh.done
+}
+
+func (sh asyncWizardHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
+	log.Debug().
+		Str("model", fmt.Sprintf("%T", m)).
+		Str("msg", fmt.Sprintf("%T", msg)).
+		Msg("received msg")
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		return msg
+	}
+
+	switch m := m.(type) {
+	case wizardModel:
+		if m.quitting {
+			return msg
+		}
+		// If we didn't send the tea.Quit - assume it is from the inputModel
+		return InputCompleted{model: m.inputModel}
+	}
+	return msg
 }
 
 func (sh asyncWizardHandler) SetInputModel(input tea.Model) tea.Model {
@@ -210,11 +231,18 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return sm, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
 		log.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
+
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			sm.err = ErrInterrupted
 			sm.quitting = true
 			return sm, tea.Quit
+		default:
+			if sm.inputModel != nil {
+				newInputModel, inputCmd := sm.inputModel.Update(msg)
+				sm.inputModel = newInputModel
+				return sm, inputCmd
+			}
 		}
 	}
 	var newInputModel tea.Model

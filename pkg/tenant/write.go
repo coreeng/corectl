@@ -74,7 +74,7 @@ func CreateOrUpdate(
 		}
 	} else {
 		// Approximation for dry-run
-		relativeFilepath = fmt.Sprintf("tenants/%s/%s.yml", op.ParentTenant.Name, op.Tenant.Name)
+		relativeFilepath = fmt.Sprintf("tenants/%s.yml", op.Tenant.Name)
 	}
 
 	if err = repository.AddFiles(relativeFilepath); err != nil {

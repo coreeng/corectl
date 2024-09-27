@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phuslu/log"
 )
 
 const blankListHeight = 6
@@ -43,22 +44,13 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	}
 
 	model := singleSelectModel{
-		prompt:   op.Prompt,
-		model:    m,
-		embedded: false,
+		prompt: op.Prompt,
+		model:  m,
 	}
 
-	// Allow nesting inside other components
-	var result tea.Model
-	var err error
-	if streams.CurrentHandler != nil {
-		model.embedded = true
-		result = streams.CurrentHandler.SetInputModel(model)
-	} else {
-		result, err = streams.execute(model, nil)
-		if err != nil {
-			return "", err
-		}
+	result, err := streams.execute(model, nil)
+	if err != nil {
+		return "", err
 	}
 
 	sSResult := result.(singleSelectModel)
@@ -77,7 +69,6 @@ type singleSelectModel struct {
 	choice   *item
 	err      error
 	quitting bool
-	embedded bool
 }
 
 func (m singleSelectModel) Init() tea.Cmd {
@@ -101,32 +92,24 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.choice = nil
 			m.err = ErrInterrupted
-			if m.embedded {
-				return m, func() tea.Msg {
-					return InputCompleted{model: m}
-				}
-			} else {
-				m.quitting = true
-				return m, tea.Quit
-			}
+
+			m.quitting = true
+			return m, tea.Quit
 		case tea.KeyEnter:
+			log.Debug().Msg("SingleSelect: received enter")
 			if m.model.FilterState() == list.Filtering {
 				break
 			}
 			it, ok := m.model.SelectedItem().(item)
+			log.Debug().Msgf("SingleSelect: selected item is %s", it)
 			if !ok {
 				return m, nil
 			}
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
-			if m.embedded {
-				return m, func() tea.Msg {
-					return InputCompleted{model: m}
-				}
-			} else {
-				return m, tea.Quit
-			}
+			log.Debug().Msg("SingleSelect: sending tea.Quit")
+			return m, tea.Quit
 		}
 	}
 

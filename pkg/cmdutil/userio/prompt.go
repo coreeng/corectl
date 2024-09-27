@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
+	"github.com/phuslu/log"
 )
 
 var (
@@ -63,14 +64,27 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 }
 
 func (streams *IOStreams) execute(model tea.Model, handler WizardHandler) (tea.Model, error) {
-	if handler != nil {
-		streams.CurrentHandler = handler
+	if _, isWizard := model.(wizardModel); isWizard || streams.CurrentHandler == nil {
+		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
+		options := []tea.ProgramOption{
+			tea.WithInput(streams.in),
+			tea.WithOutput(streams.outRaw),
+		}
+
+		if handler != nil {
+			streams.CurrentHandler = handler
+			options = append(options, tea.WithFilter(handler.OnQuit))
+		}
+
+		return tea.NewProgram(
+			model,
+			options...,
+		).Run()
+	} else {
+		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
+		// Run inside the existing session
+		return streams.CurrentHandler.SetInputModel(model), nil
 	}
-	return tea.NewProgram(
-		model,
-		tea.WithInput(streams.in),
-		tea.WithOutput(streams.outRaw),
-	).Run()
 }
 
 type InputPrompt[V any] interface {
