@@ -6,10 +6,12 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	"github.com/go-git/go-git/v5/storage/memory"
 
 	"github.com/phuslu/log"
 )
@@ -62,25 +64,36 @@ func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 		Msg("git: init")
 	result := &LocalRepository{
 		DryRun: dryRun,
+		repo:   &git.Repository{},
 	}
 
-	if !dryRun {
-		repository, err := git.PlainInitWithOptions(
-			path,
-			&git.PlainInitOptions{
-				InitOptions: git.InitOptions{DefaultBranch: plumbing.Main},
-			},
-		)
-		result.repo = repository
-		if err != nil {
-			return result, err
-		}
-		worktree, err := repository.Worktree()
-		result.worktree = worktree
-		if err != nil {
-			return result, err
-		}
+	gitOptions := &git.PlainInitOptions{
+		InitOptions: git.InitOptions{DefaultBranch: plumbing.Main},
 	}
+	var repository *git.Repository
+	var err error
+	if dryRun {
+		// Initialize an in-memory repo for dry run
+		repository, err = git.InitWithOptions(
+			memory.NewStorage(),
+			osfs.New(path),
+			gitOptions.InitOptions,
+		)
+	} else {
+		repository, err = git.PlainInitWithOptions(
+			path,
+			gitOptions,
+		)
+	}
+	if err != nil {
+		return result, err
+	}
+	result.repo = repository
+	worktree, err := repository.Worktree()
+	if err != nil {
+		return result, err
+	}
+	result.worktree = worktree
 
 	return result, nil
 }

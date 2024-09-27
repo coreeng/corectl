@@ -240,6 +240,7 @@ func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepo
 	log.Info().
 		Str("name", op.Name).
 		Str("org", op.OrgName).
+		Bool("dry_run", svc.DryRun).
 		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, op.Name)
 	githubRepo, err := svc.createGithubRepository(op)
 	if err != nil {
@@ -322,7 +323,8 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		Str("tenant", op.Tenant.Name).
 		Str("app", op.Name).
 		Str("target_dir", targetDir).
-		Msg("rendering template")
+		Bool("dry_run", svc.DryRun).
+		Msg("calling render template")
 
 	return svc.TemplateRenderer.Render(op.Template, targetDir, svc.DryRun, args...)
 }
@@ -352,13 +354,18 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 	log.Debug().
 		Str("name", op.Name).
 		Str("org", op.OrgName).
+		Bool("dry_run", svc.DryRun).
 		Msg("github: create repository")
 	deleteBranchOnMerge := true
 	visibility := "private"
 	repo := github.Repository{
+		ID:                  github.Int64(1234),
 		Name:                &op.Name,
 		DeleteBranchOnMerge: &deleteBranchOnMerge,
 		Visibility:          &visibility,
+		Owner: &github.User{
+			Login: github.String(op.OrgName),
+		},
 	}
 	if !svc.DryRun {
 		githubRepo, _, err := svc.GithubClient.Repositories.Create(
@@ -368,6 +375,7 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		)
 		return githubRepo, err
 	} else {
+		repo.CloneURL = github.String(fmt.Sprintf("https://github.com/%s/%s.git", *repo.Owner.Login, *repo.Name))
 		return &repo, nil
 	}
 }
@@ -380,6 +388,7 @@ func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepo
 		Objects("fast_feedback_envs", op.FastFeedbackEnvs).
 		Objects("extended_test_envs", op.ExtendedTestEnvs).
 		Objects("prod_envs", op.ProdEnvs).
+		Bool("dry_run", svc.DryRun).
 		Msg("github: setting repository variables")
 	if !svc.DryRun {
 		return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
@@ -400,9 +409,16 @@ func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) er
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(rootWorkflowsPath, 0o755)
-	if err != nil {
-		return err
+
+	log.Debug().
+		Str("path", rootWorkflowsPath).
+		Bool("dry_run", svc.DryRun).
+		Msg("github: making workflows directory")
+	if !svc.DryRun {
+		err = os.MkdirAll(rootWorkflowsPath, 0o755)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, file := range dir {
@@ -412,15 +428,30 @@ func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) er
 		src := filepath.Join(githubWorkflowsPath, file.Name())
 		dst := filepath.Join(rootWorkflowsPath, filePrefix+file.Name())
 
-		err = os.Rename(src, dst)
+		log.Debug().
+			Str("source", src).
+			Str("destination", dst).
+			Bool("dry_run", svc.DryRun).
+			Msg("github: moving file")
+		if !svc.DryRun {
+			err = os.Rename(src, dst)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	removePath := filepath.Join(path, ".github")
+	log.Debug().
+		Str("path", removePath).
+		Bool("dry_run", svc.DryRun).
+		Msg("github: removing path")
+	if !svc.DryRun {
+		err = os.RemoveAll(removePath)
 		if err != nil {
 			return err
 		}
 	}
-	err = os.RemoveAll(filepath.Join(path, ".github"))
-	if err != nil {
-		return err
-	}
+
 	return nil
 }
 

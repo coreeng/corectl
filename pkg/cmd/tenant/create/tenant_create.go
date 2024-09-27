@@ -202,12 +202,10 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	result, err := createTenant(opt.Streams, cfg, &t, &parent)
+	_, err = createTenant(opt.Streams, cfg, &t, &parent)
 	if err != nil {
 		return err
 	}
-	opt.Streams.Info("Created PR link: ", result.PRUrl)
-	opt.Streams.Info("Tenant created successfully: ", t.Name)
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
+	"gopkg.in/yaml.v3"
 )
 
 type CreateOrUpdateOp struct {
@@ -47,19 +48,35 @@ func CreateOrUpdate(
 		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch})
 	}()
 
-	log.Debug().Msg("writing tenant definition to cplatform repo")
-	if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
-		Tenant:       op.Tenant,
-		ParentTenant: op.ParentTenant,
-		TenantsDir:   tenant.DirFromCPlatformPath(op.CplatformRepoPath),
-	}); err != nil {
-		return CreateOrUpdateResult{}, err
-	}
-
-	relativeFilepath, err := filepath.Rel(op.CplatformRepoPath, *op.Tenant.SavedPath())
+	definition, err := yaml.Marshal(op.Tenant)
 	if err != nil {
 		return result, err
 	}
+	log.Debug().
+		// TODO: add public method to render Tenant in developer-platform
+		//       so we can log it here when dry-running
+		Str("repo", op.CplatformRepoPath).
+		Bool("dry_run", op.DryRun).
+		Str("definition", string(definition)).
+		Msg("writing tenant definition to cplatform repo")
+	var relativeFilepath string
+	if !op.DryRun {
+		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
+			Tenant:       op.Tenant,
+			ParentTenant: op.ParentTenant,
+			TenantsDir:   tenant.DirFromCPlatformPath(op.CplatformRepoPath),
+		}); err != nil {
+			return result, err
+		}
+		relativeFilepath, err = filepath.Rel(op.CplatformRepoPath, *op.Tenant.SavedPath())
+		if err != nil {
+			return result, err
+		}
+	} else {
+		// Approximation for dry-run
+		relativeFilepath = fmt.Sprintf("tenants/%s/%s.yml", op.ParentTenant.Name, op.Tenant.Name)
+	}
+
 	if err = repository.AddFiles(relativeFilepath); err != nil {
 		return result, err
 	}

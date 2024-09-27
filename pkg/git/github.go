@@ -61,6 +61,7 @@ func CreateGitHubPR(client *github.Client, title string, body string, branchName
 		Str("repo", fmt.Sprintf("https://github.com/%s/%s", organization, repoName)).
 		Str("title", *pr_title).
 		Str("body", *pr_body).
+		Bool("dry_run", dryRun).
 		Msg("github: creating PR")
 	if !dryRun {
 		pullRequest, _, err := client.PullRequests.Create(
@@ -75,12 +76,14 @@ func CreateGitHubPR(client *github.Client, title string, body string, branchName
 			})
 		return pullRequest, err
 	} else {
+		id := github.Int64(1234)
 		return &github.PullRequest{
-			ID:    github.Int64(1234),
-			Title: pr_title,
-			Base:  &github.PullRequestBranch{Label: branch},
-			Head:  &github.PullRequestBranch{Label: head},
-			Body:  pr_body,
+			ID:      id,
+			Title:   pr_title,
+			Base:    &github.PullRequestBranch{Label: branch},
+			Head:    &github.PullRequestBranch{Label: head},
+			Body:    pr_body,
+			HTMLURL: github.String(fmt.Sprintf("https://github.com/%s/%s/pull/%d", organization, repoName, *id)),
 		}, nil
 	}
 }

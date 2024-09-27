@@ -193,9 +193,10 @@ func (sm wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return sm, updateListener
 	case updateCurrentTaskCompletedTitle:
-		log.Debug().Msgf("Wizard: Update current task title -> %s", msg)
-		latestTask := sm.getLatestTask()
-		latestTask.completedTitle = string(msg)
+		log.Debug().Msgf("Wizard: Update current task completed title -> %s", msg)
+		if taskLen := len(sm.tasks); taskLen > 0 {
+			sm.tasks[taskLen-1].completedTitle = string(msg)
+		}
 		return sm, updateListener
 	case InputCompleted:
 		log.Debug().Msgf("Wizard: Input completed")

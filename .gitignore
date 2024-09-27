@@ -1,4 +1,4 @@
 .envrc
 corectl
-corectl.log
+corectl*.log
 dist/
