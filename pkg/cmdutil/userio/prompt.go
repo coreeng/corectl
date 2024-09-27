@@ -7,6 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 	"github.com/phuslu/log"
@@ -22,7 +23,19 @@ type IOStreams struct {
 	outRaw         io.Writer
 	styles         *styles
 	isInteractive  bool
-	CurrentHandler WizardHandler
+	CurrentHandler wizard.Handler
+}
+
+func newWizard(streams *IOStreams) wizard.Handler {
+	model, handler := wizard.New()
+	go func() {
+		_, err := streams.execute(model, handler)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error in Wizard execution")
+		}
+		handler.DoneSendChannel <- true
+	}()
+	return handler
 }
 
 func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
@@ -63,8 +76,8 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams *IOStreams) execute(model tea.Model, handler WizardHandler) (tea.Model, error) {
-	if _, isWizard := model.(wizardModel); isWizard || streams.CurrentHandler == nil {
+func (streams *IOStreams) execute(model tea.Model, handler wizard.Handler) (tea.Model, error) {
+	if _, isWizard := model.(wizard.Model); isWizard || streams.CurrentHandler == nil {
 		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
 		options := []tea.ProgramOption{
 			tea.WithInput(streams.in),

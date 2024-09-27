@@ -7,10 +7,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type InputCompleted struct {
-	model tea.Model
-}
-
 type nonInteractiveHandler struct {
 	streams *IOStreams
 }

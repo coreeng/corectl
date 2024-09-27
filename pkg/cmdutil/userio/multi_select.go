@@ -42,16 +42,9 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		validateAndMap: op.ValidateAndMap,
 	}
 
-	// Allow nesting inside other components
-	var result tea.Model
-	var err error
-	if streams.CurrentHandler != nil {
-		result = streams.CurrentHandler.SetInputModel(model)
-	} else {
-		result, err = streams.execute(model, nil)
-		if err != nil {
-			return nil, err
-		}
+	result, err := streams.execute(model, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	mSResult := result.(multiSelectModel)

@@ -3,6 +3,8 @@ package userio
 import (
 	"fmt"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 )
 
 func (streams IOStreams) InfoE(messages ...string) error {
@@ -27,7 +29,7 @@ func (streams IOStreams) Info(messages ...string) {
 	}
 }
 
-func (streams *IOStreams) Wizard(title string, completedTitle string) WizardHandler {
+func (streams *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	if streams.IsInteractive() {
 		streams.CurrentHandler = newWizard(streams)
 	} else {

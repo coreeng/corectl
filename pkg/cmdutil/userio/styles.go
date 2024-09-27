@@ -16,6 +16,7 @@ type styles struct {
 	pagination   lipgloss.Style
 	help         lipgloss.Style
 	suggestion   lipgloss.Style
+	bold         lipgloss.Style
 
 	err  lipgloss.Style
 	info lipgloss.Style
@@ -29,6 +30,7 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 		pagination:   renderer.NewStyle().PaddingLeft(4),
 		help:         renderer.NewStyle().Padding(1, 0, 0, 4),
 		suggestion:   renderer.NewStyle().Faint(true),
+		bold:         renderer.NewStyle().Bold(true),
 
 		err: renderer.NewStyle().
 			MarginLeft(2).
