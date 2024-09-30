@@ -27,6 +27,7 @@ type TenantCreateOpt struct {
 	AdminGroup     string
 	ReadOnlyGroup  string
 	NonInteractive bool
+	DryRun         bool
 
 	Streams userio.IOStreams
 }
@@ -108,7 +109,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	)
 
 	tenantCreateCmd.Flags().BoolVarP(
-		&cfg.DryRun,
+		&opt.DryRun,
 		"dry-run",
 		"n",
 		false,
@@ -210,7 +211,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.Streams, cfg, &t, &parent)
+	_, err = createTenant(opt.Streams, opt.DryRun, cfg, &t, &parent)
 	if err != nil {
 		return err
 	}
@@ -219,6 +220,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 
 func createTenant(
 	streams userio.IOStreams,
+	dryRun bool,
 	cfg *config.Config,
 	t *coretnt.Tenant,
 	parentTenant *coretnt.Tenant,
@@ -241,7 +243,7 @@ func createTenant(
 			PRName:            fmt.Sprintf("New tenant: %s", t.Name),
 			PRBody:            fmt.Sprintf("Adds new tenant '%s'", t.Name),
 			GitAuth:           gitAuth,
-			DryRun:            cfg.DryRun,
+			DryRun:            dryRun,
 		}, githubClient,
 	)
 	wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))

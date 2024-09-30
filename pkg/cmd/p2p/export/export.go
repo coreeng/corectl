@@ -85,7 +85,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 			)
-			return run(opts, cfg.Repositories.AllowDirty.Value, &cfg.Repositories.CPlatform, cfg.DryRun)
+			return run(opts, cfg.Repositories.AllowDirty.Value, &cfg.Repositories.CPlatform)
 		},
 	}
 
@@ -124,13 +124,13 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 	return exportCommand, nil
 }
 
-func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string], dryRun bool) error {
+func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string]) error {
 	if !allowDirty {
-		if _, err := config.ResetConfigRepositoryState(cplatRepoPath, dryRun); err != nil {
+		if _, err := config.ResetConfigRepositoryState(cplatRepoPath, false); err != nil {
 			return err
 		}
 	}
-	context, err := opts.processFlags(cplatRepoPath.Value, dryRun)
+	context, err := opts.processFlags(cplatRepoPath.Value, false)
 	if err != nil {
 		return err
 	}

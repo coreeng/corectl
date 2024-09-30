@@ -105,7 +105,6 @@ type Config struct {
 	Repositories RepositoriesConfig `yaml:"repositories"`
 	P2P          P2PConfig          `yaml:"p2p"`
 	path         string
-	DryRun       bool
 	LogLevel     string
 }
 
@@ -132,7 +131,6 @@ type P2PStageConfig struct {
 
 func NewConfig() *Config {
 	return &Config{
-		DryRun:   false,
 		LogLevel: log.PanicLevel.String(),
 		GitHub: GitHubConfig{
 			Token: Parameter[string]{

@@ -31,6 +31,7 @@ type AppCreateOpt struct {
 	Tenant         string
 	ArgsFile       string
 	Args           []string
+	DryRun         bool
 
 	Streams userio.IOStreams
 }
@@ -104,7 +105,7 @@ NOTE:
 	)
 
 	appCreateCmd.Flags().BoolVarP(
-		&cfg.DryRun,
+		&opts.DryRun,
 		"dry-run",
 		"n",
 		false,
@@ -140,14 +141,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	defer wizard.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
-	if !cfg.DryRun {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, cfg.DryRun); err != nil {
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
 			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
 		}
 	}
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
-	if !cfg.DryRun {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, cfg.DryRun); err != nil {
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
 			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
 		}
 	}
@@ -274,7 +275,7 @@ func createNewApp(
 		Args:     opts.Args,
 		Streams:  opts.Streams,
 	}
-	service := application.NewService(templateRenderer, githubClient, cfg.DryRun)
+	service := application.NewService(templateRenderer, githubClient, opts.DryRun)
 	createOp := application.CreateOp{
 		Name:             opts.Name,
 		OrgName:          cfg.GitHub.Organization.Value,
@@ -330,7 +331,7 @@ func createPRWithUpdatedReposListForTenant(
 			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
-			DryRun:            cfg.DryRun,
+			DryRun:            opts.DryRun,
 		},
 		githubClient,
 	)

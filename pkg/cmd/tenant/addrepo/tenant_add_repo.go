@@ -15,6 +15,7 @@ import (
 type TenantAddRepoOpts struct {
 	TenantName    string
 	RepositoryUrl string
+	DryRun        bool
 
 	Streams userio.IOStreams
 }
@@ -53,7 +54,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	defer opts.Streams.CurrentHandler.Done()
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting repo: %s", cfg.Repositories.CPlatform.Value))
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, cfg.DryRun); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
 			return err
 		}
 	}
@@ -68,7 +69,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	}
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("adding repository to list: %s", opts.RepositoryUrl))
-	if !cfg.DryRun {
+	if !opts.DryRun {
 		if err := t.AddRepository(opts.RepositoryUrl); err != nil {
 			return fmt.Errorf("failed to add repository: %w", err)
 		}
@@ -92,7 +93,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 		PRName:            fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
 		PRBody:            fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
 		GitAuth:           gitAuth,
-		DryRun:            cfg.DryRun,
+		DryRun:            opts.DryRun,
 	}, githubClient)
 
 	if err != nil {
