@@ -39,3 +39,18 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 			Foreground(blueColor),
 	}
 }
+
+type nonInteractiveStyles struct {
+	infoStyle        lipgloss.Style
+	warnHeadingStyle lipgloss.Style
+	warnMessageStyle lipgloss.Style
+	bold             lipgloss.Style
+}
+
+func newNonInteractiveStyles() *nonInteractiveStyles {
+	return &nonInteractiveStyles{
+		infoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
+		warnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
+		warnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
+	}
+}
