@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/phuslu/log"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
 	"github.com/spf13/pflag"
@@ -105,7 +104,6 @@ type Config struct {
 	Repositories RepositoriesConfig `yaml:"repositories"`
 	P2P          P2PConfig          `yaml:"p2p"`
 	path         string
-	LogLevel     string
 }
 
 type GitHubConfig struct {
@@ -131,7 +129,6 @@ type P2PStageConfig struct {
 
 func NewConfig() *Config {
 	return &Config{
-		LogLevel: log.PanicLevel.String(),
 		GitHub: GitHubConfig{
 			Token: Parameter[string]{
 				flag: "github-token",
