@@ -62,14 +62,6 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		"Log level - writes to ./corectl.log if set",
 	)
 
-	rootCmd.PersistentFlags().BoolVarP(
-		&cfg.DryRun,
-		"dry-run",
-		"n",
-		false,
-		"Dry run",
-	)
-
 	appCmd, err := application.NewAppCmd(cfg)
 	if err != nil {
 		panic("Unable to execute app command")

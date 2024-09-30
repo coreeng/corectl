@@ -103,6 +103,14 @@ NOTE:
 		"Disable interactive inputs",
 	)
 
+	appCreateCmd.Flags().BoolVarP(
+		&cfg.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
+	)
+
 	config.RegisterStringParameterAsFlag(
 		&cfg.GitHub.Token,
 		appCreateCmd.Flags(),

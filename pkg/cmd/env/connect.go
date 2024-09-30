@@ -2,7 +2,6 @@ package env
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/command"
@@ -70,9 +69,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 }
 
 func connect(opts EnvConnectOpt, cfg *config.Config) error {
-	if cfg.DryRun {
-		return fmt.Errorf("cannot dry-run environment connections")
-	}
 	if !cfg.Repositories.AllowDirty.Value {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err

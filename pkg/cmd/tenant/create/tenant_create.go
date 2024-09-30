@@ -107,6 +107,14 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"Disable interactive inputs",
 	)
 
+	tenantCreateCmd.Flags().BoolVarP(
+		&cfg.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
+	)
+
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.CPlatform,
 		tenantCreateCmd.Flags(),
