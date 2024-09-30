@@ -2,11 +2,13 @@ package render
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 type TemplateRenderOpts struct {
@@ -18,6 +20,7 @@ type TemplateRenderOpts struct {
 	TemplateName  string
 	TargetPath    string
 	TemplatesPath string
+	DryRun        bool
 }
 
 func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
@@ -33,7 +36,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
 
 			if !opts.IgnoreChecks {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
 					return err
 				}
 			}
@@ -95,7 +98,7 @@ func run(opts TemplateRenderOpts) error {
 		Streams:  opts.Streams,
 	}
 
-	if err := templateRenderer.Render(templ, opts.TargetPath); err != nil {
+	if err := templateRenderer.Render(templ, opts.TargetPath, opts.DryRun); err != nil {
 		return err
 	}
 
@@ -103,7 +106,7 @@ func run(opts TemplateRenderOpts) error {
 }
 
 type TemplateRenderer interface {
-	Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error
+	Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error
 }
 
 type FlagsAwareTemplateRenderer struct {
@@ -112,7 +115,7 @@ type FlagsAwareTemplateRenderer struct {
 	Streams  userio.IOStreams
 }
 
-func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error {
 	if spec == nil {
 		return nil
 	}
@@ -133,7 +136,16 @@ func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory
 		Arguments: args,
 	}
 
-	return template.Render(fulfilledTemplate, targetDirectory)
+	log.Debug().
+		Str("spec.Name", spec.Name).
+		Str("spec.Description", spec.Description).
+		Str("target_dir", targetDirectory).
+		Bool("dry_run", dryRun).
+		Msg("rendering template")
+	if !dryRun {
+		err = template.Render(fulfilledTemplate, targetDirectory)
+	}
+	return err
 }
 
 type StubTemplateRenderer struct {
@@ -141,7 +153,7 @@ type StubTemplateRenderer struct {
 	PassedAdditionalArgs [][]template.Argument
 }
 
-func (r *StubTemplateRenderer) Render(spec *template.Spec, targetDirectory string, additionalArgs ...template.Argument) error {
+func (r *StubTemplateRenderer) Render(spec *template.Spec, targetDirectory string, dryRun bool, additionalArgs ...template.Argument) error {
 	r.PassedAdditionalArgs = append(r.PassedAdditionalArgs, additionalArgs)
-	return r.Renderer.Render(spec, targetDirectory, additionalArgs...)
+	return r.Renderer.Render(spec, targetDirectory, dryRun, additionalArgs...)
 }

@@ -1,14 +1,17 @@
 package create
 
 import (
+	"testing"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"testing"
+	"github.com/phuslu/log"
 )
 
 func TestAppCreateSuite(t *testing.T) {
+	log.DefaultLogger.SetLevel(log.PanicLevel)
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "App Create Suite")
 }

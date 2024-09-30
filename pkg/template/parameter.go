@@ -84,6 +84,6 @@ func (t ParameterType) ValidateAndMap(value string) (any, error) {
 		}
 		return intValue, nil
 	default:
-		panic(fmt.Sprintf("unsupported parameter type: %s", t))
+		return nil, fmt.Errorf("unsupported parameter type: %s", t)
 	}
 }

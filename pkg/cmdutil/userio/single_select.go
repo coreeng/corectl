@@ -2,11 +2,13 @@ package userio
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"slices"
 	"strconv"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/phuslu/log"
 )
 
 const blankListHeight = 6
@@ -45,10 +47,12 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 		prompt: op.Prompt,
 		model:  m,
 	}
-	result, err := streams.execute(model)
+
+	result, err := streams.execute(model, nil)
 	if err != nil {
 		return "", err
 	}
+
 	sSResult := result.(singleSelectModel)
 	choice := ""
 	if sSResult.choice != nil {
@@ -79,26 +83,32 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.model.SetHeight(msg.Height)
 		}
-		return m, nil
+		newListModel, cmd := m.model.Update(msg)
+		m.model = newListModel
+		return m, cmd
 
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.choice = nil
 			m.err = ErrInterrupted
+
 			m.quitting = true
 			return m, tea.Quit
 		case tea.KeyEnter:
+			log.Debug().Msg("SingleSelect: received enter")
 			if m.model.FilterState() == list.Filtering {
 				break
 			}
 			it, ok := m.model.SelectedItem().(item)
+			log.Debug().Msgf("SingleSelect: selected item is %s", it)
 			if !ok {
 				return m, nil
 			}
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
+			log.Debug().Msg("SingleSelect: sending tea.Quit")
 			return m, tea.Quit
 		}
 	}
@@ -150,7 +160,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	str := strconv.Itoa(index+1) + ". " + string(it)
 
 	if index == m.Index() {
-		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render(str))
+		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
 	} else {
 		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
 	}

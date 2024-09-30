@@ -3,12 +3,17 @@ package git
 import (
 	"errors"
 	"fmt"
+	"path"
+	"strings"
+
+	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"path"
-	"strings"
+	"github.com/go-git/go-git/v5/storage/memory"
+
+	"github.com/phuslu/log"
 )
 
 var (
@@ -21,6 +26,7 @@ const MainBranch = "main"
 type LocalRepository struct {
 	repo     *git.Repository
 	worktree *git.Worktree
+	DryRun   bool
 }
 
 type RepositoryErr struct {
@@ -51,31 +57,53 @@ func (localRepo *LocalRepository) Worktree() *git.Worktree {
 	return localRepo.worktree
 }
 
-func InitLocalRepository(path string) (*LocalRepository, error) {
-	result := &LocalRepository{}
+func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
+	log.Debug().
+		Str("repo", path).
+		Bool("dry_run", dryRun).
+		Msg("git: init")
+	result := &LocalRepository{
+		DryRun: dryRun,
+		repo:   &git.Repository{},
+	}
 
-	repository, err := git.PlainInitWithOptions(
-		path,
-		&git.PlainInitOptions{
-			InitOptions: git.InitOptions{DefaultBranch: plumbing.Main},
-		},
-	)
+	gitOptions := &git.PlainInitOptions{
+		InitOptions: git.InitOptions{DefaultBranch: plumbing.Main},
+	}
+	var repository *git.Repository
+	var err error
+	if dryRun {
+		// Initialize an in-memory repo for dry run
+		repository, err = git.InitWithOptions(
+			memory.NewStorage(),
+			osfs.New(path),
+			gitOptions.InitOptions,
+		)
+	} else {
+		repository, err = git.PlainInitWithOptions(
+			path,
+			gitOptions,
+		)
+	}
+	if err != nil {
+		return result, err
+	}
 	result.repo = repository
-	if err != nil {
-		return result, err
-	}
-
 	worktree, err := repository.Worktree()
-	result.worktree = worktree
 	if err != nil {
 		return result, err
 	}
+	result.worktree = worktree
 
 	return result, nil
 }
 
-func OpenLocalRepository(path string) (*LocalRepository, error) {
-	localRepository := &LocalRepository{}
+func OpenLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
+	log.Debug().
+		Str("repo", path).
+		Bool("dry_run", dryRun).
+		Msg("git: opening repository")
+	localRepository := &LocalRepository{DryRun: dryRun}
 	repository, err := git.PlainOpen(path)
 	localRepository.repo = repository
 	if err != nil {
@@ -96,6 +124,10 @@ type CloneOp struct {
 }
 
 func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
+	log.Debug().
+		Str("url", op.URL).
+		Str("target_path", op.TargetPath).
+		Msg("git: cloning repository")
 	var gitAuth transport.AuthMethod
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
@@ -123,8 +155,8 @@ func CloneToLocalRepository(op CloneOp) (*LocalRepository, error) {
 	}, nil
 }
 
-func OpenAndResetRepositoryState(path string) (*LocalRepository, error) {
-	localRepo, err := OpenLocalRepository(path)
+func OpenAndResetRepositoryState(path string, dryRun bool) (*LocalRepository, error) {
+	localRepo, err := OpenLocalRepository(path, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -136,6 +168,11 @@ func OpenAndResetRepositoryState(path string) (*LocalRepository, error) {
 }
 
 func (localRepo *LocalRepository) ResetState() error {
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("branch", MainBranch).
+		Msg("git: resetting to branch")
 	localChangesPresent, err := localRepo.IsLocalChangesPresent()
 	if err != nil {
 		return err
@@ -143,6 +180,7 @@ func (localRepo *LocalRepository) ResetState() error {
 	if localChangesPresent {
 		return ErrLocalChangesIsPresent
 	}
+	// CheckoutBranch will respect DryRun
 	if err = localRepo.CheckoutBranch(&CheckoutOp{
 		BranchName: MainBranch,
 	}); err != nil {
@@ -156,13 +194,27 @@ func (localRepo *LocalRepository) Path() string {
 }
 
 func (localRepo *LocalRepository) AddAll() error {
-	return localRepo.worktree.AddWithOptions(&git.AddOptions{All: true})
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Msg("git: adding all files")
+	if !localRepo.DryRun {
+		return localRepo.worktree.AddWithOptions(&git.AddOptions{All: true})
+	}
+	return nil
 }
 
 func (localRepo *LocalRepository) AddFiles(paths ...string) error {
 	for _, p := range paths {
-		if _, err := localRepo.worktree.Add(p); err != nil {
-			return err
+		log.Debug().
+			Str("repo", localRepo.Path()).
+			Bool("dry_run", localRepo.DryRun).
+			Str("path", p).
+			Msg("git: adding path")
+		if !localRepo.DryRun {
+			if _, err := localRepo.worktree.Add(p); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -173,6 +225,11 @@ func (localRepo *LocalRepository) IsLocalChangesPresent() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Bool("is_clean", status.IsClean()).
+		Msg("git: status")
 	return !status.IsClean(), nil
 }
 
@@ -191,8 +248,18 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 			return err
 		}
 		branchReference := plumbing.NewHashReference(branchRefName, head.Hash())
-		if err = localRepo.repo.Storer.SetReference(branchReference); err != nil {
-			return err
+
+		log.Debug().
+			Str("repo", localRepo.Path()).
+			Bool("dry_run", localRepo.DryRun).
+			Msgf(
+				"git: [%s] branch ref -> HEAD: %s -> %s",
+				localRepo.Path(), branchReference.Name().Short(), branchReference.Hash().String(),
+			)
+		if !localRepo.DryRun {
+			if err = localRepo.repo.Storer.SetReference(branchReference); err != nil {
+				return err
+			}
 		}
 	} else if err != nil {
 		return err
@@ -205,15 +272,30 @@ func (localRepo *LocalRepository) CheckoutBranch(op *CheckoutOp) error {
 			Remote: OriginRemote,
 			Merge:  branchRefName,
 		}
-		if err = localRepo.repo.CreateBranch(branch); err != nil {
-			return err
+		log.Debug().
+			Str("repo", localRepo.Path()).
+			Bool("dry_run", localRepo.DryRun).
+			Str("branch", branch.Name).
+			Msg("git: create branch")
+		if !localRepo.DryRun {
+			if err = localRepo.repo.CreateBranch(branch); err != nil {
+				return err
+			}
 		}
 	} else if err != nil {
 		return err
 	}
 
-	if err = localRepo.worktree.Checkout(&git.CheckoutOptions{Branch: branch.Merge}); err != nil {
-		return err
+	// TODO: We could use `git.CheckoutOptions{Branch: branch.Merge, Create: true, Hash: branchReference}` to refactor
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("branch", branch.Name).
+		Msg("git: checkout branch")
+	if !localRepo.DryRun {
+		if err = localRepo.worktree.Checkout(&git.CheckoutOptions{Branch: branch.Merge}); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -246,10 +328,17 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
 	if auth != nil {
 		gitAuth = auth.toGitAuthMethod()
 	}
-	err := localRepo.worktree.Pull(&git.PullOptions{
-		RemoteName: OriginRemote,
-		Auth:       gitAuth,
-	})
+	var err error
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Msg("git: pull")
+	if !localRepo.DryRun {
+		err = localRepo.worktree.Pull(&git.PullOptions{
+			RemoteName: OriginRemote,
+			Auth:       gitAuth,
+		})
+	}
 	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
 		return PullResult{}, err
 	}
@@ -262,6 +351,7 @@ type PushOp struct {
 }
 
 func (localRepo *LocalRepository) Push(op PushOp) error {
+
 	var gitAuth transport.AuthMethod
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
@@ -272,11 +362,18 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 			fmt.Sprintf("+refs/heads/%s:refs/heads/%s", op.BranchName, op.BranchName),
 		))
 	}
-	if err := localRepo.repo.Push(&git.PushOptions{
-		Auth:     gitAuth,
-		RefSpecs: refSpecs,
-	}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return err
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("branch_name", op.BranchName).
+		Msg("git: pushing branch to remote")
+	if !localRepo.DryRun {
+		if err := localRepo.repo.Push(&git.PushOptions{
+			Auth:     gitAuth,
+			RefSpecs: refSpecs,
+		}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+			return err
+		}
 	}
 	return nil
 }
@@ -284,24 +381,41 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 type CommitOp struct {
 	Message    string
 	AllowEmpty bool
+	DryRun     bool
 }
 
 func (localRepo *LocalRepository) Commit(op *CommitOp) error {
-	_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
-		AllowEmptyCommits: op.AllowEmpty,
-	})
-	if err != nil {
-		return err
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("message", op.Message).
+		Bool("allow_empty", op.AllowEmpty).
+		Msg("git: commit")
+	if !localRepo.DryRun {
+		_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
+			AllowEmptyCommits: op.AllowEmpty,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (localRepo *LocalRepository) SetRemote(url string) error {
-	_, err := localRepo.repo.CreateRemote(&config.RemoteConfig{
-		Name: OriginRemote,
-		URLs: []string{url},
-	})
-	return err
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Str("url", url).
+		Msg("git: setting origin")
+	if !localRepo.DryRun {
+		_, err := localRepo.repo.CreateRemote(&config.RemoteConfig{
+			Name: OriginRemote,
+			URLs: []string{url},
+		})
+		return err
+	}
+	return nil
 }
 func (localRepo *LocalRepository) GetRemoteRepoName() (string, error) {
 	remote, err := localRepo.repo.Remote(OriginRemote)

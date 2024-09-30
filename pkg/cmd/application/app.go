@@ -8,8 +8,8 @@ import (
 
 func NewAppCmd(cfg *config.Config) (*cobra.Command, error) {
 	appCmd := &cobra.Command{
-		Use:     "app",
-		Aliases: []string{"apps", "application", "applications"},
+		Use:     "apps",
+		Aliases: []string{"app", "application", "applications"},
 		Short:   "Operations with applications",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Help(); err != nil {

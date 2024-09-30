@@ -52,7 +52,7 @@ func listCmd(cfg *config.Config) *cobra.Command {
 
 func list(opts ListOpt, cfg *config.Config) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}

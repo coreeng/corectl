@@ -1,11 +1,13 @@
 package promote
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/command"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/command"
+	"github.com/phuslu/log"
+	"github.com/stretchr/testify/assert"
 )
 
 type MockFileSystem struct {
@@ -16,6 +18,7 @@ func (m *MockFileSystem) Stat(name string) (os.FileInfo, error) {
 }
 
 func Test_run(t *testing.T) {
+	log.DefaultLogger.SetLevel(log.PanicLevel)
 	t.Run("Run Promote successfully", func(t *testing.T) {
 		mockFS := new(MockFileSystem)
 

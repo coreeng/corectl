@@ -1,6 +1,8 @@
 package p2p
 
 import (
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -10,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
-	"path/filepath"
 )
 
 var _ = Describe("export", Ordered, func() {
@@ -88,7 +89,8 @@ func onboardTestApp(homeDir string, corectl *testconfig.CorectlClient) string {
 		"application", "create", newAppName, appDir,
 		"-t", testdata.BlankTemplate(),
 		"--tenant", testconfig.Cfg.Tenant,
-		"--nonint")
+		"--nonint",
+		"--log-level=panic")
 	Expect(err).ToNot(HaveOccurred())
 	return appDir
 }

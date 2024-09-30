@@ -2,13 +2,14 @@ package userio
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/muesli/termenv"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type FilePicker struct {
@@ -53,10 +54,12 @@ func (ifp *FilePicker) GetInput(streams IOStreams) (string, error) {
 		expandedValue:  expandedValue,
 		styles:         streams.styles,
 	}
-	result, err := streams.execute(ifpModel)
+
+	result, err := streams.execute(ifpModel, nil)
 	if err != nil {
 		return "", err
 	}
+
 	ifpModel = result.(inlineFilePickerModel)
 	return ifpModel.expandedValue, ifpModel.err
 }

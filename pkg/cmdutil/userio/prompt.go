@@ -7,8 +7,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
+	"github.com/phuslu/log"
 )
 
 var (
@@ -16,10 +18,24 @@ var (
 )
 
 type IOStreams struct {
-	in            io.Reader
-	out           *lipgloss.Renderer
-	styles        *styles
-	isInteractive bool
+	in             io.Reader
+	out            *lipgloss.Renderer
+	outRaw         io.Writer
+	styles         *styles
+	isInteractive  bool
+	CurrentHandler wizard.Handler
+}
+
+func newWizard(streams *IOStreams) wizard.Handler {
+	model, handler := wizard.New()
+	go func() {
+		_, err := streams.execute(model, handler)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error in Wizard execution")
+		}
+		handler.DoneSendChannel <- true
+	}()
+	return handler
 }
 
 func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
@@ -29,10 +45,12 @@ func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
 func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool) IOStreams {
 	renderer := lipgloss.NewRenderer(out, termenv.WithColorCache(true))
 	return IOStreams{
-		in:            in,
-		out:           renderer,
-		styles:        newStyles(renderer),
-		isInteractive: isInteractive && isTerminalInteractive(in, out),
+		in:             in,
+		out:            renderer,
+		outRaw:         out,
+		styles:         newStyles(renderer),
+		isInteractive:  isInteractive && isTerminalInteractive(in, out),
+		CurrentHandler: nil,
 	}
 }
 
@@ -58,12 +76,28 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams IOStreams) execute(model tea.Model) (tea.Model, error) {
-	return tea.NewProgram(
-		model,
-		tea.WithInput(streams.in),
-		tea.WithOutput(streams.out.Output()),
-	).Run()
+func (streams *IOStreams) execute(model tea.Model, handler wizard.Handler) (tea.Model, error) {
+	if _, isWizard := model.(wizard.Model); isWizard || streams.CurrentHandler == nil {
+		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
+		options := []tea.ProgramOption{
+			tea.WithInput(streams.in),
+			tea.WithOutput(streams.outRaw),
+		}
+
+		if handler != nil {
+			streams.CurrentHandler = handler
+			options = append(options, tea.WithFilter(handler.OnQuit))
+		}
+
+		return tea.NewProgram(
+			model,
+			options...,
+		).Run()
+	} else {
+		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
+		// Run inside the existing session
+		return streams.CurrentHandler.SetInputModel(model), nil
+	}
 }
 
 type InputPrompt[V any] interface {

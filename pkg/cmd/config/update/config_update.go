@@ -2,6 +2,7 @@ package update
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -56,9 +57,12 @@ func run(opts *ConfigUpdateOpts, cfg *config.Config) error {
 
 func updateRepository(repoParam *config.Parameter[string], gitAuth git.AuthMethod, streams userio.IOStreams) error {
 	isUpdated, err := func() (bool, error) {
-		spinnerHandler := streams.Spinner(fmt.Sprintf("Updating %s", repoParam.Name()))
-		defer spinnerHandler.Done()
-		repo, err := config.ResetConfigRepositoryState(repoParam)
+		streams.Wizard(
+			fmt.Sprintf("Updating %s", repoParam.Name()),
+			fmt.Sprintf("Updated %s", repoParam.Name()),
+		)
+		defer streams.CurrentHandler.Done()
+		repo, err := config.ResetConfigRepositoryState(repoParam, false)
 		if err != nil {
 			return false, err
 		}

@@ -2,12 +2,13 @@ package render
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/template"
-	"gopkg.in/yaml.v3"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/template"
+	"gopkg.in/yaml.v3"
 )
 
 func CollectArgsFromAllSources(

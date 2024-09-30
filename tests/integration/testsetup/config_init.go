@@ -1,12 +1,13 @@
 package testsetup
 
 import (
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	. "github.com/onsi/gomega"
-	"path/filepath"
 )
 
 type CorectlConfigDetails struct {
@@ -38,7 +39,7 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 	}
 
 	cfg := corectl.Config()
-	cplatformRepo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value)
+	cplatformRepo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value, false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -46,7 +47,7 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 	if err != nil {
 		return nil, nil, err
 	}
-	templatesRepo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value)
+	templatesRepo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value, false)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -2,6 +2,7 @@ package describe
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/template"
 	"gopkg.in/yaml.v3"
@@ -22,7 +23,7 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			templateName := args[0]
 			if !opts.IgnoreChecks {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
+				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
 					return err
 				}
 			}

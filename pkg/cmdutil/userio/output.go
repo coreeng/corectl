@@ -3,6 +3,8 @@ package userio
 import (
 	"fmt"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 )
 
 func (streams IOStreams) InfoE(messages ...string) error {
@@ -27,15 +29,12 @@ func (streams IOStreams) Info(messages ...string) {
 	}
 }
 
-func (streams IOStreams) Spinner(message string) SpinnerHandler {
+func (streams *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	if streams.IsInteractive() {
-		return newSpinner(message, streams)
+		streams.CurrentHandler = newWizard(streams)
 	} else {
-		streams.Info(message)
-		return dummySpinnerHandler{}
+		streams.CurrentHandler = nonInteractiveHandler{streams: streams}
 	}
+	streams.CurrentHandler.SetTask(title, completedTitle)
+	return streams.CurrentHandler
 }
-
-type dummySpinnerHandler struct{}
-
-func (dummySpinnerHandler) Done() {}

@@ -2,11 +2,12 @@ package userio
 
 import (
 	"fmt"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type MultiSelect struct {
@@ -40,10 +41,12 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		model:          m,
 		validateAndMap: op.ValidateAndMap,
 	}
-	result, err := streams.execute(model)
+
+	result, err := streams.execute(model, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	mSResult := result.(multiSelectModel)
 
 	return mSResult.choice, mSResult.err

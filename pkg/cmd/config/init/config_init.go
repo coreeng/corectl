@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 type ConfigInitOpt struct {
@@ -214,8 +215,8 @@ func cloneRepositories(
 	cplatformRepoFullname git.RepositoryFullname,
 	templatesRepoFullname git.RepositoryFullname,
 ) (cloneRepositoriesResult, error) {
-	cloneReposSpinner := streams.Spinner("Cloning repositories...")
-	defer cloneReposSpinner.Done()
+	streams.Wizard("Cloning repositories", "Cloned repositories")
+	defer streams.CurrentHandler.Done()
 	cplatformGitHubRepo, _, err := githubClient.Repositories.Get(
 		context.Background(),
 		cplatformRepoFullname.Organization(),
@@ -229,6 +230,7 @@ func cloneRepositories(
 		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name()),
 		Auth:       gitAuth,
 	}
+	streams.CurrentHandler.Info(fmt.Sprintf("cloning platform repo: %s", cloneOpt.URL))
 	cplatformRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
 		return cloneRepositoriesResult{}, err
@@ -247,6 +249,7 @@ func cloneRepositories(
 		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name()),
 		Auth:       gitAuth,
 	}
+	streams.CurrentHandler.Info(fmt.Sprintf("cloning templates: %s", cloneOpt.URL))
 	templatesRepository, err := git.CloneToLocalRepository(cloneOpt)
 	if err != nil {
 		return cloneRepositoriesResult{}, err

@@ -2,10 +2,11 @@ package application
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
@@ -131,7 +132,7 @@ var _ = Describe("Create new application", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
-			service = NewService(renderer, githubClient)
+			service = NewService(renderer, githubClient, false)
 			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
@@ -237,7 +238,7 @@ var _ = Describe("Create new application", func() {
 		})
 		It("local repository is present and correct", func() {
 			var err error
-			newAppLocalRepo, err = git.OpenLocalRepository(localAppRepoDir)
+			newAppLocalRepo, err = git.OpenLocalRepository(localAppRepoDir, false)
 			Expect(err).NotTo(HaveOccurred())
 
 			remote, err := newAppLocalRepo.Repository().Remote(git.OriginRemote)
@@ -395,7 +396,7 @@ var _ = Describe("Create new application", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
-			service = NewService(renderer, githubClient)
+			service = NewService(renderer, githubClient, false)
 			createResult, err = service.Create(createOp)
 			Expect(err).NotTo(HaveOccurred())
 		})
@@ -510,7 +511,7 @@ var _ = Describe("Create new application", func() {
 
 			monorepoLocalPath = monorepoLocalRepo.Path()
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")
-			service = NewService(&panicTemplateRenderer{}, githubClient)
+			service = NewService(&panicTemplateRenderer{}, githubClient, false)
 			executeCreate := func() {
 				createOp := CreateOp{
 					Name:             "app-with-error",
@@ -543,7 +544,7 @@ var _ = Describe("Create new application", func() {
 		)
 		BeforeEach(func() {
 			var err error
-			localRepo, err = git.InitLocalRepository(GinkgoT().TempDir())
+			localRepo, err = git.InitLocalRepository(GinkgoT().TempDir(), false)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(localRepo.Commit(&git.CommitOp{
 				Message:    "initial commit",
@@ -582,6 +583,7 @@ var _ = Describe("Create new application", func() {
 			Expect(localRepo.Commit(&git.CommitOp{
 				Message:    "Just to have different hash from main",
 				AllowEmpty: true,
+				DryRun:     false,
 			})).To(Succeed())
 
 			oldBranchHead, err := localRepo.Repository().Head()
@@ -642,6 +644,6 @@ func readFileContent(path ...string) string {
 type panicTemplateRenderer struct {
 }
 
-func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ ...template.Argument) error {
+func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ bool, _ ...template.Argument) error {
 	panic("Panic for test sake")
 }

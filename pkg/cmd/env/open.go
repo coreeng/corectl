@@ -2,12 +2,14 @@ package env
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 type EnvOpenResourceOpt struct {
@@ -46,7 +48,7 @@ func openResource(cfg *config.Config) *cobra.Command {
 
 func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}
@@ -60,8 +62,16 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 	if env == nil {
 		return fmt.Errorf("environment %s not found", opts.Environment)
 	}
-	if err := corectlenv.OpenResource(corectlenv.ResourceType(opts.Resource), env); err != nil {
+
+	resourceType := corectlenv.ResourceType(opts.Resource)
+	if url, err := corectlenv.OpenResource(resourceType, env); err != nil {
 		return fmt.Errorf("couldn't open %s: %w", opts.Resource, err)
+	} else {
+		wizard := opts.Streams.Wizard(
+			fmt.Sprintf("Opening %s for env %s: %s", resourceType, env.Environment, url),
+			fmt.Sprintf("Opened %s for env %s: %s", resourceType, env.Environment, url),
+		)
+		defer wizard.Done()
+		return browser.OpenURL(url)
 	}
-	return nil
 }

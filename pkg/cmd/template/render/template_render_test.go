@@ -1,10 +1,11 @@
 package render
 
 import (
-	"github.com/coreeng/corectl/pkg/git"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/git"
+	"gopkg.in/yaml.v3"
 
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"

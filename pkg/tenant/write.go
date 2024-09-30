@@ -1,12 +1,14 @@
 package tenant
 
 import (
-	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"path/filepath"
+	"github.com/phuslu/log"
+	"gopkg.in/yaml.v3"
 )
 
 type CreateOrUpdateOp struct {
@@ -18,6 +20,7 @@ type CreateOrUpdateOp struct {
 	PRName            string
 	PRBody            string
 	GitAuth           git.AuthMethod
+	DryRun            bool
 }
 
 type CreateOrUpdateResult struct {
@@ -30,7 +33,7 @@ func CreateOrUpdate(
 ) (result CreateOrUpdateResult, err error) {
 	result = CreateOrUpdateResult{}
 
-	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath)
+	repository, err := git.OpenAndResetRepositoryState(op.CplatformRepoPath, op.DryRun)
 	if err != nil {
 		return result, fmt.Errorf("couldn't open cplatform repository: %v", err)
 	}
@@ -45,18 +48,35 @@ func CreateOrUpdate(
 		_ = repository.CheckoutBranch(&git.CheckoutOp{BranchName: git.MainBranch})
 	}()
 
-	if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
-		Tenant:       op.Tenant,
-		ParentTenant: op.ParentTenant,
-		TenantsDir:   tenant.DirFromCPlatformPath(op.CplatformRepoPath),
-	}); err != nil {
-		return CreateOrUpdateResult{}, err
-	}
-
-	relativeFilepath, err := filepath.Rel(op.CplatformRepoPath, *op.Tenant.SavedPath())
+	definition, err := yaml.Marshal(op.Tenant)
 	if err != nil {
 		return result, err
 	}
+	log.Debug().
+		// TODO: add public method to render Tenant in developer-platform
+		//       so we can log it here when dry-running
+		Str("repo", op.CplatformRepoPath).
+		Bool("dry_run", op.DryRun).
+		Str("definition", string(definition)).
+		Msg("writing tenant definition to cplatform repo")
+	var relativeFilepath string
+	if !op.DryRun {
+		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
+			Tenant:       op.Tenant,
+			ParentTenant: op.ParentTenant,
+			TenantsDir:   tenant.DirFromCPlatformPath(op.CplatformRepoPath),
+		}); err != nil {
+			return result, err
+		}
+		relativeFilepath, err = filepath.Rel(op.CplatformRepoPath, *op.Tenant.SavedPath())
+		if err != nil {
+			return result, err
+		}
+	} else {
+		// Approximation for dry-run
+		relativeFilepath = fmt.Sprintf("tenants/%s.yml", op.Tenant.Name)
+	}
+
 	if err = repository.AddFiles(relativeFilepath); err != nil {
 		return result, err
 	}
@@ -75,17 +95,16 @@ func CreateOrUpdate(
 		return result, err
 	}
 
-	mainBaseBranch := git.MainBranch
-	pullRequest, _, err := githubClient.PullRequests.Create(
-		context.Background(),
-		fullname.Organization(),
+	pullRequest, err := git.CreateGitHubPR(
+		githubClient,
+		op.PRName,
+		op.PRName,
+		op.BranchName,
 		fullname.Name(),
-		&github.NewPullRequest{
-			Base:  &mainBaseBranch,
-			Head:  &op.BranchName,
-			Title: &op.PRName,
-			Body:  &op.PRBody,
-		})
+		fullname.Organization(),
+		op.DryRun,
+	)
+
 	if err != nil {
 		return result, err
 	}

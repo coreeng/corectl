@@ -104,12 +104,12 @@ var _ = Describe("config", Ordered, func() {
 				Expect(cfg.P2P.Prod.DefaultEnvs.Value).To(ConsistOf(testdata.ProdEnvironment()))
 			})
 			It("cloned cplatform repository", func() {
-				repo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value)
+				repo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value, false)
 				Expect(repo).NotTo(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("cloned templates repository", func() {
-				repo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value)
+				repo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value, false)
 				Expect(repo).NotTo(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 			})

@@ -2,14 +2,15 @@ package export
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 type exportOpts struct {
@@ -19,7 +20,7 @@ type exportOpts struct {
 	streams         userio.IOStreams
 }
 
-func (eo *exportOpts) processFlags(cPlatRepoPath string) (*p2p.EnvVarContext, error) {
+func (eo *exportOpts) processFlags(cPlatRepoPath string, dryRun bool) (*p2p.EnvVarContext, error) {
 	argTenant, err := selector.Tenant(cPlatRepoPath, eo.tenant, eo.streams)
 	if err != nil {
 		return nil, err
@@ -28,7 +29,7 @@ func (eo *exportOpts) processFlags(cPlatRepoPath string) (*p2p.EnvVarContext, er
 	if err != nil {
 		return nil, err
 	}
-	argRepo, err := eo.appRepoPathSelector()
+	argRepo, err := eo.appRepoPathSelector(dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -36,13 +37,13 @@ func (eo *exportOpts) processFlags(cPlatRepoPath string) (*p2p.EnvVarContext, er
 	return &p2p.EnvVarContext{Tenant: argTenant, Environment: argEnv, AppRepo: argRepo}, nil
 }
 
-func (eo *exportOpts) appRepoPathSelector() (*git.LocalRepository, error) {
+func (eo *exportOpts) appRepoPathSelector(dryRun bool) (*git.LocalRepository, error) {
 	inputRepoPath := eo.createRepoPathInputSwitch(eo.repoPath)
 	repoPathOutput, err := inputRepoPath.GetValue(eo.streams)
 	if err != nil {
 		return nil, err
 	}
-	repo, err := git.OpenLocalRepository(repoPathOutput)
+	repo, err := git.OpenLocalRepository(repoPathOutput, dryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +126,11 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 
 func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string]) error {
 	if !allowDirty {
-		if _, err := config.ResetConfigRepositoryState(cplatRepoPath); err != nil {
+		if _, err := config.ResetConfigRepositoryState(cplatRepoPath, false); err != nil {
 			return err
 		}
 	}
-	context, err := opts.processFlags(cplatRepoPath.Value)
+	context, err := opts.processFlags(cplatRepoPath.Value, false)
 	if err != nil {
 		return err
 	}

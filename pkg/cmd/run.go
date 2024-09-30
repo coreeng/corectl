@@ -16,7 +16,9 @@ func Run() int {
 	}
 
 	rootCmd := root.NewRootCmd(cfg)
+
 	err = rootCmd.Execute()
+
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
 		return 1

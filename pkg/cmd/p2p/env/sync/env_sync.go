@@ -3,8 +3,9 @@ package sync
 import (
 	"context"
 	"fmt"
-	"github.com/coreeng/developer-platform/pkg/environment"
 	"slices"
+
+	"github.com/coreeng/developer-platform/pkg/environment"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -73,7 +74,7 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		return err
 	}
 
-	spinnerHandler := opts.Streams.Spinner("Configuring environments...")
+	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
 	defer spinnerHandler.Done()
 
 	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)

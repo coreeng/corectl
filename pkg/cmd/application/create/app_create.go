@@ -3,9 +3,12 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"os"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"github.com/phuslu/log"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -28,6 +31,7 @@ type AppCreateOpt struct {
 	Tenant         string
 	ArgsFile       string
 	Args           []string
+	DryRun         bool
 
 	Streams userio.IOStreams
 }
@@ -58,8 +62,8 @@ NOTE:
 				opts.LocalPath = "./" + opts.Name
 			}
 			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
+				os.Stdin,
+				os.Stdout,
 				!opts.NonInteractive,
 			)
 			return run(&opts, cfg)
@@ -100,6 +104,14 @@ NOTE:
 		"Disable interactive inputs",
 	)
 
+	appCreateCmd.Flags().BoolVarP(
+		&opts.DryRun,
+		"dry-run",
+		"n",
+		false,
+		"Dry run",
+	)
+
 	config.RegisterStringParameterAsFlag(
 		&cfg.GitHub.Token,
 		appCreateCmd.Flags(),
@@ -121,11 +133,24 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform); err != nil {
-		return err
+	wizard := opts.Streams.Wizard(
+		fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+		fmt.Sprintf("Created new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+	)
+
+	defer wizard.Done()
+
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
+			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
+		}
 	}
-	if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates); err != nil {
-		return err
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
+	if !opts.DryRun {
+		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
+			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
+		}
 	}
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
@@ -134,6 +159,12 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	templateInput := opts.createTemplateInput(existingTemplates)
 	fromTemplate, err := templateInput.GetValue(opts.Streams)
+	if fromTemplate != nil {
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+	} else {
+		opts.Streams.CurrentHandler.Info("no template selected")
+	}
+
 	if err != nil {
 		return err
 	}
@@ -142,6 +173,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("tenant selected: %s", appTenant.Name))
 
 	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
@@ -163,27 +195,28 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.Info("Added ", opts.Name, " to repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
 	} else {
-		opts.Streams.Info("Created repository: ", createdAppResult.RepositoryFullname.HttpUrl())
+		opts.Streams.CurrentHandler.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
-	nextStepsMessage := fmt.Sprintf(
-		nextStepsMessageTemplateWithoutPR,
-		createdAppResult.PRUrl,
-		createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-		createdAppResult.RepositoryFullname.String(),
-		createdAppResult.RepositoryFullname.String(),
-	)
-
+	var nextStepsMessage string
 	var tenantUpdateResult tenant.CreateOrUpdateResult
-	if !createdAppResult.MonorepoMode {
+	if createdAppResult.MonorepoMode {
+		nextStepsMessage = fmt.Sprintf(
+			nextStepsMessageTemplateMonoRepo,
+			createdAppResult.PRUrl,
+			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+			createdAppResult.RepositoryFullname.String(),
+			createdAppResult.RepositoryFullname.String(),
+		)
+	} else {
 		tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 		if err != nil {
 			return err
 		}
 		nextStepsMessage = fmt.Sprintf(
-			nextStepsMessageTemplateWithPR,
+			nextStepsMessageTemplateSingleRepo,
 			tenantUpdateResult.PRUrl,
 			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
 			createdAppResult.RepositoryFullname.String(),
@@ -191,13 +224,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		)
 	}
 
-	opts.Streams.Info(nextStepsMessage)
+	opts.Streams.CurrentHandler.Warn(strings.TrimSpace(nextStepsMessage))
+	log.Info().Msg("nextStepsMessage")
 	return nil
 }
 
 const (
-	nextStepsMessageTemplateWithPR = `
-Note: to complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
+	nextStepsMessageTemplateSingleRepo = `
+To complete application onboarding to the Core Platform you have to first merge PR with configuration update for the tenant.
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
@@ -208,8 +242,8 @@ GitHub CLI commands:
   gh workflow list -R %s
   gh workflow run <workflow-id> -R %s
 `
-	nextStepsMessageTemplateWithoutPR = `
-Note: to complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
+	nextStepsMessageTemplateMonoRepo = `
+To complete application onboarding to the Core Platform you have to first merge PR that adds this application to your repository.
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
@@ -230,8 +264,6 @@ func createNewApp(
 	fromTemplate *template.Spec,
 	existingEnvs []environment.Environment,
 ) (application.CreateResult, error) {
-	spinnerHandler := opts.Streams.Spinner("Creating new application...")
-	defer spinnerHandler.Done()
 
 	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
@@ -243,7 +275,7 @@ func createNewApp(
 		Args:     opts.Args,
 		Streams:  opts.Streams,
 	}
-	service := application.NewService(templateRenderer, githubClient)
+	service := application.NewService(templateRenderer, githubClient, opts.DryRun)
 	createOp := application.CreateOp{
 		Name:             opts.Name,
 		OrgName:          cfg.GitHub.Organization.Value,
@@ -279,13 +311,17 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (tenant.CreateOrUpdateResult, error) {
-	spinnerHandler := opts.Streams.Spinner("Creating PR with new application for tenant...")
-	defer spinnerHandler.Done()
+	opts.Streams.CurrentHandler.SetTask(
+		fmt.Sprintf("Creating PR with new application %s for tenant %s in platform repo %s", opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value),
+		"",
+	)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
 		return tenant.CreateOrUpdateResult{}, err
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
+
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
@@ -295,9 +331,14 @@ func createPRWithUpdatedReposListForTenant(
 			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRBody:            fmt.Sprintf("Adding repository for new app %s (%s) to tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
 			GitAuth:           gitAuth,
+			DryRun:            opts.DryRun,
 		},
 		githubClient,
 	)
+	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
+		"Created PR with new application %s for tenant %s: %s",
+		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
+	))
 	return tenantUpdateResult, err
 }
 

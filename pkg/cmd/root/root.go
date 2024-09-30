@@ -1,6 +1,8 @@
 package root
 
 import (
+	"time"
+
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
 	"github.com/coreeng/corectl/pkg/cmd/env"
@@ -9,14 +11,39 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
 	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
+func ConfigureGlobalLogger(logLevelFlag string) {
+	logLevel := log.ParseLevel(logLevelFlag)
+	log.DefaultLogger.SetLevel(logLevel)
+	if !(logLevel == log.Level(8)) {
+		log.DefaultLogger = log.Logger{
+			Level:      logLevel,
+			Caller:     1,
+			TimeField:  "time",
+			TimeFormat: time.TimeOnly,
+			Writer: &log.FileWriter{
+				Filename: "corectl.log",
+			},
+		}
+	} else {
+		log.DefaultLogger = log.Logger{
+			Level: log.PanicLevel,
+		}
+	}
+
+	log.Trace().Msgf("Log level set to %s", logLevelFlag)
+}
+
 func NewRootCmd(cfg *config.Config) *cobra.Command {
+	var logLevel string
 	rootCmd := &cobra.Command{
 		Use:   "corectl",
 		Short: "CLI interface for the CECG core platform.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			ConfigureGlobalLogger(logLevel)
 			cmd.SilenceErrors = true
 			return nil
 		},
@@ -27,6 +54,14 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 			return nil
 		},
 	}
+
+	rootCmd.PersistentFlags().StringVarP(
+		&logLevel,
+		"log-level",
+		"l",
+		"disabled",
+		"Log level - writes to ./corectl.log if set",
+	)
 
 	appCmd, err := application.NewAppCmd(cfg)
 	if err != nil {

@@ -3,6 +3,9 @@ package export
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -10,12 +13,16 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/otiai10/copy"
+	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
+
+func TestMain(m *testing.M) {
+	log.DefaultLogger.SetLevel(log.PanicLevel)
+	m.Run()
+}
 
 func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 	var output bytes.Buffer
@@ -33,7 +40,6 @@ func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 
 func TestRunExportNonExistingAppRepo(t *testing.T) {
 	appRepoPath := t.TempDir()
-
 	err := run(&exportOpts{
 		tenant:          testdata.DefaultTenant(),
 		environmentName: testdata.DevEnvironment(),
