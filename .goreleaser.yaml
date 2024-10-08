@@ -14,10 +14,10 @@ builds:
     binary: corectl
     ldflags:
       - '-s -w'
-      - -X {{.ModulePath}}/pkg/cmd/version.version={{.Version}}
-      - -X {{.ModulePath}}/pkg/cmd/version.commit={{.Commit}}
-      - -X {{.ModulePath}}/pkg/cmd/version.date={{.Date}}
-      - -X {{.ModulePath}}/pkg/cmd/version.arch={{.Arch}}
+      - -X {{.ModulePath}}/pkg/version.Version={{.Version}}
+      - -X {{.ModulePath}}/pkg/version.Commit={{.Commit}}
+      - -X {{.ModulePath}}/pkg/version.Date={{.Date}}
+      - -X {{.ModulePath}}/pkg/version.Arch={{.Arch}}
     targets:
       - linux_amd64
       - linux_arm64
