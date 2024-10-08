@@ -100,6 +100,14 @@ func GetLatestCorectlRelease(client *github.Client) (*github.RepositoryRelease, 
 	}
 	return release, nil
 }
+func GetCorectlReleaseByTag(client *github.Client, version string) (*github.RepositoryRelease, error) {
+	dummyRelease := github.RepositoryRelease{}
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), "coreeng", "corectl", version)
+	if err != nil {
+		return &dummyRelease, err
+	}
+	return release, nil
+}
 
 func DownloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
 	resp, err := http.Get(asset.Url)

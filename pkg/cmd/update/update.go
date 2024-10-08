@@ -9,6 +9,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/version"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
@@ -24,8 +25,14 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 		Use:   "update",
 		Short: "Update corectl",
 		Long:  `Update to the latest corectl version.`,
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, _args []string) {
+		Args:  cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			targetVersion := "latest"
+			if len(args) > 0 {
+				targetVersion = args[0]
+				log.Debug().Msgf("target version set to %s", targetVersion)
+			}
+
 			opts := UpdateOpts{}
 			opts.Streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
@@ -36,16 +43,31 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			githubClient := github.NewClient(nil).
 				WithAuthToken(cfg.GitHub.Token.Value)
 
-			release, err := git.GetLatestCorectlRelease(githubClient)
+			var release *github.RepositoryRelease
+			var err error
+			if targetVersion == "latest" {
+				release, err = git.GetLatestCorectlRelease(githubClient)
+			} else {
+				release, err = git.GetCorectlReleaseByTag(githubClient, targetVersion)
+			}
 			if err != nil {
 				log.Panic().Err(err)
 			}
+
 			asset, err := git.GetLatestCorectlAsset(release)
 			if err != nil {
 				log.Panic().Err(err)
 			}
-			wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Update available: %v", asset.Version))
-			wizard.Done()
+			log.Debug().Str("current_version", version.Version).Str("remote_version", asset.Version).Msg("comparing versions")
+			if version.Version == asset.Version {
+				wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Already running %s release (%v)", targetVersion, version.Version))
+				wizard.Done()
+				return
+			} else {
+				wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Update available: %v", asset.Version))
+				wizard.Done()
+			}
+
 			out, err := glamour.Render(asset.Changelog, "dark")
 			if err != nil {
 				log.Panic().Err(err)
