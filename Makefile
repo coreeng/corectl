@@ -5,10 +5,10 @@ GIT_HASH=$$(git rev-parse HEAD)
 ARCH=$$(uname -m)
 TIMESTAMP=$$(date +"%Y-%m-%dT%H:%M:%S%:z")
 LDFLAGS = "\
-	-X ${MODULE_PATH}/pkg/cmd/version.version=${GIT_TAG} \
-	-X ${MODULE_PATH}/pkg/cmd/version.commit=${GIT_HASH} \
-	-X ${MODULE_PATH}/pkg/cmd/version.date=${TIMESTAMP} \
-	-X ${MODULE_PATH}/pkg/cmd/version.arch=${ARCH}"
+	-X ${MODULE_PATH}/pkg/version.Version=${GIT_TAG} \
+	-X ${MODULE_PATH}/pkg/version.Commit=${GIT_HASH} \
+	-X ${MODULE_PATH}/pkg/version.Date=${TIMESTAMP} \
+	-X ${MODULE_PATH}/pkg/version.Arch=${ARCH}"
 
 
 .PHONY: lint
