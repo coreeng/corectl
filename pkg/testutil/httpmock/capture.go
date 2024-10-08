@@ -2,9 +2,10 @@ package httpmock
 
 import (
 	"encoding/json"
-	. "github.com/onsi/gomega"
 	"io"
 	"net/http"
+
+	. "github.com/onsi/gomega"
 )
 
 type HttpCaptureHandler[REQ any] struct {
