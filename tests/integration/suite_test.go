@@ -19,6 +19,7 @@ import (
 	"github.com/thanhpk/randstr"
 
 	// Test cases import
+	_ "github.com/coreeng/corectl/pkg/cmd/update"
 	_ "github.com/coreeng/corectl/tests/integration/application"
 	_ "github.com/coreeng/corectl/tests/integration/config"
 	_ "github.com/coreeng/corectl/tests/integration/env"
