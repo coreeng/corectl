@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -18,6 +19,20 @@ import (
 type UpdateOpts struct {
 	Streams        userio.IOStreams
 	NonInteractive bool
+}
+
+func getCurrentExecutablePath() string {
+	execPath, err := os.Executable()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to get executable path")
+	}
+
+	absolutePath, err := filepath.Abs(execPath)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to get absolute executable path")
+	}
+
+	return absolutePath
 }
 
 func UpdateCmd(cfg *config.Config) *cobra.Command {
@@ -39,7 +54,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 				os.Stdout,
 				!opts.NonInteractive,
 			)
-			wizard := opts.Streams.Wizard("Checking for updates", "")
+			wizard := opts.Streams.Wizard("Checking for updates", "Retrieved version metadata")
 			githubClient := github.NewClient(nil).
 				WithAuthToken(cfg.GitHub.Token.Value)
 
@@ -70,30 +85,42 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 
 			out, err := glamour.Render(asset.Changelog, "dark")
 			if err != nil {
-				log.Panic().Err(err)
+				wizard.Abort(err)
+				log.Panic().Err(err).Msg("Could not render changelog")
 			}
 			fmt.Print(out)
-			wizard = opts.Streams.Wizard("Updating", "")
-			opts.Streams.CurrentHandler.Info(fmt.Sprintf("Downloading release %s", asset.Version))
+			wizard = opts.Streams.Wizard(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
 			data, err := git.DownloadCorectlAsset(asset)
 			if err != nil {
-				log.Panic().Err(err)
+				wizard.Abort(err)
+				log.Panic().Err(err).Msgf("Could not download release %s", asset.Version)
 			}
 
-			opts.Streams.CurrentHandler.Info(fmt.Sprintf("Decompressing release %s", asset.Version))
+			opts.Streams.CurrentHandler.SetTask(fmt.Sprintf("Decompressing release %s", asset.Version), fmt.Sprintf("Decompressed release %s", asset.Version))
 			var decompressed *tar.Reader
 			decompressed, err = git.DecompressCorectlAssetInMemory(data)
 			if err != nil {
-				log.Panic().Err(err)
+				wizard.Abort(err)
+				log.Panic().Err(err).Msgf("Could not decompress release %s", asset.Version)
 			}
 
-			opts.Streams.CurrentHandler.Info(fmt.Sprintf("Installing release %s to path", asset.Version))
-			git.WriteCorectlAssetToPath(decompressed, "/usr/local/bin/corectl")
+			path := getCurrentExecutablePath()
+			tmpPath := fmt.Sprintf("%s.partial", path)
+			opts.Streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
+			err = git.WriteCorectlAssetToPath(decompressed, tmpPath)
 			if err != nil {
-				log.Panic().Err(err)
+				wizard.Abort(err)
+				log.Panic().Err(err).Msgf("Could not write release %s to path %s", asset.Version, path)
 			}
 
-			wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Release %s installed", asset.Version))
+			err = os.Rename(tmpPath, path)
+			if err != nil {
+				wizard.Abort(err)
+				log.Panic().Err(err).Msgf("Could not move file to path %s", path)
+				return
+			}
+			log.Debug().Msgf("moved %s -> %s", tmpPath, path)
+
 			wizard.Done()
 		},
 	}

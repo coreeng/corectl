@@ -17,6 +17,7 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/phuslu/log"
 )
 
 func TestUpdate(t *testing.T) {
@@ -38,6 +39,7 @@ var _ = Describe("corectl update", func() {
 	)
 
 	BeforeEach(OncePerOrdered, func() {
+		log.DefaultLogger.SetLevel(log.PanicLevel)
 		githubErrorString = "api error"
 		latestReleaseTag = "v100.0.0"
 		specificReleaseTag = "v0.0.1"
@@ -148,12 +150,15 @@ var _ = Describe("corectl update", func() {
 			gzipReader, err := gzip.NewReader(bytes.NewReader(mockTarGz.Bytes()))
 			Expect(err).ShouldNot(HaveOccurred())
 			mockTarReader := tar.NewReader(gzipReader)
-			mockTarReader.Next() // set cursor to where it would be after iteration
+			_, err = mockTarReader.Next() // set cursor to where it would be after iteration
+			// required for reviewdog
+			if err != nil {
+				Fail(err.Error())
+			}
 			targetPath := filepath.Join(tempDir, "corectl")
-			success, err := WriteCorectlAssetToPath(mockTarReader, targetPath)
+			err = WriteCorectlAssetToPath(mockTarReader, targetPath)
 
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(success).Should(BeTrue())
 
 			writtenContent, err := os.ReadFile(targetPath)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -168,10 +173,9 @@ var _ = Describe("corectl update", func() {
 			mockReader := strings.NewReader("mock binary content")
 			targetPath := fmt.Sprintf("%s/non-existent-dir/corectl", tempDir)
 
-			success, err := WriteCorectlAssetToPath(tar.NewReader(mockReader), targetPath)
+			err := WriteCorectlAssetToPath(tar.NewReader(mockReader), targetPath)
 
 			Expect(err).Should(HaveOccurred())
-			Expect(success).Should(BeFalse())
 			Expect(err.Error()).Should(ContainSubstring("failed to create corectl binary"))
 		})
 	})
@@ -187,8 +191,14 @@ func createMockTarGz(filename string, content []byte) *bytes.Buffer {
 		Mode: 0600,
 		Size: int64(len(content)),
 	}
-	tw.WriteHeader(hdr)
-	tw.Write(content)
+	err := tw.WriteHeader(hdr)
+	if err != nil {
+		Fail(err.Error())
+	}
+	_, err = tw.Write(content)
+	if err != nil {
+		Fail(err.Error())
+	}
 	tw.Close()
 	gzw.Close()
 

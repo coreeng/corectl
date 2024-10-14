@@ -31,6 +31,7 @@ type task struct {
 	completedTitle string
 	status         TaskStatus
 	completed      bool
+	failed         bool
 	logs           []logMsg
 }
 
@@ -56,6 +57,7 @@ type logMsg struct {
 	level   log.Level
 }
 type doneMsg bool
+type errorMsg error
 
 func New() (Model, Handler, chan<- bool) {
 	doneChannel := make(chan bool)
@@ -113,6 +115,18 @@ func (m Model) markLatestTaskComplete() *task {
 	return task
 }
 
+func (m Model) markLatestTaskFailed() *task {
+	task := m.getLatestTask()
+	if task == nil {
+		log.Warn().Msgf("Wizard: Marking task failed, but no tasks found")
+	} else {
+		log.Debug().Msgf("Wizard: Marking task failed: %s", task.title)
+		task.failed = true
+	}
+
+	return task
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updateListener := m.ReceiveUpdateMessages
 
@@ -134,6 +148,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
 		} else {
 			m.markLatestTaskComplete()
+			m.quitting = true
+			return m, tea.Quit
+		}
+	case errorMsg:
+		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		if messageLen := len(m.messageChannel); messageLen > 0 {
+			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
+			return m, updateListener
+		} else {
+			m.markLatestTaskFailed()
 			m.quitting = true
 			return m, tea.Quit
 		}
@@ -211,35 +235,20 @@ func (m Model) WarnLog(message string) string {
 
 func (m Model) View() string {
 	var buffer strings.Builder
-	for taskIndex, task := range m.tasks {
-		if taskIndex > 0 {
-			buffer.WriteString("\n")
-		}
+	for _, task := range m.tasks {
 		for _, message := range task.logs {
 			buffer.WriteString(wrap.String(m.generateLog(message.message, message.level), m.width) + "\n")
 		}
-		if m.inputModel != nil {
+		if task.completed {
+			buffer.WriteString(fmt.Sprintf("%s %s\n", m.Styles.Marks.Success, m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width))))
+		} else if task.failed {
+			buffer.WriteString(fmt.Sprintf("%s %s\n", m.Styles.Marks.Error, m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+		} else if m.inputModel != nil {
 			// show editing icon if an input component has been injected
-			buffer.WriteString(fmt.Sprintf(
-				"%s%s\n",
-				"📝 ",
-				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
-			))
-		} else if task.isAnonymous() {
-			continue
-		} else if task.completed {
-			buffer.WriteString(fmt.Sprintf(
-				"%s %s\n",
-				m.Styles.Marks.Render(task.status),
-				m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width)),
-			))
+			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
 		} else {
 			// show spinner for incomplete tasks
-			buffer.WriteString(fmt.Sprintf(
-				"%s%s\n",
-				m.spinner.View(),
-				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
-			))
+			buffer.WriteString(fmt.Sprintf("%s%s\n", m.spinner.View(), m.Styles.Bold.Render(wrap.String(task.title, m.width))))
 		}
 	}
 

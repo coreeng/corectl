@@ -9,6 +9,7 @@ import (
 
 type Handler interface {
 	Done()
+	Abort(error)
 	Info(string)
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
@@ -27,6 +28,10 @@ type asyncHandler struct {
 func (handler asyncHandler) Done() {
 	handler.update(doneMsg(true))
 	<-handler.doneChannel
+}
+
+func (handler asyncHandler) Abort(err error) {
+	handler.update(errorMsg(err))
 }
 
 func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {

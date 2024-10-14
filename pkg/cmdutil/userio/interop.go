@@ -20,7 +20,8 @@ func WarnLog(message string) string {
 	return fmt.Sprintf("%s %s", style.warnHeadingStyle.Render("WARN:"), style.warnMessageStyle.Render(message))
 }
 
-func (nonInteractiveHandler) Done() {}
+func (nonInteractiveHandler) Done()           {}
+func (nonInteractiveHandler) Abort(err error) {}
 func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 	panic("cannot take input in non-interactive mode")
 }

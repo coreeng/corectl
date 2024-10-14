@@ -110,7 +110,9 @@ func GetCorectlReleaseByTag(client *github.Client, version string) (*github.Repo
 }
 
 func DownloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
+	log.Debug().Msgf("starting download %s", asset.Url)
 	resp, err := http.Get(asset.Url)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to download corectl release: %v", err)
 	}
@@ -118,10 +120,14 @@ func DownloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("failed to download corectl release: status code %v", resp.StatusCode)
 	}
 
+	log.Debug().Msgf("downloaded %s", asset.Url)
+
 	return resp.Body, err
 }
 
 func DecompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) {
+	log.Debug().Msg("decompressing asset")
+
 	gzr, err := gzip.NewReader(tarData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gzip reader: %v", err)
@@ -139,30 +145,38 @@ func DecompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) 
 		}
 
 		if filepath.Base(header.Name) == "corectl" && header.Typeflag == tar.TypeReg {
+			log.Debug().Msg("found corectl in tar")
 			return tarReader, nil
 		}
 	}
 	return nil, fmt.Errorf("corectl binary not found in the release")
 }
 
-func WriteCorectlAssetToPath(tarReader *tar.Reader, targetPath string) (bool, error) {
+func WriteCorectlAssetToPath(tarReader *tar.Reader, targetPath string) error {
 	binaryName := "corectl"
+	log.Debug().Msgf("getting file handle for %s", targetPath)
 	outFile, err := os.Create(targetPath)
 	if err != nil {
-		return false, fmt.Errorf("failed to create %s binary in %s: %v", binaryName, targetPath, err)
+		log.Error().Msgf("failed to create %s binary in %s: %v", binaryName, targetPath, err)
+		return fmt.Errorf("failed to create %s binary in %s: %v", binaryName, targetPath, err)
 	}
+	log.Debug().Msgf("got file handle for %s", targetPath)
+
 	defer outFile.Close()
 
-	if _, err := io.Copy(outFile, tarReader); err != nil {
-		return false, fmt.Errorf("failed to copy %s binary: %v", binaryName, err)
+	written, err := io.Copy(outFile, tarReader)
+	if err != nil {
+		return fmt.Errorf("failed to copy %s binary: %v", binaryName, err)
 	}
 
+	log.Debug().Msgf("%d bytes written to %s", written, targetPath)
+
 	if err := os.Chmod(targetPath, 0755); err != nil {
-		return false, fmt.Errorf("failed to set executable permissions on %s binary: %v", binaryName, err)
+		return fmt.Errorf("failed to set executable permissions on %s binary: %v", binaryName, err)
 	}
 
 	log.Debug().Msgf("%s has been installed to %s", binaryName, targetPath)
-	return true, nil
+	return nil
 }
 
 func CreateGitHubPR(client *github.Client, title string, body string, branchName string, repoName string, organization string, dryRun bool) (*github.PullRequest, error) {
