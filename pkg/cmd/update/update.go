@@ -8,7 +8,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/cmdutil/io"
+	"github.com/coreeng/corectl/pkg/cmdutil/shell"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/version"
@@ -70,11 +70,13 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 				release, err = git.GetCorectlReleaseByTag(githubClient, targetVersion)
 			}
 			if err != nil {
+				wizard.Abort(err)
 				log.Panic().Err(err)
 			}
 
 			asset, err := git.GetLatestCorectlAsset(release)
 			if err != nil {
+				wizard.Abort(err)
 				log.Panic().Err(err)
 			}
 			log.Debug().Str("current_version", version.Version).Str("remote_version", asset.Version).Msg("comparing versions")
@@ -135,7 +137,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			// NOTE: os.Rename is the only way to overwrite an existing executable, but this doesn't work across
 			// filesystems. Usually /tmp is set up as a separate filesystem, therefore we must copy and then remove to
 			// simulate the rename
-			err = io.MoveFile(tmpPath, partialPath)
+			err = shell.MoveFile(tmpPath, partialPath)
 			if err != nil {
 				wizard.Abort(err)
 				log.Panic().Err(err).Msgf("Could not move file to partial path %s", path)

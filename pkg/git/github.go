@@ -116,11 +116,11 @@ func DownloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to download corectl release: %v", err)
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download corectl release: status code %v", resp.StatusCode)
 	}
-
-	log.Debug().Msgf("downloaded %s", asset.Url)
+	log.Debug().Msgf("downloaded %s: %+v", asset.Url, resp)
 
 	return resp.Body, err
 }
