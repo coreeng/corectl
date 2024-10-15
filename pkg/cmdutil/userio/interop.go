@@ -2,6 +2,7 @@ package userio
 
 import (
 	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 )
@@ -12,12 +13,12 @@ type nonInteractiveHandler struct {
 }
 
 func InfoLog(message string) string {
-	style := newNonInteractiveStyles()
-	return fmt.Sprintf("%s %s", style.infoStyle.Render("INFO:"), message)
+	style := NewNonInteractiveStyles()
+	return fmt.Sprintf("%s %s", style.InfoStyle.Render("INFO:"), message)
 }
 func WarnLog(message string) string {
-	style := newNonInteractiveStyles()
-	return fmt.Sprintf("%s %s", style.warnHeadingStyle.Render("WARN:"), style.warnMessageStyle.Render(message))
+	style := NewNonInteractiveStyles()
+	return fmt.Sprintf("%s %s", style.WarnHeadingStyle.Render("WARN:"), style.WarnMessageStyle.Render(message))
 }
 
 func (nonInteractiveHandler) Done()           {}

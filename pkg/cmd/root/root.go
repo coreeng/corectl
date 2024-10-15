@@ -1,6 +1,7 @@
 package root
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
@@ -12,6 +13,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/update"
 	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
@@ -64,22 +66,35 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		"Log level - writes to ./corectl.log if set",
 	)
 
-	appCmd, err := application.NewAppCmd(cfg)
-	if err != nil {
-		panic("Unable to execute app command")
+	if cfg.IsPersisted() {
+		appCmd, err := application.NewAppCmd(cfg)
+		if err != nil {
+			panic("Unable to execute app command")
+		}
+		p2pCmd, err := p2p.NewP2PCmd(cfg)
+		if err != nil {
+			panic("Unable to execute p2p command")
+		}
+		rootCmd.AddCommand(appCmd)
+		rootCmd.AddCommand(p2pCmd)
+		rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+		rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
+		rootCmd.AddCommand(template.NewTemplateCmd(cfg))
+		rootCmd.AddCommand(env.NewEnvCmd(cfg))
+		rootCmd.AddCommand(version.VersionCmd(cfg))
+		rootCmd.AddCommand(update.UpdateCmd(cfg))
+	} else {
+		styles := userio.NewNonInteractiveStyles()
+		fmt.Println(
+			styles.WarnMessageStyle.Render("Config not initialised, please run ") +
+				styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init") +
+				styles.WarnMessageStyle.Render(". Most commands will not be available."),
+		)
+
+		rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+		rootCmd.AddCommand(version.VersionCmd(cfg))
+		rootCmd.AddCommand(update.UpdateCmd(cfg))
 	}
-	p2pCmd, err := p2p.NewP2PCmd(cfg)
-	if err != nil {
-		panic("Unable to execute p2p command")
-	}
-	rootCmd.AddCommand(appCmd)
-	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
-	rootCmd.AddCommand(p2pCmd)
-	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
-	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
-	rootCmd.AddCommand(env.NewEnvCmd(cfg))
-	rootCmd.AddCommand(version.VersionCmd(cfg))
-	rootCmd.AddCommand(update.UpdateCmd(cfg))
 
 	return rootCmd
 }

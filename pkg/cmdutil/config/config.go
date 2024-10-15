@@ -156,6 +156,7 @@ func NewConfig() *Config {
 				help: "Allow local changes in configuration repositories",
 			},
 		},
+		path: "",
 	}
 }
 

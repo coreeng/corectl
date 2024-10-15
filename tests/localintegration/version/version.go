@@ -13,8 +13,7 @@ var _ = Describe("version", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		homeDir := t.TempDir()
-		corectl = testconfig.NewCorectlClient(homeDir)
+		corectl = testconfig.NewCorectlClient(t.TempDir())
 	})
 
 	Context("version", func() {

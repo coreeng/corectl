@@ -25,7 +25,6 @@ import (
 	_ "github.com/coreeng/corectl/tests/integration/env"
 	_ "github.com/coreeng/corectl/tests/integration/p2p"
 	_ "github.com/coreeng/corectl/tests/integration/tenant"
-	_ "github.com/coreeng/corectl/tests/integration/version"
 )
 
 func TestSuite(t *testing.T) {

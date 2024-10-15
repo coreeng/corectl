@@ -55,8 +55,11 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 				!opts.NonInteractive,
 			)
 			wizard := opts.Streams.Wizard("Checking for updates", "Retrieved version metadata")
-			githubClient := github.NewClient(nil).
-				WithAuthToken(cfg.GitHub.Token.Value)
+			githubClient := github.NewClient(nil)
+			if cfg.IsPersisted() {
+				githubClient = githubClient.
+					WithAuthToken(cfg.GitHub.Token.Value)
+			}
 
 			var release *github.RepositoryRelease
 			var err error
