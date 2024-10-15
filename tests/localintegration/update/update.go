@@ -24,12 +24,14 @@ var _ = Describe("update", Ordered, func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		parentDir := filepath.Dir(tmpPath)
 		fileName := "./" + filepath.Base(tmpPath)
-		shell.CopyFile(testconfig.Cfg.CoreCTLBinary, tmpPath)
-		os.Chmod(tmpPath, os.FileMode(0755))
+		err = shell.CopyFile(testconfig.Cfg.CoreCTLBinary, tmpPath)
+		Expect(err).ShouldNot(HaveOccurred())
+		err = os.Chmod(tmpPath, os.FileMode(0755))
+		Expect(err).ShouldNot(HaveOccurred())
 
 		initialVersion, _, err := shell.RunCommand(parentDir, fileName, "version")
 		if err != nil {
-			return "", "", fmt.Errorf("failed to get initial version: %v", err)
+			Fail(fmt.Sprintf("failed to get initial version: %v", err))
 		}
 		log.Info().Msgf("Initial version: %s", initialVersion)
 
@@ -37,12 +39,12 @@ var _ = Describe("update", Ordered, func() {
 		updateArgs = append(updateArgs, args...)
 		output, _, err := shell.RunCommand(parentDir, fileName, updateArgs...)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to run update: %v, %s", err, output)
+			Fail(fmt.Sprintf("failed to run update: %v, %s", err, output))
 		}
 
 		updatedVersion, _, err := shell.RunCommand(parentDir, fileName, "version")
 		if err != nil {
-			return "", "", fmt.Errorf("failed to get updated version: %v", err)
+			Fail(fmt.Sprintf("failed to get updated version: %v", err))
 		}
 		log.Info().Msgf("Updated version: %s", updatedVersion)
 		return initialVersion, updatedVersion, nil
