@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -133,50 +132,50 @@ var _ = Describe("corectl update", func() {
 	})
 
 	Context("git.WriteCorectlAssetToPath", func() {
-		var tempDir string
+		var tmpFile *os.File
+		var tmpPath string
 
 		BeforeEach(func() {
 			var err error
-			tempDir, err = os.MkdirTemp("", "corectl-test")
+			tmpFile, err = os.CreateTemp("", "corectl-test")
+			Expect(err).ShouldNot(HaveOccurred())
+
+			tmpPath, err = os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
+
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		AfterEach(func() {
-			os.RemoveAll(tempDir)
-		})
-
 		It("successfully writes corectl binary to the specified path", func() {
+			defer tmpFile.Close()
 			mockTarGz := createMockTarGz("corectl", []byte("mock binary content"))
 			gzipReader, err := gzip.NewReader(bytes.NewReader(mockTarGz.Bytes()))
 			Expect(err).ShouldNot(HaveOccurred())
 			mockTarReader := tar.NewReader(gzipReader)
 			_, err = mockTarReader.Next() // set cursor to where it would be after iteration
-			// required for reviewdog
-			if err != nil {
-				Fail(err.Error())
-			}
-			targetPath := filepath.Join(tempDir, "corectl")
-			err = WriteCorectlAssetToPath(mockTarReader, targetPath)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			err = WriteCorectlAssetToPath(mockTarReader, tmpPath, tmpFile)
 
 			Expect(err).ShouldNot(HaveOccurred())
 
-			writtenContent, err := os.ReadFile(targetPath)
+			writtenContent, err := os.ReadFile(tmpPath)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(string(writtenContent)).Should(Equal("mock binary content"))
 
-			info, err := os.Stat(targetPath)
+			info, err := os.Stat(tmpPath)
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(info.Mode().Perm()).Should(Equal(os.FileMode(0755)))
 		})
 
 		It("returns an error when writing fails", func() {
+			defer tmpFile.Close()
 			mockReader := strings.NewReader("mock binary content")
-			targetPath := fmt.Sprintf("%s/non-existent-dir/corectl", tempDir)
+			tmpPath = "/non-existent-dir/corectl"
 
-			err := WriteCorectlAssetToPath(tar.NewReader(mockReader), targetPath)
+			err := WriteCorectlAssetToPath(tar.NewReader(mockReader), tmpPath, tmpFile)
 
 			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("failed to create corectl binary"))
+			Expect(err.Error()).Should(ContainSubstring("no such file or directory"))
 		})
 	})
 })
@@ -192,13 +191,11 @@ func createMockTarGz(filename string, content []byte) *bytes.Buffer {
 		Size: int64(len(content)),
 	}
 	err := tw.WriteHeader(hdr)
-	if err != nil {
-		Fail(err.Error())
-	}
+	Expect(err).ShouldNot(HaveOccurred())
+
 	_, err = tw.Write(content)
-	if err != nil {
-		Fail(err.Error())
-	}
+	Expect(err).ShouldNot(HaveOccurred())
+
 	tw.Close()
 	gzw.Close()
 

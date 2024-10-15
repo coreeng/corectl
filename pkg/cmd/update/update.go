@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/io"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/version"
@@ -108,15 +109,39 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			path := getCurrentExecutablePath()
-			tmpPath := fmt.Sprintf("%s.partial", path)
+
+			tmpFile, err := os.CreateTemp("", fmt.Sprintf("corectl-%s-", asset.Version))
+			if err != nil {
+				log.Warn().Msg("unable to create temporary file")
+			}
+			tmpPath, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
+			if err != nil {
+				log.Warn().Msgf("unable to read link of file descriptor %d", tmpFile.Fd())
+			}
+
 			opts.Streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
-			err = git.WriteCorectlAssetToPath(decompressed, tmpPath)
+			err = git.WriteCorectlAssetToPath(decompressed, tmpPath, tmpFile)
 			if err != nil {
 				wizard.Abort(err)
 				log.Panic().Err(err).Msgf("Could not write release %s to path %s", asset.Version, path)
 			}
+			err = tmpFile.Close()
+			if err != nil {
+				log.Warn().Msg("could not close temporary file")
+			}
 
-			err = os.Rename(tmpPath, path)
+			partialPath := path + ".partial"
+
+			// NOTE: os.Rename is the only way to overwrite an existing executable, but this doesn't work across
+			// filesystems. Usually /tmp is set up as a separate filesystem, therefore we must copy and then remove to
+			// simulate the rename
+			err = io.MoveFile(tmpPath, partialPath)
+			if err != nil {
+				wizard.Abort(err)
+				log.Panic().Err(err).Msgf("Could not move file to partial path %s", path)
+				return
+			}
+			err = os.Rename(partialPath, path)
 			if err != nil {
 				wizard.Abort(err)
 				log.Panic().Err(err).Msgf("Could not move file to path %s", path)

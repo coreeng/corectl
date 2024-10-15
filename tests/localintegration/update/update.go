@@ -40,6 +40,8 @@ var _ = Describe("update", Ordered, func() {
 		if err != nil {
 			return "", "", fmt.Errorf("error getting current repository root directory: %v", err)
 		}
+
+		// TODO: copy test binary
 		_, err = utils.RunCommand(repoRoot, "make", "build")
 		if err != nil {
 			return "", "", fmt.Errorf("failed to compile corectl: %v", err)

@@ -152,30 +152,21 @@ func DecompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) 
 	return nil, fmt.Errorf("corectl binary not found in the release")
 }
 
-func WriteCorectlAssetToPath(tarReader *tar.Reader, targetPath string) error {
+func WriteCorectlAssetToPath(tarReader *tar.Reader, tmpPath string, outFile *os.File) error {
 	binaryName := "corectl"
-	log.Debug().Msgf("getting file handle for %s", targetPath)
-	outFile, err := os.Create(targetPath)
-	if err != nil {
-		log.Error().Msgf("failed to create %s binary in %s: %v", binaryName, targetPath, err)
-		return fmt.Errorf("failed to create %s binary in %s: %v", binaryName, targetPath, err)
-	}
-	log.Debug().Msgf("got file handle for %s", targetPath)
-
-	defer outFile.Close()
 
 	written, err := io.Copy(outFile, tarReader)
 	if err != nil {
 		return fmt.Errorf("failed to copy %s binary: %v", binaryName, err)
 	}
 
-	log.Debug().Msgf("%d bytes written to %s", written, targetPath)
+	log.Debug().Msgf("%d bytes written to %s", written, tmpPath)
 
-	if err := os.Chmod(targetPath, 0755); err != nil {
+	if err := os.Chmod(tmpPath, 0755); err != nil {
 		return fmt.Errorf("failed to set executable permissions on %s binary: %v", binaryName, err)
 	}
 
-	log.Debug().Msgf("%s has been installed to %s", binaryName, targetPath)
+	log.Debug().Msgf("%s has been installed to %s", binaryName, tmpPath)
 	return nil
 }
 
