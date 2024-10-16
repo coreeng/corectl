@@ -87,19 +87,22 @@ func (m inlineFilePickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.model, cmd = m.model.Update(msg)
 	currentValue := m.model.Value()
 
-	if m.model.ShowSuggestions && previousValue != currentValue {
+	if previousValue != currentValue {
 		expandedValue, err := expandPath(m.workingDir, currentValue)
 		if err != nil {
 			m.err = err
 			return m, nil
 		}
 		m.expandedValue = expandedValue
-		suggestions, err := generateSuggestions(currentValue, expandedValue)
-		if err != nil {
-			m.err = err
-			return m, nil
+
+		if m.model.ShowSuggestions {
+			suggestions, err := generateSuggestions(currentValue, expandedValue)
+			if err != nil {
+				m.err = err
+				return m, nil
+			}
+			m.model.SetSuggestions(suggestions)
 		}
-		m.model.SetSuggestions(suggestions)
 	}
 
 	switch msg := msg.(type) {
