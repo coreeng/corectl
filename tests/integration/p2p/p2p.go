@@ -67,7 +67,7 @@ var _ = Describe("p2p", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err := corectl.Run(
-				"p2p", "env", "sync",
+				"p2p", "env", "sync", "--non-interactive",
 				appRepo,
 				tenant)
 			Expect(err).ToNot(HaveOccurred())
