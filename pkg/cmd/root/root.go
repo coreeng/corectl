@@ -42,6 +42,8 @@ func ConfigureGlobalLogger(logLevelFlag string) {
 
 func NewRootCmd(cfg *config.Config) *cobra.Command {
 	var logLevel string
+	var nonInteractive bool
+
 	rootCmd := &cobra.Command{
 		Use:   "corectl",
 		Short: "CLI interface for the CECG core platform.",
@@ -65,6 +67,22 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		"disabled",
 		"Log level - writes to ./corectl.log if set",
 	)
+
+	rootCmd.PersistentFlags().BoolVar(
+		&nonInteractive,
+		"nonint",
+		false,
+		"Run in non-interactive mode - the command will error if it needs to ask for user input",
+	)
+	rootCmd.PersistentFlags().BoolVar(
+		&nonInteractive,
+		"non-interactive",
+		false,
+		"Run in non-interactive mode - the command will error if it needs to ask for user input",
+	)
+
+	// --non-interactive is the standard used by other clis
+	rootCmd.PersistentFlags().MarkDeprecated("nonint", "please use --non-interactive instead.")
 
 	if cfg.IsPersisted() {
 		appCmd, err := application.NewAppCmd(cfg)

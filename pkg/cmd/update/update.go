@@ -19,10 +19,10 @@ import (
 )
 
 type UpdateOpts struct {
-	githubToken   string
-	interactive   bool
-	streams       userio.IOStreams
-	targetVersion string
+	githubToken      string
+	streams          userio.IOStreams
+	targetVersion    string
+	skipConfirmation bool
 }
 
 func getCurrentExecutablePath() string {
@@ -40,36 +40,47 @@ func getCurrentExecutablePath() string {
 }
 
 func UpdateCmd(cfg *config.Config) *cobra.Command {
-	return &cobra.Command{
+	opts := UpdateOpts{
+		githubToken:      "",
+		skipConfirmation: false,
+		targetVersion:    "",
+	}
+	updateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update corectl",
 		Long:  `Update to the latest corectl version.`,
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			interactive := true
-			targetVersion := ""
 			if len(args) > 0 {
-				targetVersion = args[0]
+				opts.targetVersion = args[0]
 			}
-			githubToken := ""
 			if cfg.IsPersisted() {
-				githubToken = cfg.GitHub.Token.Value
+				opts.githubToken = cfg.GitHub.Token.Value
 			}
 
-			opts := UpdateOpts{
-				targetVersion: targetVersion,
-				interactive:   interactive,
-				githubToken:   githubToken,
-				streams: userio.NewIOStreamsWithInteractive(
-					os.Stdin,
-					os.Stdout,
-					interactive,
-				),
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				log.Panic().Err(err).Msg("could not get non-interactive flag")
 			}
+
+			opts.streams = userio.NewIOStreamsWithInteractive(
+				os.Stdin,
+				os.Stdout,
+				!nonInteractive,
+			)
 
 			Update(opts)
 		},
 	}
+
+	updateCmd.Flags().BoolVar(
+		&opts.skipConfirmation,
+		"skip-confirmation",
+		false,
+		"Auto approve confirmation prompt for update.",
+	)
+
+	return updateCmd
 }
 
 func Update(opts UpdateOpts) {
@@ -113,26 +124,32 @@ func Update(opts UpdateOpts) {
 	out, err := glamour.Render(asset.Changelog, "dark")
 	if err != nil {
 		wizard.Abort(err)
-		log.Warn().Err(err).Msg("Could not render changelog markdown, falling back to plaintext")
+		log.Warn().Err(err).Msg("could not render changelog markdown, falling back to plaintext")
 		fmt.Print(asset.Changelog)
 	}
 	fmt.Print(out)
 
-	confirmation, err := confirmation.GetInput(opts.streams, fmt.Sprintf("Update to %s now?", asset.Version))
-	if err != nil {
-		log.Panic().Err(err).Msg("Could not get confirmation from user")
+	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
+
+	if opts.skipConfirmation {
+		wizard.Info("--skip-confirmation is set, continuing with update")
+	} else {
+		confirmation, err := confirmation.GetInput(opts.streams, fmt.Sprintf("Update to %s now?", asset.Version))
+		if err != nil {
+			log.Panic().Err(err).Msg("could not get confirmation from user")
+		}
+
+		if !confirmation {
+			log.Info().Msg("update cancelled, exiting")
+			return
+		}
 	}
 
-	if !confirmation {
-		log.Info().Msg("Update cancelled, exiting")
-		return
-	}
-
-	wizard = opts.streams.Wizard(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
+	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
 	data, err := git.DownloadCorectlAsset(asset)
 	if err != nil {
 		wizard.Abort(err)
-		log.Panic().Err(err).Msgf("Could not download release %s", asset.Version)
+		log.Panic().Err(err).Msgf("could not download release %s", asset.Version)
 	}
 
 	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Decompressing release %s", asset.Version), fmt.Sprintf("Decompressed release %s", asset.Version))
@@ -140,7 +157,7 @@ func Update(opts UpdateOpts) {
 	decompressed, err = git.DecompressCorectlAssetInMemory(data)
 	if err != nil {
 		wizard.Abort(err)
-		log.Panic().Err(err).Msgf("Could not decompress release %s", asset.Version)
+		log.Panic().Err(err).Msgf("could not decompress release %s", asset.Version)
 	}
 
 	path := getCurrentExecutablePath()
@@ -158,7 +175,7 @@ func Update(opts UpdateOpts) {
 	err = git.WriteCorectlAssetToPath(decompressed, tmpPath, tmpFile)
 	if err != nil {
 		wizard.Abort(err)
-		log.Panic().Err(err).Msgf("Could not write release %s to path %s", asset.Version, path)
+		log.Panic().Err(err).Msgf("could not write release %s to path %s", asset.Version, path)
 	}
 	err = tmpFile.Close()
 	if err != nil {
@@ -173,13 +190,13 @@ func Update(opts UpdateOpts) {
 	err = shell.MoveFile(tmpPath, partialPath)
 	if err != nil {
 		wizard.Abort(err)
-		log.Panic().Err(err).Msgf("Could not move file to partial path %s", path)
+		log.Panic().Err(err).Msgf("could not move file to partial path %s", path)
 		return
 	}
 	err = os.Rename(partialPath, path)
 	if err != nil {
 		wizard.Abort(err)
-		log.Panic().Err(err).Msgf("Could not move file to path %s", path)
+		log.Panic().Err(err).Msgf("could not move file to path %s", path)
 		return
 	}
 	log.Debug().Msgf("moved %s -> %s", tmpPath, path)

@@ -35,7 +35,7 @@ var _ = Describe("update", Ordered, func() {
 		}
 		log.Info().Msgf("Initial version: %s", initialVersion)
 
-		updateArgs := []string{"update"}
+		updateArgs := []string{"update", "--non-interactive"}
 		updateArgs = append(updateArgs, args...)
 		output, _, err := shell.RunCommand(parentDir, fileName, updateArgs...)
 		if err != nil {

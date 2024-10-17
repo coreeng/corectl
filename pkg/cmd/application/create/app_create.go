@@ -23,14 +23,13 @@ import (
 )
 
 type AppCreateOpt struct {
-	Name           string
-	LocalPath      string
-	NonInteractive bool
-	FromTemplate   string
-	Tenant         string
-	ArgsFile       string
-	Args           []string
-	DryRun         bool
+	Name         string
+	LocalPath    string
+	FromTemplate string
+	Tenant       string
+	ArgsFile     string
+	Args         []string
+	DryRun       bool
 
 	Streams userio.IOStreams
 }
@@ -60,10 +59,16 @@ NOTE:
 			} else {
 				opts.LocalPath = "./" + opts.Name
 			}
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				log.Panic().Err(err).Msg("could not get non-interactive flag")
+			}
+
 			opts.Streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
-				!opts.NonInteractive,
+				!nonInteractive,
 			)
 			return run(&opts, cfg)
 		},
@@ -95,12 +100,6 @@ NOTE:
 		"a",
 		[]string{},
 		"Template argument in the format: <arg-name>=<arg-value>",
-	)
-	appCreateCmd.Flags().BoolVar(
-		&opts.NonInteractive,
-		"nonint",
-		false,
-		"Disable interactive inputs",
 	)
 
 	appCreateCmd.Flags().BoolVarP(
