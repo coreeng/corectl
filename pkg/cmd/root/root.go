@@ -83,7 +83,10 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	)
 
 	// --non-interactive is the standard used by other clis
-	rootCmd.PersistentFlags().MarkDeprecated("nonint", "please use --non-interactive instead.")
+	err := rootCmd.PersistentFlags().MarkDeprecated("nonint", "please use --non-interactive instead.")
+	if err != nil {
+		log.Panic().Msg("unable to set --nonint as deprecated")
+	}
 
 	if cfg.IsPersisted() {
 		appCmd, err := application.NewAppCmd(cfg)

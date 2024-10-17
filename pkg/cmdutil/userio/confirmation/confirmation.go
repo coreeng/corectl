@@ -14,14 +14,16 @@ type model struct {
 	quitting     bool
 	question     string
 	help         help.Model
+	styles       styles
 }
 
 func newModel(question string) model {
 	return model{
-		confirmation: false,
+		confirmation: true,
 		quitting:     false,
 		question:     question,
 		help:         help.New(),
+		styles:       defaultStyles(),
 	}
 }
 
@@ -81,7 +83,6 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 func (m model) Init() tea.Cmd {
-
 	return nil
 }
 
@@ -124,47 +125,23 @@ func (m model) View() string {
 		yes, no, dialog string
 	)
 
-	subtle := lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-	dialogBoxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(subtle).
-		Padding(1, 0, 0, 0).
-		BorderTop(true).
-		BorderLeft(true).
-		BorderRight(true).
-		BorderBottom(true)
-
-	buttonStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FFF7DB")).
-		Background(lipgloss.Color("#888B7E")).
-		Bold(true).
-		Padding(0, 2).
-		Margin(2, 2, 1, 1)
-
-	activeButtonStyle := buttonStyle.
-		Foreground(lipgloss.Color("#FFF7DB")).
-		Background(lipgloss.Color("#0404ff")).
-		Bold(true).
-		Padding(0, 2).
-		Margin(2, 2, 1, 1)
-
-	question := lipgloss.NewStyle().Width(50).Align(lipgloss.Center).Render(m.question)
+	question := m.styles.question.Render(m.question)
+	activeButtonStyle := m.styles.activeButton
 
 	if m.quitting {
 		activeButtonStyle = activeButtonStyle.Border(lipgloss.RoundedBorder()).Margin(1, 1, 0, 1)
 	}
 	if m.confirmation {
 		yes = activeButtonStyle.Render("Yes")
-		no = buttonStyle.Render("No")
+		no = m.styles.button.Render("No")
 	} else {
-		yes = buttonStyle.Render("Yes")
+		yes = m.styles.button.Render("Yes")
 		no = activeButtonStyle.Render("No")
 	}
 
 	buttons := lipgloss.JoinHorizontal(lipgloss.Top, yes, no)
 	ui := lipgloss.JoinVertical(lipgloss.Center, question, buttons)
-
-	dialog = dialogBoxStyle.Render(ui)
+	dialog = m.styles.dialogBox.Render(ui)
 
 	if m.quitting {
 		return dialog + "\n"

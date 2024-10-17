@@ -76,8 +76,16 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 		}
 
 		// Update the previousTime since we're checking
-		file.WriteString(now.Format(time.RFC3339))
-		file.Sync()
+		_, err := file.WriteString(now.Format(time.RFC3339))
+		if err != nil {
+			log.Warn().Err(err).Msgf("could not write timestamp to update status file: %s", tempFilePath)
+			return
+		}
+		err = file.Sync()
+		if err != nil {
+			log.Warn().Err(err).Msgf("could not sync update status file: %s", tempFilePath)
+			return
+		}
 
 		update(UpdateOpts{
 			githubToken:      githubToken,
