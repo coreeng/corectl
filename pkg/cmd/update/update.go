@@ -119,9 +119,8 @@ func getCurrentExecutablePath() string {
 
 func UpdateCmd(cfg *config.Config) *cobra.Command {
 	opts := UpdateOpts{
-		githubToken:      "",
-		skipConfirmation: false,
-		targetVersion:    "",
+		githubToken:   "",
+		targetVersion: "",
 	}
 	updateCmd := &cobra.Command{
 		Use:   "update",
@@ -209,6 +208,8 @@ func update(opts UpdateOpts) {
 
 	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
 	defer wizard.Done()
+
+	log.Debug().Bool("skipConfirmation", opts.skipConfirmation).Msg("checking params")
 
 	if opts.skipConfirmation {
 		wizard.Info("--skip-confirmation is set, continuing with update")

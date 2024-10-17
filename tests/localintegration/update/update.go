@@ -29,22 +29,22 @@ var _ = Describe("update", Ordered, func() {
 		err = os.Chmod(tmpPath, os.FileMode(0755))
 		Expect(err).ShouldNot(HaveOccurred())
 
-		initialVersion, _, err := shell.RunCommand(parentDir, fileName, "version", "--non-interactive")
+		initialVersion, stderr, err := shell.RunCommand(parentDir, fileName, "version", "--non-interactive")
 		if err != nil {
-			Fail(fmt.Sprintf("failed to get initial version: %v", err))
+			Fail(fmt.Sprintf("failed to get initial version: %v stdout: %s, stderr: %s", err, initialVersion, stderr))
 		}
 		log.Info().Msgf("Initial version: %s", initialVersion)
 
 		updateArgs := []string{"update", "--skip-confirmation"}
 		updateArgs = append(updateArgs, args...)
-		output, _, err := shell.RunCommand(parentDir, fileName, updateArgs...)
+		stdout, stderr, err := shell.RunCommand(parentDir, fileName, updateArgs...)
 		if err != nil {
-			Fail(fmt.Sprintf("failed to run update: %v, %s", err, output))
+			Fail(fmt.Sprintf("failed to run update: %v, args: %v, stdout: %s, stderr: %s", err, updateArgs, stdout, stderr))
 		}
 
-		updatedVersion, _, err := shell.RunCommand(parentDir, fileName, "version")
+		updatedVersion, stderr, err := shell.RunCommand(parentDir, fileName, "version")
 		if err != nil {
-			Fail(fmt.Sprintf("failed to get updated version: %v", err))
+			Fail(fmt.Sprintf("failed to get updated version: %v, stdout: %s, stderr: %s", err, stdout, stderr))
 		}
 		log.Info().Msgf("Updated version: %s", updatedVersion)
 		return initialVersion, updatedVersion, nil

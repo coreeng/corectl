@@ -26,11 +26,19 @@ build:
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
-.PHONY: integration-test
-integration-test: build
-	TEST_CORECTL_BINARY="$$(realpath corectl)" \
+.PHONY: integration-test-local
+integration-test-local: build
+	rm -f /tmp/corectl-autoupdate && \
+		TEST_CORECTL_BINARY="$$(realpath corectl)" \
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
-		go test ./tests/integration ./tests/localintegration -v
+		go test ./tests/localintegration -v
+
+.PHONY: integration-test
+integration-test: build integration-test-local
+	rm -f /tmp/corectl-autoupdate && \
+		TEST_CORECTL_BINARY="$$(realpath corectl)" \
+		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
+		go test ./tests/integration -v
 
 .PHONY: install
 install:

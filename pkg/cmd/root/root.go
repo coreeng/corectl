@@ -49,7 +49,9 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		Short: "CLI interface for the CECG core platform.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			ConfigureGlobalLogger(logLevel)
-			update.CheckForUpdates(cfg, cmd)
+			if cmd.Name() != "update" {
+				update.CheckForUpdates(cfg, cmd)
+			}
 			cmd.SilenceErrors = true
 			return nil
 		},
