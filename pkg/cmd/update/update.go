@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -23,6 +24,75 @@ type UpdateOpts struct {
 	streams          userio.IOStreams
 	targetVersion    string
 	skipConfirmation bool
+}
+
+// Any failures we recieve will log a warning, we don't want this to cause any command to fail, this is an optional
+// check which shouldn't prevent or interrupt any command from running (especially in ci)
+func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
+	updateInterval := 1 * time.Hour
+	updateStatusFileName := "corectl-autoupdate"
+	log.Debug().Msg("checking for updates")
+	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+	if err != nil {
+		log.Warn().Err(err).Msg("could not get non-interactive flag")
+		return
+	}
+
+	if nonInteractive {
+		log.Debug().Msg("skipping update check for --non-interactive command")
+		return
+	}
+
+	tempDir := os.TempDir()
+	tempFilePath := filepath.Join(tempDir, updateStatusFileName)
+	file, err := os.OpenFile(tempFilePath, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Warn().Err(err).Msgf("could not open file to set update status %s", tempFilePath)
+		return
+	}
+	defer file.Close()
+
+	data, err := os.ReadFile(tempFilePath)
+	if err != nil {
+		log.Warn().Err(err).Msgf("could not read timestamp from update status file: %s", tempFilePath)
+		return
+	}
+
+	now := time.Now()
+	previousTimeString := string(data)
+	previousTime, err := time.Parse(time.RFC3339, previousTimeString)
+	// This is expected to fail on first run
+	if err != nil {
+		log.Debug().Err(err).Msgf("could not parse timestamp from update status file: %s previousTimeString: \"%s\"", tempFilePath, previousTimeString)
+		// go's time.Sub only works with time.Time, not time.Duration
+		previousTime = now.Add(-updateInterval)
+	}
+
+	timeSince := now.Sub(previousTime)
+	if timeSince >= updateInterval {
+		githubToken := ""
+		if cfg.IsPersisted() {
+			githubToken = cfg.GitHub.Token.Value
+		}
+
+		// Update the previousTime since we're checking
+		file.WriteString(now.Format(time.RFC3339))
+		file.Sync()
+
+		update(UpdateOpts{
+			githubToken:      githubToken,
+			skipConfirmation: false,
+			targetVersion:    "",
+			streams: userio.NewIOStreamsWithInteractive(
+				os.Stdin,
+				os.Stdout,
+				!nonInteractive,
+			),
+		})
+	} else {
+		timeLeft := (updateInterval - timeSince).Round(time.Second)
+		log.Debug().Msgf("next update check will be in %s", timeLeft)
+	}
 }
 
 func getCurrentExecutablePath() string {
@@ -69,7 +139,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 				!nonInteractive,
 			)
 
-			Update(opts)
+			update(opts)
 		},
 	}
 
@@ -83,7 +153,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 	return updateCmd
 }
 
-func Update(opts UpdateOpts) {
+func update(opts UpdateOpts) {
 	if opts.targetVersion != "" {
 		log.Debug().Msgf("target version set to %s", opts.targetVersion)
 	}
@@ -130,6 +200,7 @@ func Update(opts UpdateOpts) {
 	fmt.Print(out)
 
 	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
+	defer wizard.Done()
 
 	if opts.skipConfirmation {
 		wizard.Info("--skip-confirmation is set, continuing with update")
@@ -139,8 +210,11 @@ func Update(opts UpdateOpts) {
 			log.Panic().Err(err).Msg("could not get confirmation from user")
 		}
 
-		if !confirmation {
-			log.Info().Msg("update cancelled, exiting")
+		if confirmation {
+			wizard.Info("Update accepted")
+		} else {
+			wizard.Abort(fmt.Errorf("Update cancelled by user"))
+			wizard.Info("Update cancelled")
 			return
 		}
 	}
@@ -200,6 +274,4 @@ func Update(opts UpdateOpts) {
 		return
 	}
 	log.Debug().Msgf("moved %s -> %s", tmpPath, path)
-
-	wizard.Done()
 }

@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/phuslu/log"
 )
 
 type model struct {
@@ -108,6 +109,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			log.Debug().Msg("ConfirmationPrompt: exiting")
 			m.quitting = true
 			m.confirmation = false
 			return m, tea.Quit

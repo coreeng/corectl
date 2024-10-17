@@ -35,7 +35,7 @@ var _ = Describe("update", Ordered, func() {
 		}
 		log.Info().Msgf("Initial version: %s", initialVersion)
 
-		updateArgs := []string{"update", "--non-interactive"}
+		updateArgs := []string{"update", "--skip-confirmation"}
 		updateArgs = append(updateArgs, args...)
 		output, _, err := shell.RunCommand(parentDir, fileName, updateArgs...)
 		if err != nil {
@@ -52,7 +52,7 @@ var _ = Describe("update", Ordered, func() {
 
 	Context("from local build", func() {
 		It("updates the version to latest", func() {
-			initialVersion, updatedVersion, err := updateCmd([]string{})
+			initialVersion, updatedVersion, err := updateCmd([]string{"--skip-confirmation"})
 			if err != nil {
 				Fail(err.Error())
 			}
@@ -62,7 +62,7 @@ var _ = Describe("update", Ordered, func() {
 		It("updates to specified version", func() {
 			versionTag := "v0.25.2"
 			versionLine := "corectl 0.25.2 (commit: 4da4e686dc5adca21ed579374bca6a4b41f4b092) 2024-09-30T10:21:08Z amd64"
-			_, updatedVersion, err := updateCmd([]string{versionTag})
+			_, updatedVersion, err := updateCmd([]string{"--skip-confirmation", versionTag})
 			if err != nil {
 				Fail(err.Error())
 			}

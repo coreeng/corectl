@@ -46,9 +46,11 @@ func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	switch m := m.(type) {
 	case Model:
 		if m.quitting {
+			log.Debug().Msg("received tea.Quit from parent")
 			return msg
 		}
-		// If we didn't send the tea.Quit - assume it is from the inputModel
+		// If we didn't send the tea.Quit - assume it is from the inputModel and forward it
+		log.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
 		return InputCompleted{model: m.inputModel}
 	}
 	return msg
