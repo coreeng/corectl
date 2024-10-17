@@ -42,19 +42,19 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 }
 
 type nonInteractiveStyles struct {
-	infoStyle        lipgloss.Style
-	warnHeadingStyle lipgloss.Style
-	warnMessageStyle lipgloss.Style
-	bold             lipgloss.Style
-	status           wizard.TaskStatusStyle
+	InfoStyle        lipgloss.Style
+	WarnHeadingStyle lipgloss.Style
+	WarnMessageStyle lipgloss.Style
+	Bold             lipgloss.Style
+	Status           wizard.TaskStatusStyle
 }
 
-func newNonInteractiveStyles() nonInteractiveStyles {
+func NewNonInteractiveStyles() nonInteractiveStyles {
 	return nonInteractiveStyles{
-		infoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
-		warnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
-		warnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
-		bold:             lipgloss.NewStyle().Bold(true),
-		status:           wizard.DefaultMarks(),
+		InfoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
+		WarnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
+		WarnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
+		Bold:             lipgloss.NewStyle().Bold(true),
+		Status:           wizard.DefaultMarks(),
 	}
 }

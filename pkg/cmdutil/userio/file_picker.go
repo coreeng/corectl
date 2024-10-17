@@ -55,7 +55,7 @@ func (ifp *FilePicker) GetInput(streams IOStreams) (string, error) {
 		styles:         streams.styles,
 	}
 
-	result, err := streams.execute(ifpModel)
+	result, err := streams.Execute(ifpModel)
 	if err != nil {
 		return "", err
 	}
