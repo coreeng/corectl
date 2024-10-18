@@ -31,7 +31,6 @@ type task struct {
 	completedTitle string
 	status         TaskStatus
 	completed      bool
-	failed         bool
 	logs           []logMsg
 }
 
@@ -244,12 +243,6 @@ func (m Model) View() string {
 				"%s %s\n",
 				m.Styles.Marks.Render(task.status),
 				m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width)),
-			))
-		} else if task.failed {
-			buffer.WriteString(fmt.Sprintf(
-				"%s %s\n",
-				m.Styles.Marks.Error,
-				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
 			))
 		} else {
 			// show spinner for incomplete tasks
