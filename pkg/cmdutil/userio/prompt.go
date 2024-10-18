@@ -27,13 +27,14 @@ type IOStreams struct {
 }
 
 func newWizard(streams *IOStreams) wizard.Handler {
-	model, handler := wizard.New()
+	model, handler, doneSync := wizard.New()
+	streams.CurrentHandler = handler
 	go func() {
-		_, err := streams.execute(model, handler)
+		_, err := streams.execute(model, tea.WithFilter(handler.OnQuit))
 		if err != nil {
 			log.Error().Err(err).Msgf("Error in Wizard execution")
 		}
-		handler.DoneSendChannel <- true
+		doneSync <- true
 	}()
 	return handler
 }
@@ -54,8 +55,8 @@ func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool
 	}
 }
 
-func (streams IOStreams) IsInteractive() bool {
-	return streams.isInteractive
+func (s IOStreams) IsInteractive() bool {
+	return s.isInteractive
 }
 
 func (s IOStreams) GetOutput() io.Writer {
@@ -76,18 +77,13 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (streams *IOStreams) execute(model tea.Model, handler wizard.Handler) (tea.Model, error) {
-	if _, isWizard := model.(wizard.Model); isWizard || streams.CurrentHandler == nil {
+func (s *IOStreams) execute(model tea.Model, opts ...tea.ProgramOption) (tea.Model, error) {
+	if _, isWizard := model.(wizard.Model); isWizard || s.CurrentHandler == nil {
 		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
-		options := []tea.ProgramOption{
-			tea.WithInput(streams.in),
-			tea.WithOutput(streams.outRaw),
-		}
-
-		if handler != nil {
-			streams.CurrentHandler = handler
-			options = append(options, tea.WithFilter(handler.OnQuit))
-		}
+		options := append([]tea.ProgramOption{
+			tea.WithInput(s.in),
+			tea.WithOutput(s.outRaw),
+		}, opts...)
 
 		return tea.NewProgram(
 			model,
@@ -96,7 +92,7 @@ func (streams *IOStreams) execute(model tea.Model, handler wizard.Handler) (tea.
 	} else {
 		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
 		// Run inside the existing session
-		return streams.CurrentHandler.SetInputModel(model), nil
+		return s.CurrentHandler.SetInputModel(model), nil
 	}
 }
 
