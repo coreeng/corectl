@@ -150,7 +150,7 @@ func (svc *Service) handleMonorepo(op CreateOp, localRepo *git.LocalRepository) 
 	additionalArgs := []template.Argument{
 		{
 			Name:  "working_directory",
-			Value: "./" + appRelPath,
+			Value: appRelPath,
 		},
 		{
 			Name:  "version_prefix",

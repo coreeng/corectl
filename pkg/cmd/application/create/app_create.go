@@ -112,6 +112,10 @@ NOTE:
 		"Dry run",
 	)
 
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		appCreateCmd.Flags(),
+	)
 	config.RegisterStringParameterAsFlag(
 		&cfg.GitHub.Token,
 		appCreateCmd.Flags(),
@@ -141,13 +145,13 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	defer wizard.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
-	if !opts.DryRun {
+	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
 			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
 		}
 	}
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
-	if !opts.DryRun {
+	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
 			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
 		}

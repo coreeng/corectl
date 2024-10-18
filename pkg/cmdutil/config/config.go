@@ -67,7 +67,7 @@ func RegisterStringParameterAsFlag(p *Parameter[string], fs *pflag.FlagSet) {
 			p.help,
 		)
 	}
-	hideDefaultValueFromHelp(p, fs)
+	hideDefaultValueFromHelp(p, fs, "")
 }
 
 func RegisterBoolParameterAsFlag(p *Parameter[bool], fs *pflag.FlagSet) {
@@ -90,13 +90,13 @@ func RegisterBoolParameterAsFlag(p *Parameter[bool], fs *pflag.FlagSet) {
 			p.help,
 		)
 	}
-	hideDefaultValueFromHelp(p, fs)
+	hideDefaultValueFromHelp(p, fs, "false")
 }
 
-func hideDefaultValueFromHelp[V any](p *Parameter[V], fs *pflag.FlagSet) {
+func hideDefaultValueFromHelp[V any](p *Parameter[V], fs *pflag.FlagSet, zeroValue string) {
 	// do not output value from config in help
 	flag := fs.Lookup(p.flag)
-	flag.DefValue = ""
+	flag.DefValue = zeroValue
 }
 
 type Config struct {

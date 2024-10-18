@@ -35,7 +35,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TargetPath = args[1]
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
 
-			if !opts.IgnoreChecks {
+			if !cfg.Repositories.AllowDirty.Value {
 				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
 					return err
 				}
@@ -44,13 +44,6 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			return run(opts)
 		},
 	}
-
-	templateRenderCmd.Flags().BoolVar(
-		&opts.IgnoreChecks,
-		"ignore-checks",
-		false,
-		"Ignore checks for uncommitted changes and branch status",
-	)
 
 	templateRenderCmd.Flags().StringVar(
 		&opts.ArgsFile,
@@ -66,6 +59,10 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 		"Template argument in the format: <arg-name>=<arg-value>",
 	)
 
+	config.RegisterBoolParameterAsFlag(
+		&cfg.Repositories.AllowDirty,
+		templateRenderCmd.Flags(),
+	)
 	config.RegisterStringParameterAsFlag(
 		&cfg.Repositories.Templates,
 		templateRenderCmd.Flags(),

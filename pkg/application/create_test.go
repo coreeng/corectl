@@ -429,7 +429,7 @@ var _ = Describe("Create new application", func() {
 				},
 				template.Argument{
 					Name:  "working_directory",
-					Value: "./" + appName,
+					Value: appName,
 				},
 				template.Argument{
 					Name:  "version_prefix",
@@ -444,13 +444,13 @@ var _ = Describe("Create new application", func() {
 			content := readFileContent(rootWorkflowsPath, "new-app-name-fast-feedback.yaml")
 			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
 			Expect(content).To(ContainSubstring("name: " + appName))
-			Expect(content).To(ContainSubstring("working_directory: " + "./" + appName))
+			Expect(content).To(ContainSubstring("working_directory: " + appName))
 			Expect(content).To(ContainSubstring("version_prefix: " + appName + "/v"))
 
 			content = readFileContent(rootWorkflowsPath, "new-app-name-extended-test.yaml")
 			Expect(content).To(ContainSubstring("tenant: " + defaultTenant.Name))
 			Expect(content).To(ContainSubstring("name: " + appName))
-			Expect(content).To(ContainSubstring("working_directory: " + "./" + appName))
+			Expect(content).To(ContainSubstring("working_directory: " + appName))
 			Expect(content).To(ContainSubstring("version_prefix: " + appName + "/v"))
 		})
 
