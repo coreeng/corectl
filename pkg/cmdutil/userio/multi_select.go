@@ -42,7 +42,7 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		validateAndMap: op.ValidateAndMap,
 	}
 
-	result, err := streams.execute(model, nil)
+	result, err := streams.execute(model)
 	if err != nil {
 		return nil, err
 	}

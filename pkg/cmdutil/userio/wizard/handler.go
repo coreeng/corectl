@@ -11,6 +11,7 @@ type Handler interface {
 	Done()
 	Info(string)
 	SetCurrentTaskCompletedTitle(string)
+	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
 	SetInputModel(tea.Model) tea.Model
 	SetTask(string, string)
 	Warn(string)
@@ -20,13 +21,12 @@ type Handler interface {
 type asyncHandler struct {
 	messageChannel     chan<- tea.Msg
 	inputResultChannel <-chan tea.Model
-	doneReceiveChannel <-chan bool
-	DoneSendChannel    chan<- bool
+	doneChannel        chan bool
 }
 
 func (handler asyncHandler) Done() {
 	handler.update(doneMsg(true))
-	<-handler.doneReceiveChannel
+	<-handler.doneChannel
 }
 
 func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
@@ -72,10 +72,30 @@ func (handler asyncHandler) update(message tea.Msg) {
 	handler.messageChannel <- message
 }
 
-func (handler asyncHandler) SetCurrentTaskCompletedTitle(completedTitle string) {
-	handler.update(updateCurrentTaskCompletedTitle(completedTitle))
+func (handler asyncHandler) SetCurrentTaskCompletedTitle(title string) {
+	handler.update(updateCurrentTaskCompletedTitle{
+		title:  title,
+		status: TaskStatusSuccess,
+	})
+}
+
+func (handler asyncHandler) SetCurrentTaskCompletedTitleWithStatus(title string, status TaskStatus) {
+	handler.update(updateCurrentTaskCompletedTitle{
+		title:  title,
+		status: status,
+	})
 }
 
 func (handler asyncHandler) SetTask(title string, completedTitle string) {
-	handler.update(task{title: title, completedTitle: completedTitle, logs: []logMsg{}, completed: false})
+	status := taskStatusUnknown
+	if completedTitle != "" {
+		status = TaskStatusSuccess
+	}
+	handler.update(task{
+		title:          title,
+		completedTitle: completedTitle,
+		status:         status,
+		logs:           []logMsg{},
+		completed:      false,
+	})
 }

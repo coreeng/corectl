@@ -9,7 +9,28 @@ type Styles struct {
 	WarnLogHeading lipgloss.Style
 	InfoLogBody    lipgloss.Style
 	WarnLogBody    lipgloss.Style
-	CheckMark      lipgloss.Style
+	Marks          TaskStatusStyle
+}
+
+type TaskStatusStyle struct {
+	Success lipgloss.Style
+	Error   lipgloss.Style
+	Skipped lipgloss.Style
+}
+
+func (s TaskStatusStyle) Render(status TaskStatus) string {
+	switch status {
+	case taskStatusUnknown:
+		panic("unknown task status should not be rendered")
+	case TaskStatusSuccess:
+		return s.Success.Render()
+	case TaskStatusError:
+		return s.Error.Render()
+	case TaskStatusSkipped:
+		return s.Skipped.Render()
+	default:
+		panic("unknown task status")
+	}
 }
 
 func DefaultStyles() Styles {
@@ -20,6 +41,14 @@ func DefaultStyles() Styles {
 		InfoLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("159")),
 		WarnLogHeading: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
 		WarnLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
-		CheckMark:      lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("✓"),
+		Marks:          DefaultMarks(),
+	}
+}
+
+func DefaultMarks() TaskStatusStyle {
+	return TaskStatusStyle{
+		Success: lipgloss.NewStyle().Foreground(lipgloss.Color("42")).SetString("✓"),
+		Error:   lipgloss.NewStyle().Foreground(lipgloss.Color("9")).SetString("✗"),
+		Skipped: lipgloss.NewStyle().Foreground(lipgloss.Color("228")).SetString("⚠"),
 	}
 }

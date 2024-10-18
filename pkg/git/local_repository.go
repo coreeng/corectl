@@ -160,6 +160,9 @@ func OpenAndResetRepositoryState(path string, dryRun bool) (*LocalRepository, er
 	if err != nil {
 		return nil, err
 	}
+	if dryRun {
+		return localRepo, nil
+	}
 	err = localRepo.ResetState()
 	if err != nil {
 		return nil, err

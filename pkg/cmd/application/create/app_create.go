@@ -3,14 +3,13 @@ package create
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"os"
 	"slices"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
-	"github.com/phuslu/log"
-
 	"github.com/coreeng/corectl/pkg/application"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -139,9 +138,8 @@ NOTE:
 func run(opts *AppCreateOpt, cfg *config.Config) error {
 	wizard := opts.Streams.Wizard(
 		fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
-		fmt.Sprintf("Created new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
+		"",
 	)
-
 	defer wizard.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
@@ -199,13 +197,12 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.CurrentHandler.Info(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
 	} else {
-		opts.Streams.CurrentHandler.Info(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
 	var nextStepsMessage string
-	var tenantUpdateResult tenant.CreateOrUpdateResult
 	if createdAppResult.MonorepoMode {
 		nextStepsMessage = fmt.Sprintf(
 			nextStepsMessageTemplateMonoRepo,
@@ -215,21 +212,29 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 			createdAppResult.RepositoryFullname.String(),
 		)
 	} else {
-		tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
+		tenantUpdateResult, err := createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 		if err != nil {
 			return err
 		}
-		nextStepsMessage = fmt.Sprintf(
-			nextStepsMessageTemplateSingleRepo,
-			tenantUpdateResult.PRUrl,
-			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-			createdAppResult.RepositoryFullname.String(),
-			createdAppResult.RepositoryFullname.String(),
-		)
+		if tenantUpdateResult != nil {
+			nextStepsMessage = fmt.Sprintf(
+				nextStepsMessageTemplateSingleRepo,
+				tenantUpdateResult.PRUrl,
+				createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+				createdAppResult.RepositoryFullname.String(),
+				createdAppResult.RepositoryFullname.String(),
+			)
+		} else {
+			nextStepsMessage = fmt.Sprintf(
+				nextStepsMessageTemplateSingleRepoSkippedTenant,
+				createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+				createdAppResult.RepositoryFullname.String(),
+				createdAppResult.RepositoryFullname.String(),
+			)
+		}
 	}
-
 	opts.Streams.CurrentHandler.Warn(strings.TrimSpace(nextStepsMessage))
-	log.Info().Msg("nextStepsMessage")
+
 	return nil
 }
 
@@ -239,6 +244,15 @@ To complete application onboarding to the Core Platform you have to first merge 
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
+It will either happen with next commit or you can do it manually by triggering P2P workflow.
+To do it, use GitHub web-interface or GitHub CLI.
+Workflows link: %s
+GitHub CLI commands:
+  gh workflow list -R %s
+  gh workflow run <workflow-id> -R %s
+`
+	nextStepsMessageTemplateSingleRepoSkippedTenant = `
+Your application is ready to be deployed to the Core Platform!
 It will either happen with next commit or you can do it manually by triggering P2P workflow.
 To do it, use GitHub web-interface or GitHub CLI.
 Workflows link: %s
@@ -268,7 +282,6 @@ func createNewApp(
 	fromTemplate *template.Spec,
 	existingEnvs []environment.Environment,
 ) (application.CreateResult, error) {
-
 	fastFeedbackEnvs := filterEnvsByNames(cfg.P2P.FastFeedback.DefaultEnvs.Value, existingEnvs)
 	extendedTestEnvs := filterEnvsByNames(cfg.P2P.ExtendedTest.DefaultEnvs.Value, existingEnvs)
 	prodEnvs := filterEnvsByNames(cfg.P2P.Prod.DefaultEnvs.Value, existingEnvs)
@@ -314,14 +327,24 @@ func createPRWithUpdatedReposListForTenant(
 	githubClient *github.Client,
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
-) (tenant.CreateOrUpdateResult, error) {
-	opts.Streams.CurrentHandler.SetTask(
-		fmt.Sprintf("Creating PR with new application %s for tenant %s in platform repo %s", opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value),
-		"",
-	)
+) (*tenant.CreateOrUpdateResult, error) {
+	opts.Streams.CurrentHandler.SetTask(fmt.Sprintf(
+		"Creating PR with new application %s for tenant %s in platform repo %s",
+		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value,
+	), "")
 
-	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
-		return tenant.CreateOrUpdateResult{}, err
+	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
+			"Application is already registered for tenant. Skipping.",
+			wizard.TaskStatusSkipped,
+		)
+		return nil, nil
+	} else if err != nil {
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
+			fmt.Sprintf("Failed to add application to tenant: %s", err),
+			wizard.TaskStatusError,
+		)
+		return nil, err
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
@@ -339,11 +362,18 @@ func createPRWithUpdatedReposListForTenant(
 		},
 		githubClient,
 	)
+	if err != nil {
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
+			fmt.Sprintf("Failed to create PR for tenant to add a new application repository: %s", err),
+			wizard.TaskStatusError,
+		)
+		return nil, err
+	}
 	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
 		"Created PR with new application %s for tenant %s: %s",
 		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
 	))
-	return tenantUpdateResult, err
+	return &tenantUpdateResult, nil
 }
 
 func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {

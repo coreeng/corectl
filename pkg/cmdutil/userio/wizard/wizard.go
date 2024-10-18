@@ -13,7 +13,7 @@ import (
 type Model struct {
 	messageChannel     <-chan tea.Msg
 	inputResultChannel chan<- tea.Model
-	model              spinner.Model
+	spinner            spinner.Model
 	quitting           bool
 	tasks              []task
 	inputModel         tea.Model
@@ -29,18 +29,35 @@ type InputCompleted struct {
 type task struct {
 	title          string
 	completedTitle string
+	status         TaskStatus
 	completed      bool
 	logs           []logMsg
 }
 
-type updateCurrentTaskCompletedTitle string
+func (t task) isAnonymous() bool {
+	return t.title == "" && t.completedTitle == ""
+}
+
+type TaskStatus uint
+
+const (
+	taskStatusUnknown TaskStatus = iota
+	TaskStatusSuccess
+	TaskStatusError
+	TaskStatusSkipped
+)
+
+type updateCurrentTaskCompletedTitle struct {
+	title  string
+	status TaskStatus
+}
 type logMsg struct {
 	message string
 	level   log.Level
 }
 type doneMsg bool
 
-func New() (Model, asyncHandler) {
+func New() (Model, Handler, chan<- bool) {
 	doneChannel := make(chan bool)
 	messageChannel := make(chan tea.Msg)
 	inputResultChannel := make(chan tea.Model)
@@ -52,22 +69,21 @@ func New() (Model, asyncHandler) {
 	model := Model{
 		messageChannel:     messageChannel,
 		inputResultChannel: inputResultChannel,
-		model:              spinnerModel,
+		spinner:            spinnerModel,
 		Styles:             styles,
 		tasks:              []task{},
 	}
 	handler := asyncHandler{
 		messageChannel:     messageChannel,
 		inputResultChannel: inputResultChannel,
-		doneReceiveChannel: doneChannel,
-		DoneSendChannel:    doneChannel,
+		doneChannel:        doneChannel,
 	}
-	return model, handler
+	return model, handler, doneChannel
 }
 
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		m.model.Tick,
+		m.spinner.Tick,
 		m.ReceiveUpdateMessages,
 	)
 }
@@ -78,11 +94,11 @@ func (m Model) ReceiveUpdateMessages() tea.Msg {
 }
 
 func (m Model) getLatestTask() *task {
-	var task *task
 	if len(m.tasks) > 0 {
-		task = &m.tasks[len(m.tasks)-1]
+		return &m.tasks[len(m.tasks)-1]
+	} else {
+		return nil
 	}
-	return task
 }
 
 func (m Model) markLatestTaskComplete() *task {
@@ -115,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
-			return m, updateListener
+			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
 		} else {
 			m.markLatestTaskComplete()
 			m.quitting = true
@@ -127,19 +143,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.tasks = append(m.tasks, msg)
 		return m, updateListener
 	case logMsg:
-		if len(m.tasks) > 0 {
-			log.Debug().Msgf("Wizard: Log received %s: %s", msg.level, msg.message)
-			// Adds logs as children of the most recent task
-			latestTask := m.getLatestTask()
-			latestTask.logs = append(latestTask.logs, msg)
+		log.Debug().Msgf("Wizard: Log received %s: %s", msg.level, msg.message)
+		latestTask := m.getLatestTask()
+		if latestTask == nil || latestTask.completed {
+			m.tasks = append(m.tasks, task{
+				logs: []logMsg{msg},
+			})
 		} else {
-			log.Warn().Msgf("Wizard: Could not add log, no active tasks [%s: %s]", msg.level, msg.message)
+			latestTask.logs = append(latestTask.logs, msg)
 		}
 		return m, updateListener
 	case updateCurrentTaskCompletedTitle:
-		log.Debug().Msgf("Wizard: Update current task completed title -> %s", msg)
-		if taskLen := len(m.tasks); taskLen > 0 {
-			m.tasks[taskLen-1].completedTitle = string(msg)
+		log.Debug().Msgf("Wizard: Update current task completed title -> %s", msg.title)
+		latestTask := m.getLatestTask()
+		if latestTask != nil && !latestTask.isAnonymous() {
+			latestTask.completedTitle = msg.title
+			latestTask.status = msg.status
+			latestTask.completed = true
+		} else {
+			log.Panic().Bool("isNil", latestTask == nil).Bool("isAnonymous", latestTask.isAnonymous()).
+				Msg("Wizard: unable to update task completed title")
 		}
 		return m, updateListener
 	case InputCompleted:
@@ -173,8 +196,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newInputModel, inputCmd = m.inputModel.Update(msg)
 		m.inputModel = newInputModel
 	}
-	newSpinnerModel, cmd := m.model.Update(msg)
-	m.model = newSpinnerModel
+	newSpinnerModel, cmd := m.spinner.Update(msg)
+	m.spinner = newSpinnerModel
 	return m, tea.Batch(cmd, inputCmd)
 }
 
@@ -193,24 +216,30 @@ func (m Model) View() string {
 			buffer.WriteString("\n")
 		}
 		for _, message := range task.logs {
-			switch message.level {
-			case log.InfoLevel:
-				buffer.WriteString(wrap.String(m.InfoLog(message.message), m.width) + "\n")
-			case log.WarnLevel:
-				buffer.WriteString(wrap.String(m.WarnLog(message.message), m.width) + "\n")
-			default:
-				log.Warn().Str("log", message.message).Msg("Wizard: log level not set")
-				buffer.WriteString(wrap.String("[LEVEL NOT SET] "+message.message, m.width) + "\n")
-			}
+			buffer.WriteString(wrap.String(m.generateLog(message.message, message.level), m.width) + "\n")
 		}
-		if task.completed {
-			buffer.WriteString(fmt.Sprintf("%s %s\n", m.Styles.CheckMark, m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width))))
-		} else if m.inputModel != nil {
+		if m.inputModel != nil {
 			// show editing icon if an input component has been injected
-			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+			buffer.WriteString(fmt.Sprintf(
+				"%s%s\n",
+				"📝 ",
+				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
+			))
+		} else if task.isAnonymous() {
+			continue
+		} else if task.completed {
+			buffer.WriteString(fmt.Sprintf(
+				"%s %s\n",
+				m.Styles.Marks.Render(task.status),
+				m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width)),
+			))
 		} else {
 			// show spinner for incomplete tasks
-			buffer.WriteString(fmt.Sprintf("%s%s\n", m.model.View(), m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+			buffer.WriteString(fmt.Sprintf(
+				"%s%s\n",
+				m.spinner.View(),
+				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
+			))
 		}
 	}
 
@@ -219,4 +248,16 @@ func (m Model) View() string {
 		buffer.WriteString(m.inputModel.View())
 	}
 	return buffer.String()
+}
+
+func (m Model) generateLog(message string, level log.Level) string {
+	switch level {
+	case log.InfoLevel:
+		return m.InfoLog(message)
+	case log.WarnLevel:
+		return m.WarnLog(message)
+	default:
+		log.Warn().Str("log", message).Str("level", level.String()).Msg("Wizard: log level not set")
+		return "[LEVEL NOT SET] " + message
+	}
 }

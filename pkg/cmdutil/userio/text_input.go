@@ -49,7 +49,7 @@ func (ti *TextInput[V]) GetInput(streams IOStreams) (V, error) {
 		styles:         streams.styles,
 	}
 
-	result, err := streams.execute(tiModel, nil)
+	result, err := streams.execute(tiModel)
 	if err != nil {
 		var noop V
 		return noop, err
