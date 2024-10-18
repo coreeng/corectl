@@ -13,13 +13,12 @@ var _ = Describe("version", Ordered, func() {
 	)
 
 	BeforeAll(func() {
-		homeDir := t.TempDir()
-		corectl = testconfig.NewCorectlClient(homeDir)
+		corectl = testconfig.NewCorectlClient(t.TempDir())
 	})
 
 	Context("version", func() {
 		It("returns sensible defaults", func() {
-			output, err := corectl.Run("version")
+			output, err := corectl.Run("version", "--non-interactive")
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).Should(MatchRegexp("corectl (?P<tag>[a-z0-9\\.]+?) \\(commit: (?P<commit>[0-9a-f]+?)\\) (?P<date>.+?) (?P<arch>.+)"))
 		})

@@ -30,7 +30,7 @@ func newWizard(streams *IOStreams) wizard.Handler {
 	model, handler, doneSync := wizard.New()
 	streams.CurrentHandler = handler
 	go func() {
-		_, err := streams.execute(model, tea.WithFilter(handler.OnQuit))
+		_, err := streams.Execute(model, tea.WithFilter(handler.OnQuit))
 		if err != nil {
 			log.Error().Err(err).Msgf("Error in Wizard execution")
 		}
@@ -77,18 +77,21 @@ func isTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 }
 
-func (s *IOStreams) execute(model tea.Model, opts ...tea.ProgramOption) (tea.Model, error) {
+func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Model, error) {
 	if _, isWizard := model.(wizard.Model); isWizard || s.CurrentHandler == nil {
 		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
+
 		options := append([]tea.ProgramOption{
 			tea.WithInput(s.in),
 			tea.WithOutput(s.outRaw),
 		}, opts...)
 
-		return tea.NewProgram(
+		model, err := tea.NewProgram(
 			model,
 			options...,
 		).Run()
+		s.CurrentHandler = nil
+		return model, err
 	} else {
 		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
 		// Run inside the existing session

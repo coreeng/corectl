@@ -9,6 +9,7 @@ import (
 
 type Handler interface {
 	Done()
+	Abort(error)
 	Info(string)
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
@@ -29,6 +30,10 @@ func (handler asyncHandler) Done() {
 	<-handler.doneChannel
 }
 
+func (handler asyncHandler) Abort(err error) {
+	handler.update(errorMsg(err))
+}
+
 func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	if _, ok := msg.(tea.QuitMsg); !ok {
 		return msg
@@ -41,9 +46,11 @@ func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	switch m := m.(type) {
 	case Model:
 		if m.quitting {
+			log.Debug().Msg("received tea.Quit from parent")
 			return msg
 		}
-		// If we didn't send the tea.Quit - assume it is from the inputModel
+		// If we didn't send the tea.Quit - assume it is from the inputModel and forward it
+		log.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
 		return InputCompleted{model: m.inputModel}
 	}
 	return msg

@@ -134,7 +134,7 @@ var _ = Describe("config", Ordered, func() {
 			originalTemplatesPullTimestamp, err = getLastPullTime(cfg.Repositories.Templates.Value)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = corectl.Run("config", "update")
+			_, err = corectl.Run("config", "update", "--non-interactive")
 			Expect(err).ToNot(HaveOccurred())
 		})
 

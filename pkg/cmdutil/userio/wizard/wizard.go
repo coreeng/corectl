@@ -56,6 +56,7 @@ type logMsg struct {
 	level   log.Level
 }
 type doneMsg bool
+type errorMsg error
 
 func New() (Model, Handler, chan<- bool) {
 	doneChannel := make(chan bool)
@@ -116,6 +117,9 @@ func (m Model) markLatestTaskComplete() *task {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updateListener := m.ReceiveUpdateMessages
 
+	var newInputModel tea.Model
+	var inputCmd tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		log.Debug().Msgf("Wizard: Received [%T], (w:%d, h:%d)", msg, msg.Width, msg.Height)
@@ -131,11 +135,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
-			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
+			return m, updateListener
 		} else {
 			m.markLatestTaskComplete()
 			m.quitting = true
 			return m, tea.Quit
+		}
+	case errorMsg:
+		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		if messageLen := len(m.messageChannel); messageLen > 0 {
+			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
+			return m, updateListener
+		} else {
+			m.quitting = true
+			return m, tea.Sequence(
+				func() tea.Msg {
+					return updateCurrentTaskCompletedTitle{
+						title:  msg.Error(),
+						status: TaskStatusError,
+					}
+				},
+				tea.Quit,
+			)
 		}
 	case task:
 		m.markLatestTaskComplete()
@@ -177,21 +198,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
 		log.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
-
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			m.quitting = true
-			return m, tea.Quit
-		default:
 			if m.inputModel != nil {
-				newInputModel, inputCmd := m.inputModel.Update(msg)
+				newInputModel, inputCmd = m.inputModel.Update(msg)
 				m.inputModel = newInputModel
 				return m, inputCmd
 			}
+			m.quitting = true
+			return m, tea.Quit
 		}
 	}
-	var newInputModel tea.Model
-	var inputCmd tea.Cmd
+
 	if m.inputModel != nil {
 		newInputModel, inputCmd = m.inputModel.Update(msg)
 		m.inputModel = newInputModel
@@ -211,20 +229,13 @@ func (m Model) WarnLog(message string) string {
 
 func (m Model) View() string {
 	var buffer strings.Builder
-	for taskIndex, task := range m.tasks {
-		if taskIndex > 0 {
-			buffer.WriteString("\n")
-		}
+	for _, task := range m.tasks {
 		for _, message := range task.logs {
 			buffer.WriteString(wrap.String(m.generateLog(message.message, message.level), m.width) + "\n")
 		}
 		if m.inputModel != nil {
 			// show editing icon if an input component has been injected
-			buffer.WriteString(fmt.Sprintf(
-				"%s%s\n",
-				"📝 ",
-				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
-			))
+			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
 		} else if task.isAnonymous() {
 			continue
 		} else if task.completed {

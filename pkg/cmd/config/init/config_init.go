@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"os"
 	"path/filepath"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/google/go-github/v59/github"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -40,6 +42,12 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		Use:   "init",
 		Short: "Initialize corectl before work",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				log.Panic().Err(err).Msg("could not get non-interactive flag")
+			}
+			opt.NonInteractive = nonInteractive
+
 			opt.Streams = userio.NewIOStreamsWithInteractive(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
@@ -81,12 +89,6 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"o",
 		"",
 		"GitHub organisation of your company.")
-	newInitCmd.Flags().BoolVar(
-		&opt.NonInteractive,
-		"nonint",
-		false,
-		"Do not try to prompt user for missing input.",
-	)
 
 	return newInitCmd
 }

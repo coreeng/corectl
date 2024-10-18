@@ -5,10 +5,10 @@ GIT_HASH=$$(git rev-parse HEAD)
 ARCH=$$(uname -m)
 TIMESTAMP=$$(date +"%Y-%m-%dT%H:%M:%S%:z")
 LDFLAGS = "\
-	-X ${MODULE_PATH}/pkg/cmd/version.version=${GIT_TAG} \
-	-X ${MODULE_PATH}/pkg/cmd/version.commit=${GIT_HASH} \
-	-X ${MODULE_PATH}/pkg/cmd/version.date=${TIMESTAMP} \
-	-X ${MODULE_PATH}/pkg/cmd/version.arch=${ARCH}"
+	-X ${MODULE_PATH}/pkg/version.Version=${GIT_TAG} \
+	-X ${MODULE_PATH}/pkg/version.Commit=${GIT_HASH} \
+	-X ${MODULE_PATH}/pkg/version.Date=${TIMESTAMP} \
+	-X ${MODULE_PATH}/pkg/version.Arch=${ARCH}"
 
 
 .PHONY: lint
@@ -26,9 +26,17 @@ build:
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
+.PHONY: integration-test-local
+integration-test-local: build
+	rm -f /tmp/corectl-autoupdate && \
+		TEST_CORECTL_BINARY="$$(realpath corectl)" \
+		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
+		go test ./tests/localintegration -v
+
 .PHONY: integration-test
-integration-test: build
-	TEST_CORECTL_BINARY="$$(realpath corectl)" \
+integration-test: build integration-test-local
+	rm -f /tmp/corectl-autoupdate && \
+		TEST_CORECTL_BINARY="$$(realpath corectl)" \
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/integration -v
 

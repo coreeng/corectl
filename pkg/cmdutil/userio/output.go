@@ -35,7 +35,7 @@ func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	} else {
 		s.CurrentHandler = nonInteractiveHandler{
 			streams: s,
-			styles:  newNonInteractiveStyles(),
+			styles:  NewNonInteractiveStyles(),
 		}
 	}
 	s.CurrentHandler.SetTask(title, completedTitle)
