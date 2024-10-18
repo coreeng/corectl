@@ -239,16 +239,30 @@ func (m Model) View() string {
 		for _, message := range task.logs {
 			buffer.WriteString(wrap.String(m.generateLog(message.message, message.level), m.width) + "\n")
 		}
-		if task.completed {
-			buffer.WriteString(fmt.Sprintf("%s %s\n", m.Styles.Marks.Success, m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width))))
-		} else if task.failed {
-			buffer.WriteString(fmt.Sprintf("%s %s\n", m.Styles.Marks.Error, m.Styles.Bold.Render(wrap.String(task.title, m.width))))
-		} else if m.inputModel != nil {
+		if m.inputModel != nil {
 			// show editing icon if an input component has been injected
 			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+		} else if task.isAnonymous() {
+			continue
+		} else if task.completed {
+			buffer.WriteString(fmt.Sprintf(
+				"%s %s\n",
+				m.Styles.Marks.Render(task.status),
+				m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width)),
+			))
+		} else if task.failed {
+			buffer.WriteString(fmt.Sprintf(
+				"%s %s\n",
+				m.Styles.Marks.Error,
+				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
+			))
 		} else {
 			// show spinner for incomplete tasks
-			buffer.WriteString(fmt.Sprintf("%s%s\n", m.spinner.View(), m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+			buffer.WriteString(fmt.Sprintf(
+				"%s%s\n",
+				m.spinner.View(),
+				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
+			))
 		}
 	}
 

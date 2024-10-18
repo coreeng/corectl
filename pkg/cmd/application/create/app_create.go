@@ -3,10 +3,11 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
@@ -19,6 +20,7 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
