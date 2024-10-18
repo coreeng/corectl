@@ -115,18 +115,6 @@ func (m Model) markLatestTaskComplete() *task {
 	return task
 }
 
-func (m Model) markLatestTaskFailed() *task {
-	task := m.getLatestTask()
-	if task == nil {
-		log.Warn().Msgf("Wizard: Marking task failed, but no tasks found")
-	} else {
-		log.Debug().Msgf("Wizard: Marking task failed: %s", task.title)
-		task.failed = true
-	}
-
-	return task
-}
-
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updateListener := m.ReceiveUpdateMessages
 
@@ -148,7 +136,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
-			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
+			return m, updateListener
 		} else {
 			m.markLatestTaskComplete()
 			m.quitting = true
@@ -160,9 +148,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return m, updateListener
 		} else {
-			m.markLatestTaskFailed()
 			m.quitting = true
-			return m, tea.Quit
+			return m, tea.Sequence(
+				func() tea.Msg {
+					return updateCurrentTaskCompletedTitle{
+						title:  msg.Error(),
+						status: TaskStatusError,
+					}
+				},
+				tea.Quit,
+			)
 		}
 	case task:
 		m.markLatestTaskComplete()
