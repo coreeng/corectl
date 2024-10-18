@@ -48,7 +48,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 		model:  m,
 	}
 
-	result, err := streams.execute(model, nil)
+	result, err := streams.execute(model)
 	if err != nil {
 		return "", err
 	}
