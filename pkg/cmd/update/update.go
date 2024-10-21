@@ -2,16 +2,22 @@ package update
 
 import (
 	"archive/tar"
+	"compress/gzip"
+	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/version"
 	"github.com/google/go-github/v59/github"
 	"github.com/otiai10/copy"
@@ -24,6 +30,12 @@ type UpdateOpts struct {
 	streams          userio.IOStreams
 	targetVersion    string
 	skipConfirmation bool
+}
+
+type CoreCtlAsset struct {
+	Version   string
+	Url       string
+	Changelog string
 }
 
 // Any failures we recieve will log a warning, we don't want this to cause any command to fail, this is an optional
@@ -171,11 +183,11 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 }
 
 func updateAvailable(githubClient *github.Client) (bool, string, error) {
-	release, err := git.GetLatestCorectlRelease(githubClient)
+	release, err := getLatestCorectlRelease(githubClient)
 	if err != nil {
 		return false, "", err
 	}
-	asset, err := git.GetLatestCorectlAsset(release)
+	asset, err := getLatestCorectlAsset(release)
 	if err != nil {
 		return false, "", err
 	}
@@ -201,16 +213,16 @@ func update(opts UpdateOpts) error {
 	var release *github.RepositoryRelease
 	var err error
 	if opts.targetVersion == "" {
-		release, err = git.GetLatestCorectlRelease(githubClient)
+		release, err = getLatestCorectlRelease(githubClient)
 	} else {
-		release, err = git.GetCorectlReleaseByTag(githubClient, opts.targetVersion)
+		release, err = getCorectlReleaseByTag(githubClient, opts.targetVersion)
 	}
 	if err != nil {
 		wizard.Abort(err.Error())
 		return err
 	}
 
-	asset, err := git.GetLatestCorectlAsset(release)
+	asset, err := getLatestCorectlAsset(release)
 	if err != nil {
 		wizard.Abort(err.Error())
 		return err
@@ -261,7 +273,7 @@ func update(opts UpdateOpts) error {
 	}
 
 	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
-	data, err := git.DownloadCorectlAsset(asset)
+	data, err := downloadCorectlAsset(asset)
 	if err != nil {
 		wizard.Abort(err.Error())
 		return fmt.Errorf("could not download release %s: %+v", asset.Version, err)
@@ -269,7 +281,7 @@ func update(opts UpdateOpts) error {
 
 	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Decompressing release %s", asset.Version), fmt.Sprintf("Decompressed release %s", asset.Version))
 	var decompressed *tar.Reader
-	decompressed, err = git.DecompressCorectlAssetInMemory(data)
+	decompressed, err = decompressCorectlAssetInMemory(data)
 	if err != nil {
 		wizard.Abort(err.Error())
 		return fmt.Errorf("could not decompress release %s: %+v", asset.Version, err)
@@ -289,7 +301,7 @@ func update(opts UpdateOpts) error {
 	}
 
 	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
-	err = git.WriteCorectlAssetToPath(decompressed, tmpPath, tmpFile)
+	err = writeCorectlAssetToPath(decompressed, tmpPath, tmpFile)
 	if err != nil {
 		return fmt.Errorf("could not write release %s to path %s: %+v", asset.Version, path, err)
 	}
@@ -314,6 +326,112 @@ func update(opts UpdateOpts) error {
 		return fmt.Errorf("could not move file to path %s: %+v", path, err)
 	}
 	log.Debug().Msgf("moved %s -> %s", tmpPath, path)
+	return nil
+}
+
+func getLatestCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, error) {
+	if release.Assets == nil {
+		return nil, errors.New("no assets found for the latest release")
+	}
+
+	architecture := runtime.GOARCH
+
+	// Required due to the goreleaser config
+	if architecture == "amd64" {
+		architecture = "x86_64"
+	}
+	targetAssetName := fmt.Sprintf("corectl_%s_%s.tar.gz", runtime.GOOS, architecture)
+	for _, asset := range release.Assets {
+		assetName := strings.ToLower(asset.GetName())
+		if assetName == targetAssetName {
+			log.Debug().Str("asset", assetName).Msg("github: found release asset with matching architecture & os")
+			return &CoreCtlAsset{
+				Url:       *asset.BrowserDownloadURL,
+				Version:   *release.TagName,
+				Changelog: *release.Body,
+			}, nil
+		}
+	}
+
+	return nil, errors.New("no asset found for the current architecture and OS")
+
+}
+
+func getLatestCorectlRelease(client *github.Client) (*github.RepositoryRelease, error) {
+	dummyRelease := github.RepositoryRelease{}
+	release, _, err := client.Repositories.GetLatestRelease(context.Background(), "coreeng", "corectl")
+	if err != nil {
+		return &dummyRelease, err
+	}
+	return release, nil
+}
+func getCorectlReleaseByTag(client *github.Client, version string) (*github.RepositoryRelease, error) {
+	dummyRelease := github.RepositoryRelease{}
+	release, _, err := client.Repositories.GetReleaseByTag(context.Background(), "coreeng", "corectl", version)
+	if err != nil {
+		return &dummyRelease, err
+	}
+	return release, nil
+}
+
+func downloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
+	log.Debug().Msgf("starting download %s", asset.Url)
+	resp, err := http.Get(asset.Url)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to download corectl release: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to download corectl release: status code %v", resp.StatusCode)
+	}
+	log.Debug().Msgf("downloaded %s: %+v", asset.Url, resp)
+
+	return resp.Body, err
+}
+
+func decompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) {
+	log.Debug().Msg("decompressing asset")
+
+	gzr, err := gzip.NewReader(tarData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %v", err)
+	}
+	defer gzr.Close()
+	tarReader := tar.NewReader(gzr)
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read tar archive: %v", err)
+		}
+
+		if filepath.Base(header.Name) == "corectl" && header.Typeflag == tar.TypeReg {
+			log.Debug().Msg("found corectl in tar")
+			return tarReader, nil
+		}
+	}
+	return nil, fmt.Errorf("corectl binary not found in the release")
+}
+
+func writeCorectlAssetToPath(tarReader *tar.Reader, tmpPath string, outFile *os.File) error {
+	binaryName := "corectl"
+
+	written, err := io.Copy(outFile, tarReader)
+	if err != nil {
+		return fmt.Errorf("failed to copy %s binary: %v", binaryName, err)
+	}
+
+	log.Debug().Msgf("%d bytes written to %s", written, tmpPath)
+
+	if err := os.Chmod(tmpPath, 0755); err != nil {
+		return fmt.Errorf("failed to set executable permissions on %s binary: %v", binaryName, err)
+	}
+
+	log.Debug().Msgf("%s has been installed to %s", binaryName, tmpPath)
 	return nil
 }
 
