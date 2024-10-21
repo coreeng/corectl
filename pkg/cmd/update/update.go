@@ -32,10 +32,16 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 	updateInterval := 1 * time.Hour
 	updateStatusFileName := "corectl-autoupdate"
 	log.Debug().Msg("checking for updates")
+
 	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 	if err != nil {
 		log.Warn().Err(err).Msg("could not get non-interactive flag")
 		return
+	}
+
+	if !userio.IsTerminalInteractive(os.Stdin, os.Stdout) {
+		// Override this setting if the terminal itself is not capable of interactivity
+		nonInteractive = true
 	}
 
 	if nonInteractive {

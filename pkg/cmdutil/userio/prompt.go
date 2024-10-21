@@ -50,7 +50,7 @@ func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool
 		out:            renderer,
 		outRaw:         out,
 		styles:         newStyles(renderer),
-		isInteractive:  isInteractive && isTerminalInteractive(in, out),
+		isInteractive:  isInteractive && IsTerminalInteractive(in, out),
 		CurrentHandler: nil,
 	}
 }
@@ -63,7 +63,7 @@ func (s IOStreams) GetOutput() io.Writer {
 	return s.out.Output()
 }
 
-func isTerminalInteractive(in io.Reader, out io.Writer) bool {
+func IsTerminalInteractive(in io.Reader, out io.Writer) bool {
 	_, inIsFile := in.(*os.File)
 	if !inIsFile {
 		return false
