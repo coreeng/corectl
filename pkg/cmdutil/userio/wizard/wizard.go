@@ -109,6 +109,7 @@ func (m Model) markLatestTaskComplete() *task {
 		log.Warn().Msgf("Wizard: Marking task complete, but no tasks found")
 	} else {
 		log.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
+		task.status = TaskStatusSuccess
 		task.completed = true
 	}
 
