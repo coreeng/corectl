@@ -1,4 +1,4 @@
-package git
+package update
 
 import (
 	"archive/tar"
@@ -80,13 +80,13 @@ var _ = Describe("corectl update", func() {
 
 	Context("git.GetLatestCorectlRelease", Ordered, func() {
 		It("returns the latest release", func() {
-			release, err := GetLatestCorectlRelease(githubClient)
+			release, err := getLatestCorectlRelease(githubClient)
 			Expect(release).Should(Equal(latestRelease))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("returns an error when the API call fails", func() {
-			_, err := GetLatestCorectlRelease(githubErrorClient)
+			_, err := getLatestCorectlRelease(githubErrorClient)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(githubErrorString))
 		})
@@ -95,13 +95,13 @@ var _ = Describe("corectl update", func() {
 
 	Context("git.GetCorectlReleaseByTag", Ordered, func() {
 		It("returns the release for a specific tag", func() {
-			release, err := GetCorectlReleaseByTag(githubClient, specificReleaseTag)
+			release, err := getCorectlReleaseByTag(githubClient, specificReleaseTag)
 			Expect(release).Should(Equal(specificRelease))
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		It("returns an error when the API call fails", func() {
-			release, err := GetCorectlReleaseByTag(githubErrorClient, specificReleaseTag)
+			release, err := getCorectlReleaseByTag(githubErrorClient, specificReleaseTag)
 			Expect(release).Should(Equal(&github.RepositoryRelease{}))
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(githubErrorString))
@@ -112,7 +112,7 @@ var _ = Describe("corectl update", func() {
 		It("successfully decompresses and finds corectl binary", func() {
 			// Create a mock gzipped tar archive containing a corectl binary
 			mockTarGz := createMockTarGz("corectl", []byte("mock binary content"))
-			reader, err := DecompressCorectlAssetInMemory(io.NopCloser(mockTarGz))
+			reader, err := decompressCorectlAssetInMemory(io.NopCloser(mockTarGz))
 
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(reader).ShouldNot(BeNil())
@@ -124,7 +124,7 @@ var _ = Describe("corectl update", func() {
 
 		It("returns an error when corectl binary is not found", func() {
 			mockTarGz := createMockTarGz("not-corectl", []byte("wrong content"))
-			_, err := DecompressCorectlAssetInMemory(io.NopCloser(mockTarGz))
+			_, err := decompressCorectlAssetInMemory(io.NopCloser(mockTarGz))
 
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("corectl binary not found in the release"))
@@ -154,7 +154,7 @@ var _ = Describe("corectl update", func() {
 			_, err = mockTarReader.Next() // set cursor to where it would be after iteration
 			Expect(err).ShouldNot(HaveOccurred())
 
-			err = WriteCorectlAssetToPath(mockTarReader, tmpPath, tmpFile)
+			err = writeCorectlAssetToPath(mockTarReader, tmpPath, tmpFile)
 
 			Expect(err).ShouldNot(HaveOccurred())
 
@@ -172,7 +172,7 @@ var _ = Describe("corectl update", func() {
 			mockReader := strings.NewReader("mock binary content")
 			tmpPath = "/non-existent-dir/corectl"
 
-			err := WriteCorectlAssetToPath(tar.NewReader(mockReader), tmpPath, tmpFile)
+			err := writeCorectlAssetToPath(tar.NewReader(mockReader), tmpPath, tmpFile)
 
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("no such file or directory"))
