@@ -152,7 +152,7 @@ func (m model) View() string {
 func GetInput(streams userio.IOStreams, question string) (bool, error) {
 	modelInstance := newModel(question)
 
-	result, err := streams.Execute(modelInstance, nil)
+	result, err := streams.Execute(modelInstance)
 	if err != nil {
 		return false, err
 	}
