@@ -78,8 +78,9 @@ func New() (Model, Handler, chan<- bool) {
 		messageChannel:     messageChannel,
 		inputResultChannel: inputResultChannel,
 		doneChannel:        doneChannel,
+		completed:          false,
 	}
-	return model, handler, doneChannel
+	return model, &handler, doneChannel
 }
 
 func (m Model) Init() tea.Cmd {

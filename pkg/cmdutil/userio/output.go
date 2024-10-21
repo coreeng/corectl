@@ -33,7 +33,7 @@ func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	if s.IsInteractive() {
 		s.CurrentHandler = newWizard(s)
 	} else {
-		s.CurrentHandler = nonInteractiveHandler{
+		s.CurrentHandler = &nonInteractiveHandler{
 			streams: s,
 			styles:  NewNonInteractiveStyles(),
 		}

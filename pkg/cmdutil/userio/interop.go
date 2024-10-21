@@ -19,8 +19,8 @@ func (nih nonInteractiveHandler) WarnLog(message string) string {
 	return fmt.Sprintf("%s %s", nih.styles.WarnHeadingStyle.Render("WARN:"), nih.styles.WarnMessageStyle.Render(message))
 }
 
-func (nonInteractiveHandler) Done()            {}
-func (nonInteractiveHandler) Abort(err string) {}
+func (*nonInteractiveHandler) Done()            {}
+func (*nonInteractiveHandler) Abort(err string) {}
 func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 	panic("cannot take input in non-interactive mode")
 }

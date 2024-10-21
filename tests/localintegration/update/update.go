@@ -20,7 +20,8 @@ var _ = Describe("update", Ordered, func() {
 
 		Expect(err).ShouldNot(HaveOccurred())
 		tmpPath, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
-		tmpFile.Close()
+		Expect(err).ShouldNot(HaveOccurred())
+		err = tmpFile.Close()
 		Expect(err).ShouldNot(HaveOccurred())
 		parentDir := filepath.Dir(tmpPath)
 		fileName := "./" + filepath.Base(tmpPath)
@@ -53,9 +54,7 @@ var _ = Describe("update", Ordered, func() {
 	Context("from local build", func() {
 		It("updates the version to latest", func() {
 			initialVersion, updatedVersion, err := updateCmd([]string{})
-			if err != nil {
-				Fail(err.Error())
-			}
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(updatedVersion).ShouldNot(Equal(initialVersion))
 		})
 
@@ -63,9 +62,7 @@ var _ = Describe("update", Ordered, func() {
 			versionTag := "v0.25.2"
 			versionLine := "corectl 0.25.2 (commit: 4da4e686dc5adca21ed579374bca6a4b41f4b092) 2024-09-30T10:21:08Z amd64"
 			_, updatedVersion, err := updateCmd([]string{versionTag})
-			if err != nil {
-				Fail(err.Error())
-			}
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(strings.Trim(updatedVersion, " \n")).Should(Equal(versionLine))
 		})
 	})

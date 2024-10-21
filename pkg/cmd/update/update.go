@@ -76,10 +76,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 
 	timeSince := now.Sub(previousTime)
 	if timeSince >= updateInterval {
-		githubToken := ""
-		if cfg.IsPersisted() {
-			githubToken = cfg.GitHub.Token.Value
-		}
+		githubToken := cfg.GitHub.Token.Value
 
 		// Update the previousTime since we're checking
 		_, err := file.WriteString(now.Format(time.RFC3339))
