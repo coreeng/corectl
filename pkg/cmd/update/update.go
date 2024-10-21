@@ -227,10 +227,10 @@ func update(opts UpdateOpts) error {
 
 	out, err := glamour.Render(asset.Changelog, "dark")
 	if err == nil {
-		opts.streams.GetOutput().Write([]byte(out))
+		_, _ = opts.streams.GetOutput().Write([]byte(out))
 	} else {
 		log.Warn().Err(err).Msg("could not render changelog markdown, falling back to plaintext")
-		fmt.Print(asset.Changelog)
+		_, _ = opts.streams.GetOutput().Write([]byte(asset.Changelog))
 	}
 
 	log.Debug().Bool("skipConfirmation", opts.skipConfirmation).Msg("checking params")
