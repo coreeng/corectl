@@ -9,12 +9,12 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/cmdutil/shell"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/version"
 	"github.com/google/go-github/v59/github"
+	"github.com/otiai10/copy"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
@@ -303,7 +303,7 @@ func update(opts UpdateOpts) error {
 	// NOTE: os.Rename is the only way to overwrite an existing executable, but this doesn't work across
 	// filesystems. Usually /tmp is set up as a separate filesystem, therefore we must copy and then remove to
 	// simulate the rename
-	err = shell.MoveFile(tmpPath, partialPath)
+	err = moveFile(tmpPath, partialPath)
 	if err != nil {
 		wizard.Abort(err.Error())
 		return fmt.Errorf("could not move file to partial path %s: %+v", path, err)
@@ -314,5 +314,22 @@ func update(opts UpdateOpts) error {
 		return fmt.Errorf("could not move file to path %s: %+v", path, err)
 	}
 	log.Debug().Msgf("moved %s -> %s", tmpPath, path)
+	return nil
+}
+
+func moveFile(source string, destination string) error {
+	log.Debug().Msgf("moving file from %s -> %s", source, destination)
+	err := copy.Copy(source, destination)
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(source)
+	if err != nil {
+		return err
+	}
+
+	log.Debug().Msgf("moved file from %s -> %s", source, destination)
+
 	return nil
 }
