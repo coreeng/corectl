@@ -12,26 +12,24 @@ type nonInteractiveHandler struct {
 	styles  nonInteractiveStyles
 }
 
-func InfoLog(message string) string {
-	style := NewNonInteractiveStyles()
-	return fmt.Sprintf("%s %s", style.InfoStyle.Render("INFO:"), message)
+func (nih nonInteractiveHandler) InfoLog(message string) string {
+	return fmt.Sprintf("%s %s", nih.styles.InfoStyle.Render("INFO:"), message)
 }
-func WarnLog(message string) string {
-	style := NewNonInteractiveStyles()
-	return fmt.Sprintf("%s %s", style.WarnHeadingStyle.Render("WARN:"), style.WarnMessageStyle.Render(message))
+func (nih nonInteractiveHandler) WarnLog(message string) string {
+	return fmt.Sprintf("%s %s", nih.styles.WarnHeadingStyle.Render("WARN:"), nih.styles.WarnMessageStyle.Render(message))
 }
 
-func (nonInteractiveHandler) Done()           {}
-func (nonInteractiveHandler) Abort(err error) {}
+func (nonInteractiveHandler) Done()            {}
+func (nonInteractiveHandler) Abort(err string) {}
 func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 	panic("cannot take input in non-interactive mode")
 }
 
 func (nih nonInteractiveHandler) Info(message string) {
-	_, _ = nih.streams.outRaw.Write([]byte(InfoLog(message) + "\n"))
+	_, _ = nih.streams.outRaw.Write([]byte(nih.InfoLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) Warn(message string) {
-	_, _ = nih.streams.outRaw.Write([]byte(WarnLog(message) + "\n"))
+	_, _ = nih.streams.outRaw.Write([]byte(nih.WarnLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) SetTask(title string, _ string) {
 	nih.Info(fmt.Sprintf("[%s]", nih.styles.Bold.Render(title)))

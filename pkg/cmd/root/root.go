@@ -60,10 +60,18 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if !isCompletion() {
 				ConfigureGlobalLogger(logLevel)
+				cmd.SilenceErrors = true
 				if cmd.Name() != "update" {
 					update.CheckForUpdates(cfg, cmd)
 				}
-				cmd.SilenceErrors = true
+				if !(cmd.Name() == "config") {
+					styles := userio.NewNonInteractiveStyles()
+					fmt.Println(
+						styles.WarnMessageStyle.Render("Config not initialised, please run ") +
+							styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init") +
+							styles.WarnMessageStyle.Render(". Most commands will not be available."),
+					)
+				}
 			}
 			return nil
 		},
@@ -102,36 +110,25 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		log.Panic().Msg("unable to set --nonint as deprecated")
 	}
 
-	if cfg.IsPersisted() {
-		appCmd, err := application.NewAppCmd(cfg)
-		if err != nil {
-			panic("Unable to execute app command")
-		}
-		p2pCmd, err := p2p.NewP2PCmd(cfg)
-		if err != nil {
-			panic("Unable to execute p2p command")
-		}
-		rootCmd.AddCommand(appCmd)
-		rootCmd.AddCommand(p2pCmd)
-		rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
-		rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
-		rootCmd.AddCommand(template.NewTemplateCmd(cfg))
-		rootCmd.AddCommand(env.NewEnvCmd(cfg))
-		rootCmd.AddCommand(version.VersionCmd(cfg))
-		rootCmd.AddCommand(update.UpdateCmd(cfg))
-	} else {
-		if !isCompletion() {
-			styles := userio.NewNonInteractiveStyles()
-			fmt.Println(
-				styles.WarnMessageStyle.Render("Config not initialised, please run ") +
-					styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init") +
-					styles.WarnMessageStyle.Render(". Most commands will not be available."),
-			)
-		}
-		rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
-		rootCmd.AddCommand(version.VersionCmd(cfg))
-		rootCmd.AddCommand(update.UpdateCmd(cfg))
+	appCmd, err := application.NewAppCmd(cfg)
+	if err != nil {
+		panic("Unable to execute app command")
 	}
+	p2pCmd, err := p2p.NewP2PCmd(cfg)
+	if err != nil {
+		panic("Unable to execute p2p command")
+	}
+	rootCmd.AddCommand(appCmd)
+	rootCmd.AddCommand(p2pCmd)
+	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
+	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
+	rootCmd.AddCommand(env.NewEnvCmd(cfg))
+	rootCmd.AddCommand(version.VersionCmd(cfg))
+	rootCmd.AddCommand(update.UpdateCmd(cfg))
+	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+	rootCmd.AddCommand(version.VersionCmd(cfg))
+	rootCmd.AddCommand(update.UpdateCmd(cfg))
 
 	return rootCmd
 }

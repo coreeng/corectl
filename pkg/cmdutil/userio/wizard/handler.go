@@ -9,7 +9,7 @@ import (
 
 type Handler interface {
 	Done()
-	Abort(error)
+	Abort(string)
 	Info(string)
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
@@ -30,7 +30,7 @@ func (handler asyncHandler) Done() {
 	<-handler.doneChannel
 }
 
-func (handler asyncHandler) Abort(err error) {
+func (handler asyncHandler) Abort(err string) {
 	handler.update(errorMsg(err))
 }
 

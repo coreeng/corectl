@@ -56,7 +56,7 @@ type logMsg struct {
 	level   log.Level
 }
 type doneMsg bool
-type errorMsg error
+type errorMsg string
 
 func New() (Model, Handler, chan<- bool) {
 	doneChannel := make(chan bool)
@@ -135,7 +135,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
-			return m, updateListener
+			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
 		} else {
 			m.markLatestTaskComplete()
 			m.quitting = true
@@ -151,7 +151,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(
 				func() tea.Msg {
 					return updateCurrentTaskCompletedTitle{
-						title:  msg.Error(),
+						title:  string(msg),
 						status: TaskStatusError,
 					}
 				},

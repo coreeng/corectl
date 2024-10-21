@@ -10,7 +10,7 @@ import (
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	"github.com/otiai10/copy"
 	"github.com/phuslu/log"
 )
 
@@ -24,7 +24,7 @@ var _ = Describe("update", Ordered, func() {
 		Expect(err).ShouldNot(HaveOccurred())
 		parentDir := filepath.Dir(tmpPath)
 		fileName := "./" + filepath.Base(tmpPath)
-		err = shell.CopyFile(testconfig.Cfg.CoreCTLBinary, tmpPath)
+		err = copy.Copy(testconfig.Cfg.CoreCTLBinary, tmpPath)
 		Expect(err).ShouldNot(HaveOccurred())
 		err = os.Chmod(tmpPath, os.FileMode(0755))
 		Expect(err).ShouldNot(HaveOccurred())
