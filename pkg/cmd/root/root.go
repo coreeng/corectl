@@ -64,7 +64,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 				if cmd.Name() != "update" {
 					update.CheckForUpdates(cfg, cmd)
 				}
-				if !(cmd.Name() == "config") {
+				if !cfg.IsPersisted() && !(cmd.Name() == "config") {
 					styles := userio.NewNonInteractiveStyles()
 					fmt.Println(
 						styles.WarnMessageStyle.Render("Config not initialised, please run ") +
