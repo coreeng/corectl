@@ -294,11 +294,7 @@ func update(opts UpdateOpts) error {
 		err = fmt.Errorf("unable to create temporary file %s: %+v", asset.Version, err)
 		return err
 	}
-	tmpPath, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
-	if err != nil {
-		err = fmt.Errorf("unable to read link /proc/self/fd/%d: %+v", tmpFile.Fd(), err)
-		return err
-	}
+	tmpPath := tmpFile.Name()
 
 	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
 	err = writeCorectlAssetToPath(decompressed, tmpPath, tmpFile)
