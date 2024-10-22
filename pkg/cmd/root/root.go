@@ -47,7 +47,7 @@ func ConfigureGlobalLogger(logLevelFlag string) {
 }
 
 func isCompletion() bool {
-	return len(os.Args) >= 1 && os.Args[1] == "__complete"
+	return (len(os.Args) >= 2) && (os.Args[1] == "__complete")
 }
 
 func NewRootCmd(cfg *config.Config) *cobra.Command {
