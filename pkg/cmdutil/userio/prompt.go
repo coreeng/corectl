@@ -28,7 +28,6 @@ type IOStreams struct {
 
 func newWizard(streams *IOStreams) wizard.Handler {
 	model, handler, doneSync := wizard.New()
-	streams.CurrentHandler = handler
 	go func() {
 		_, err := streams.Execute(model, tea.WithFilter(handler.OnQuit))
 		if err != nil {
@@ -91,6 +90,7 @@ func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Mod
 			options...,
 		).Run()
 		s.CurrentHandler = nil
+		log.Trace().Msg("IOStreams.execute: s.CurrentHandler = nil")
 		return model, err
 	} else {
 		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)

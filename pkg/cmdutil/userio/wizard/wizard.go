@@ -55,6 +55,7 @@ type logMsg struct {
 	message string
 	level   log.Level
 }
+type quittingMsg bool
 type doneMsg bool
 type errorMsg string
 
@@ -133,16 +134,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, inputCmd
 		}
 		return m, nil
-	case doneMsg:
+	case quittingMsg:
+		m.quitting = true
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
-		} else {
-			m.markLatestTaskComplete()
-			m.quitting = true
-			return m, tea.Quit
 		}
+		return m, tea.Quit
+	case doneMsg:
+		m.markLatestTaskComplete()
+		return m, func() tea.Msg { return quittingMsg(true) }
 	case errorMsg:
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
@@ -157,7 +159,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						status: TaskStatusError,
 					}
 				},
-				tea.Quit,
+				func() tea.Msg { return quittingMsg(true) },
 			)
 		}
 	case task:

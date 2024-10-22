@@ -28,7 +28,7 @@ type asyncHandler struct {
 
 func (handler *asyncHandler) Done() {
 	if handler.completed {
-		log.Panic().Msgf("handler is already completed")
+		log.Panic().Msgf("Done: handler is already completed")
 	}
 	handler.update(doneMsg(true))
 	handler.completed = true
@@ -37,10 +37,11 @@ func (handler *asyncHandler) Done() {
 
 func (handler *asyncHandler) Abort(err string) {
 	if handler.completed {
-		log.Panic().Msgf("handler is already completed")
+		log.Panic().Msgf("Abort: handler is already completed")
 	}
 	handler.update(errorMsg(err))
 	handler.completed = true
+	<-handler.doneChannel
 }
 
 func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
