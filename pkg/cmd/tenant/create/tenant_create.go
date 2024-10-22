@@ -3,6 +3,7 @@ package create
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"slices"
 	"strings"
 
@@ -211,7 +212,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.Streams, opt.DryRun, cfg, &t, &parent)
+	_, err = createTenant(opt.Streams, opt.DryRun, cfg, &t, &parent, existingTenants)
 	if err != nil {
 		return err
 	}
@@ -224,12 +225,22 @@ func createTenant(
 	cfg *config.Config,
 	t *coretnt.Tenant,
 	parentTenant *coretnt.Tenant,
+	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
 	wizardHandler := streams.Wizard(
 		fmt.Sprintf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value),
 		"", // We don't know the PR URL yet, using SetCurrentTaskCompletedTitle
 	)
 	defer wizardHandler.Done()
+
+	if err := validateTenant(allTenants, t, wizardHandler); err != nil {
+		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(
+			fmt.Sprintf("Unable to create such a tenant: %s", err),
+			wizard.TaskStatusError,
+		)
+		return tenant.CreateOrUpdateResult{}, err
+	}
+
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
@@ -246,8 +257,29 @@ func createTenant(
 			DryRun:            dryRun,
 		}, githubClient,
 	)
-	wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))
+	if err != nil {
+		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(fmt.Sprintf("Failed to create a PR for new tenant: %s", err), wizard.TaskStatusError)
+	} else {
+		wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))
+	}
 	return result, err
+}
+
+func validateTenant(allTenants []coretnt.Tenant, t *coretnt.Tenant, wizardHandler wizard.Handler) error {
+	validationResult := coretnt.ValidateTenants(slices.Concat(allTenants, []coretnt.Tenant{*t}))
+	for _, warn := range validationResult.Warnings {
+		var tenantRelatedWarn coretnt.TenantRelatedError
+		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(t) {
+			wizardHandler.Warn(warn.Error())
+		}
+	}
+	var tenantRelatedErr coretnt.TenantRelatedError
+	if len(validationResult.Errors) > 0 &&
+		errors.As(validationResult.Errors[0], &tenantRelatedErr) &&
+		tenantRelatedErr.IsRelatedToTenant(t) {
+		return tenantRelatedErr
+	}
+	return nil
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
