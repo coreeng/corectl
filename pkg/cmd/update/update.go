@@ -153,9 +153,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			if len(args) > 0 {
 				opts.targetVersion = args[0]
 			}
-			if cfg.IsPersisted() {
-				opts.githubToken = cfg.GitHub.Token.Value
-			}
+			opts.githubToken = cfg.GitHub.Token.Value
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
