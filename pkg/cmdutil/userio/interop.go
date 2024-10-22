@@ -9,7 +9,7 @@ import (
 
 type nonInteractiveHandler struct {
 	streams *IOStreams
-	styles  nonInteractiveStyles
+	styles  NonInteractiveStyles
 }
 
 func (nih nonInteractiveHandler) InfoLog(message string) string {

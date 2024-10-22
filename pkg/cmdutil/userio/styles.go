@@ -41,7 +41,7 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 	}
 }
 
-type nonInteractiveStyles struct {
+type NonInteractiveStyles struct {
 	InfoStyle        lipgloss.Style
 	WarnHeadingStyle lipgloss.Style
 	WarnMessageStyle lipgloss.Style
@@ -49,8 +49,8 @@ type nonInteractiveStyles struct {
 	Status           wizard.TaskStatusStyle
 }
 
-func NewNonInteractiveStyles() nonInteractiveStyles {
-	return nonInteractiveStyles{
+func NewNonInteractiveStyles() NonInteractiveStyles {
+	return NonInteractiveStyles{
 		InfoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
 		WarnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
 		WarnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
