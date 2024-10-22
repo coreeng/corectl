@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/phuslu/log"
 )
 
 func (s IOStreams) InfoE(messages ...string) error {
@@ -31,7 +33,16 @@ func (s IOStreams) Info(messages ...string) {
 
 func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	if s.IsInteractive() {
-		s.CurrentHandler = newWizard(s)
+		model, handler, doneSync := wizard.New()
+		s.CurrentHandler = handler
+		go func() {
+			_, err := s.Execute(model, tea.WithFilter(handler.OnQuit))
+			if err != nil {
+				log.Error().Err(err).Msgf("Error in Wizard execution")
+			}
+			doneSync <- true
+			s.CurrentHandler = nil
+		}()
 	} else {
 		s.CurrentHandler = &nonInteractiveHandler{
 			streams: s,

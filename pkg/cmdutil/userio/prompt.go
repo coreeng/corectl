@@ -26,18 +26,6 @@ type IOStreams struct {
 	CurrentHandler wizard.Handler
 }
 
-func newWizard(streams *IOStreams) wizard.Handler {
-	model, handler, doneSync := wizard.New()
-	go func() {
-		_, err := streams.Execute(model, tea.WithFilter(handler.OnQuit))
-		if err != nil {
-			log.Error().Err(err).Msgf("Error in Wizard execution")
-		}
-		doneSync <- true
-	}()
-	return handler
-}
-
 func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
 	return NewIOStreamsWithInteractive(in, out, true)
 }
@@ -89,8 +77,6 @@ func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Mod
 			model,
 			options...,
 		).Run()
-		s.CurrentHandler = nil
-		log.Trace().Msg("IOStreams.execute: s.CurrentHandler = nil")
 		return model, err
 	} else {
 		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)

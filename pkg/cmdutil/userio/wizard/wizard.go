@@ -38,13 +38,13 @@ func (t task) isAnonymous() bool {
 	return t.title == "" && t.completedTitle == ""
 }
 
-type TaskStatus uint
+type TaskStatus string
 
 const (
-	taskStatusUnknown TaskStatus = iota
-	TaskStatusSuccess
-	TaskStatusError
-	TaskStatusSkipped
+	taskStatusUnknown TaskStatus = "unknown"
+	TaskStatusSuccess TaskStatus = "success"
+	TaskStatusError   TaskStatus = "error"
+	TaskStatusSkipped TaskStatus = "skipped"
 )
 
 type updateCurrentTaskCompletedTitle struct {
@@ -179,7 +179,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, updateListener
 	case updateCurrentTaskCompletedTitle:
-		log.Debug().Msgf("Wizard: Update current task completed title -> %s", msg.title)
+		log.Debug().Msgf("Wizard: Update current task completed title -> %s [%+v]", msg.title, msg.status)
 		latestTask := m.getLatestTask()
 		if latestTask != nil && !latestTask.isAnonymous() {
 			latestTask.completedTitle = msg.title

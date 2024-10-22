@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -137,12 +136,11 @@ var _ = Describe("corectl update", func() {
 
 		BeforeEach(func() {
 			var err error
+
 			tmpFile, err = os.CreateTemp("", "corectl-test")
 			Expect(err).ShouldNot(HaveOccurred())
 
-			tmpPath, err = os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
-
-			Expect(err).ShouldNot(HaveOccurred())
+			tmpPath = tmpFile.Name()
 		})
 
 		It("successfully writes corectl binary to the specified path", func() {

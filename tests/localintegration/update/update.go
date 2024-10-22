@@ -34,10 +34,10 @@ func runCommand(dir string, name string, args ...string) (string, string, error)
 var _ = Describe("update", Ordered, func() {
 	updateCmd := func(args []string) (string, string, error) {
 		tmpFile, err := os.CreateTemp("", "corectl-update-test")
+		Expect(err).ShouldNot(HaveOccurred())
 
-		Expect(err).ShouldNot(HaveOccurred())
-		tmpPath, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", tmpFile.Fd()))
-		Expect(err).ShouldNot(HaveOccurred())
+		tmpPath := tmpFile.Name()
+
 		err = tmpFile.Close()
 		Expect(err).ShouldNot(HaveOccurred())
 		parentDir := filepath.Dir(tmpPath)

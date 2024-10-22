@@ -246,7 +246,6 @@ func update(opts UpdateOpts) error {
 	log.Debug().Bool("skipConfirmation", opts.skipConfirmation).Msg("checking params")
 
 	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
-	defer wizard.Done()
 	if opts.skipConfirmation {
 		wizard.Info("--skip-confirmation is set, continuing with update")
 	} else {
@@ -320,6 +319,7 @@ func update(opts UpdateOpts) error {
 		return fmt.Errorf("could not move file to path %s: %+v", path, err)
 	}
 	log.Debug().Msgf("moved %s -> %s", tmpPath, path)
+	wizard.Done()
 	return nil
 }
 
