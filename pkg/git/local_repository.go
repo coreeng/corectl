@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/shell"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -326,26 +327,45 @@ type PullResult struct {
 	IsUpdated bool
 }
 
-func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
+func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
 	var gitAuth transport.AuthMethod
 	if auth != nil {
 		gitAuth = auth.toGitAuthMethod()
 	}
+
 	var err error
+	originType := unknownOriginType
+	if !localRepo.DryRun {
+		originType, err = localRepo.originType()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	goGit := originType == httpsOriginType
+
 	log.Debug().
 		Str("repo", localRepo.Path()).
+		Bool("go_git", goGit).
 		Bool("dry_run", localRepo.DryRun).
 		Msg("git: pull")
 	if !localRepo.DryRun {
-		err = localRepo.worktree.Pull(&git.PullOptions{
-			RemoteName: OriginRemote,
-			Auth:       gitAuth,
-		})
+		if goGit {
+			err = localRepo.worktree.Pull(&git.PullOptions{
+				RemoteName: OriginRemote,
+				Auth:       gitAuth,
+			})
+			if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+				return nil, err
+			}
+		} else {
+			if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote); err != nil {
+				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%s", stdout, stderr, err.Error())
+			}
+		}
+
 	}
-	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return PullResult{}, err
-	}
-	return PullResult{IsUpdated: err == nil}, nil
+	return &PullResult{IsUpdated: true}, nil
 }
 
 type PushOp struct {
@@ -353,8 +373,38 @@ type PushOp struct {
 	BranchName string
 }
 
-func (localRepo *LocalRepository) Push(op PushOp) error {
+type originType string
 
+var (
+	sshOriginType     originType = "ssh"
+	httpsOriginType   originType = "https"
+	unknownOriginType originType = "unknown"
+)
+
+func (localRepo *LocalRepository) originType() (originType, error) {
+	remotes, err := localRepo.repo.Remotes()
+	if err != nil {
+		return unknownOriginType, fmt.Errorf("failed to list git remotes: %s", err.Error())
+	}
+	remoteNames := []string{}
+	for _, remote := range remotes {
+		remoteNames = append(remoteNames, remote.Config().Name)
+		if remote.Config().Name == OriginRemote {
+			for _, url := range remote.Config().URLs {
+				if strings.HasPrefix(url, "ssh://") || strings.HasPrefix(url, "git@") {
+					return sshOriginType, nil
+				} else if strings.HasPrefix(url, "https://") {
+					return httpsOriginType, nil
+				} else {
+					return unknownOriginType, nil
+				}
+			}
+		}
+	}
+	return unknownOriginType, fmt.Errorf("failed to find remote %s in %+v", OriginRemote, remoteNames)
+}
+
+func (localRepo *LocalRepository) Push(op PushOp) error {
 	var gitAuth transport.AuthMethod
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
@@ -365,19 +415,51 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 			fmt.Sprintf("+refs/heads/%s:refs/heads/%s", op.BranchName, op.BranchName),
 		))
 	}
-	log.Debug().
-		Str("repo", localRepo.Path()).
-		Bool("dry_run", localRepo.DryRun).
-		Str("branch_name", op.BranchName).
-		Msg("git: pushing branch to remote")
+
+	var err error
+	originType := unknownOriginType
 	if !localRepo.DryRun {
-		if err := localRepo.repo.Push(&git.PushOptions{
-			Auth:     gitAuth,
-			RefSpecs: refSpecs,
-		}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+		originType, err = localRepo.originType()
+		if err != nil {
 			return err
 		}
 	}
+
+	goGit := originType == httpsOriginType
+	log.Debug().
+		Str("repo", localRepo.Path()).
+		Bool("dry_run", localRepo.DryRun).
+		Bool("go_git", goGit).
+		Str("branch_name", op.BranchName).
+		Msg("git: pushing branch to remote")
+
+	if !localRepo.DryRun {
+		if goGit {
+			// Use go-git if origin is set up for https, this will work with the token auth
+			if err := localRepo.repo.Push(&git.PushOptions{
+				Auth:     gitAuth,
+				RefSpecs: refSpecs,
+			}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+				return err
+			}
+		} else {
+			// Use git binary for any other configuration, this will work with various git configs
+			gitArgs := []string{"push", "--set-upstream", OriginRemote}
+			if op.BranchName != "" {
+				gitArgs = append(gitArgs, op.BranchName)
+			} else {
+				currentBranch, err := localRepo.CurrentBranch()
+				if err != nil {
+					return fmt.Errorf("failed to find current branch: %s", err.Error())
+				}
+				gitArgs = append(gitArgs, currentBranch)
+			}
+			if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", gitArgs...); err != nil {
+				return fmt.Errorf("git push failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%s", stdout, stderr, err.Error())
+			}
+		}
+	}
+
 	return nil
 }
 
