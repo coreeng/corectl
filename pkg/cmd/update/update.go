@@ -25,6 +25,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const CmdName = "update"
+
 type UpdateOpts struct {
 	githubToken      string
 	streams          userio.IOStreams
@@ -114,10 +116,16 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 
 		if available {
 			styles := userio.NewNonInteractiveStyles()
-			fmt.Println(
+
+			streams := userio.NewIOStreamsWithInteractive(
+				os.Stdin,
+				os.Stdout,
+				false,
+			)
+			streams.GetOutput().Write([]byte(
 				styles.Bold.Inherit(styles.InfoStyle).
 					Render(fmt.Sprintf("corectl %s is available, run `corectl update` to install.", version)),
-			)
+			))
 		}
 	} else {
 		timeLeft := (updateInterval - timeSince).Round(time.Second)
@@ -145,7 +153,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 		targetVersion: "",
 	}
 	updateCmd := &cobra.Command{
-		Use:   "update",
+		Use:   CmdName,
 		Short: "Update corectl",
 		Long:  `Update to the latest corectl version.`,
 		Args:  cobra.MaximumNArgs(1),

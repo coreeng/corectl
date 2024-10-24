@@ -2,8 +2,10 @@ package version
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +21,12 @@ func VersionCmd(cfg *config.Config) *cobra.Command {
 			if tag != "untagged" {
 				tag = "v" + tag
 			}
-			fmt.Printf("corectl %s (commit: %s) %s %s\n", tag, version.Commit, version.Date, version.Arch)
+			streams := userio.NewIOStreamsWithInteractive(
+				os.Stdin,
+				os.Stdout,
+				false,
+			)
+			streams.GetOutput().Write([]byte(fmt.Sprintf("corectl %s (commit: %s) %s %s\n", tag, version.Commit, version.Date, version.Arch)))
 		},
 	}
 

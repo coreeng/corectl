@@ -1,7 +1,6 @@
 package root
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -61,16 +60,21 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 			if !isCompletion() {
 				ConfigureGlobalLogger(logLevel)
 				cmd.SilenceErrors = true
-				if cmd.Name() != "update" {
+
+				if cmd.Name() != update.CmdName {
 					update.CheckForUpdates(cfg, cmd)
 				}
-				if !cfg.IsPersisted() && !(cmd.Name() == "config") {
+				if !cfg.IsPersisted() && !(cmd.Name() == configcmd.CmdName) {
 					styles := userio.NewNonInteractiveStyles()
-					fmt.Println(
+					streams := userio.NewIOStreamsWithInteractive(
+						os.Stdin,
+						os.Stdout,
+						false,
+					)
+					streams.GetOutput().Write([]byte(
 						styles.WarnMessageStyle.Render("Config not initialised, please run ") +
 							styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init") +
-							styles.WarnMessageStyle.Render(". Most commands will not be available."),
-					)
+							styles.WarnMessageStyle.Render(". Most commands will not be available.")))
 				}
 			}
 			return nil
