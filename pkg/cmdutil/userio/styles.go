@@ -21,9 +21,12 @@ type styles struct {
 
 	err  lipgloss.Style
 	info lipgloss.Style
+	warn lipgloss.Style
 }
 
 func newStyles(renderer *lipgloss.Renderer) *styles {
+	niStyles := NewNonInteractiveStyles()
+
 	return &styles{
 		title:        renderer.NewStyle().MarginLeft(2),
 		item:         renderer.NewStyle().PaddingLeft(2),
@@ -33,28 +36,26 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 		suggestion:   renderer.NewStyle().Faint(true),
 		bold:         renderer.NewStyle().Bold(true),
 
-		err: renderer.NewStyle().
-			MarginLeft(2).
-			Foreground(redColor),
-		info: renderer.NewStyle().
-			Foreground(blueColor),
+		err:  niStyles.WarnMessageStyle,
+		info: niStyles.InfoStyle,
+		warn: niStyles.WarnMessageStyle,
 	}
 }
 
-type nonInteractiveStyles struct {
-	infoStyle        lipgloss.Style
-	warnHeadingStyle lipgloss.Style
-	warnMessageStyle lipgloss.Style
-	bold             lipgloss.Style
-	status           wizard.TaskStatusStyle
+type NonInteractiveStyles struct {
+	InfoStyle        lipgloss.Style
+	WarnHeadingStyle lipgloss.Style
+	WarnMessageStyle lipgloss.Style
+	Bold             lipgloss.Style
+	Status           wizard.TaskStatusStyle
 }
 
-func newNonInteractiveStyles() nonInteractiveStyles {
-	return nonInteractiveStyles{
-		infoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
-		warnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
-		warnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
-		bold:             lipgloss.NewStyle().Bold(true),
-		status:           wizard.DefaultMarks(),
+func NewNonInteractiveStyles() NonInteractiveStyles {
+	return NonInteractiveStyles{
+		InfoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
+		WarnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
+		WarnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
+		Bold:             lipgloss.NewStyle().Bold(true),
+		Status:           wizard.DefaultMarks(),
 	}
 }

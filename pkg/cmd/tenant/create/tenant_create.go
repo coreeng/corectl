@@ -13,6 +13,7 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
@@ -38,6 +39,12 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		Use:   "create",
 		Short: "Creates tenant",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				log.Panic().Err(err).Msg("could not get non-interactive flag")
+			}
+			opt.NonInteractive = nonInteractive
+
 			opt.Streams = userio.NewIOStreamsWithInteractive(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
@@ -100,12 +107,6 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"readonly-group",
 		"",
 		"Readonly group for tenant",
-	)
-	tenantCreateCmd.Flags().BoolVar(
-		&opt.NonInteractive,
-		"nonint",
-		false,
-		"Disable interactive inputs",
 	)
 
 	tenantCreateCmd.Flags().BoolVarP(

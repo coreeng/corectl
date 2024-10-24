@@ -9,6 +9,7 @@ import (
 
 type Handler interface {
 	Done()
+	Abort(string)
 	Info(string)
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
@@ -22,10 +23,24 @@ type asyncHandler struct {
 	messageChannel     chan<- tea.Msg
 	inputResultChannel <-chan tea.Model
 	doneChannel        chan bool
+	completed          bool
 }
 
-func (handler asyncHandler) Done() {
+func (handler *asyncHandler) Done() {
+	if handler.completed {
+		log.Panic().Stack().Msgf("Done: handler is already completed")
+	}
 	handler.update(doneMsg(true))
+	handler.completed = true
+	<-handler.doneChannel
+}
+
+func (handler *asyncHandler) Abort(err string) {
+	if handler.completed {
+		log.Panic().Stack().Msgf("Abort: handler is already completed")
+	}
+	handler.update(errorMsg(err))
+	handler.completed = true
 	<-handler.doneChannel
 }
 
@@ -41,9 +56,11 @@ func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	switch m := m.(type) {
 	case Model:
 		if m.quitting {
+			log.Debug().Msg("received tea.Quit from parent")
 			return msg
 		}
-		// If we didn't send the tea.Quit - assume it is from the inputModel
+		// If we didn't send the tea.Quit - assume it is from the inputModel and forward it
+		log.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
 		return InputCompleted{model: m.inputModel}
 	}
 	return msg

@@ -38,13 +38,13 @@ func (t task) isAnonymous() bool {
 	return t.title == "" && t.completedTitle == ""
 }
 
-type TaskStatus uint
+type TaskStatus string
 
 const (
-	taskStatusUnknown TaskStatus = iota
-	TaskStatusSuccess
-	TaskStatusError
-	TaskStatusSkipped
+	taskStatusUnknown TaskStatus = "unknown"
+	TaskStatusSuccess TaskStatus = "success"
+	TaskStatusError   TaskStatus = "error"
+	TaskStatusSkipped TaskStatus = "skipped"
 )
 
 type updateCurrentTaskCompletedTitle struct {
@@ -55,7 +55,9 @@ type logMsg struct {
 	message string
 	level   log.Level
 }
+type quittingMsg bool
 type doneMsg bool
+type errorMsg string
 
 func New() (Model, Handler, chan<- bool) {
 	doneChannel := make(chan bool)
@@ -77,8 +79,9 @@ func New() (Model, Handler, chan<- bool) {
 		messageChannel:     messageChannel,
 		inputResultChannel: inputResultChannel,
 		doneChannel:        doneChannel,
+		completed:          false,
 	}
-	return model, handler, doneChannel
+	return model, &handler, doneChannel
 }
 
 func (m Model) Init() tea.Cmd {
@@ -107,6 +110,7 @@ func (m Model) markLatestTaskComplete() *task {
 		log.Warn().Msgf("Wizard: Marking task complete, but no tasks found")
 	} else {
 		log.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
+		task.status = TaskStatusSuccess
 		task.completed = true
 	}
 
@@ -115,6 +119,9 @@ func (m Model) markLatestTaskComplete() *task {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	updateListener := m.ReceiveUpdateMessages
+
+	var newInputModel tea.Model
+	var inputCmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -127,15 +134,33 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, inputCmd
 		}
 		return m, nil
-	case doneMsg:
+	case quittingMsg:
+		m.quitting = true
 		log.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
 			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
+		}
+		return m, tea.Quit
+	case doneMsg:
+		m.markLatestTaskComplete()
+		return m, func() tea.Msg { return quittingMsg(true) }
+	case errorMsg:
+		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		if messageLen := len(m.messageChannel); messageLen > 0 {
+			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
+			return m, updateListener
 		} else {
-			m.markLatestTaskComplete()
 			m.quitting = true
-			return m, tea.Quit
+			return m, tea.Sequence(
+				func() tea.Msg {
+					return updateCurrentTaskCompletedTitle{
+						title:  string(msg),
+						status: TaskStatusError,
+					}
+				},
+				func() tea.Msg { return quittingMsg(true) },
+			)
 		}
 	case task:
 		m.markLatestTaskComplete()
@@ -154,7 +179,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, updateListener
 	case updateCurrentTaskCompletedTitle:
-		log.Debug().Msgf("Wizard: Update current task completed title -> %s", msg.title)
+		log.Debug().Msgf("Wizard: Update current task completed title -> %s [%+v]", msg.title, msg.status)
 		latestTask := m.getLatestTask()
 		if latestTask != nil && !latestTask.isAnonymous() {
 			latestTask.completedTitle = msg.title
@@ -177,21 +202,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
 		log.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
-
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			m.quitting = true
-			return m, tea.Quit
-		default:
 			if m.inputModel != nil {
-				newInputModel, inputCmd := m.inputModel.Update(msg)
+				newInputModel, inputCmd = m.inputModel.Update(msg)
 				m.inputModel = newInputModel
 				return m, inputCmd
 			}
+			m.quitting = true
+			return m, tea.Quit
 		}
 	}
-	var newInputModel tea.Model
-	var inputCmd tea.Cmd
+
 	if m.inputModel != nil {
 		newInputModel, inputCmd = m.inputModel.Update(msg)
 		m.inputModel = newInputModel
@@ -211,20 +233,13 @@ func (m Model) WarnLog(message string) string {
 
 func (m Model) View() string {
 	var buffer strings.Builder
-	for taskIndex, task := range m.tasks {
-		if taskIndex > 0 {
-			buffer.WriteString("\n")
-		}
+	for _, task := range m.tasks {
 		for _, message := range task.logs {
 			buffer.WriteString(wrap.String(m.generateLog(message.message, message.level), m.width) + "\n")
 		}
 		if m.inputModel != nil {
 			// show editing icon if an input component has been injected
-			buffer.WriteString(fmt.Sprintf(
-				"%s%s\n",
-				"📝 ",
-				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
-			))
+			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
 		} else if task.isAnonymous() {
 			continue
 		} else if task.completed {

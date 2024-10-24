@@ -9,9 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const CmdName = "config"
+
 func NewConfigCmd(cfg *config.Config) *cobra.Command {
 	configCmd := &cobra.Command{
-		Use:   "config",
+		Use:   CmdName,
 		Short: "corectl configuration management operations",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := cmd.Help(); err != nil {

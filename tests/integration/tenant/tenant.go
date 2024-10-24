@@ -49,7 +49,7 @@ var _ = Describe("tenant", Ordered, func() {
 				// Omitting repositories parameter
 				"--admin-group", "ag",
 				"--readonly-group", "rg",
-				"--nonint")
+				"--non-interactive")
 			Expect(err).ToNot(HaveOccurred())
 		})
 

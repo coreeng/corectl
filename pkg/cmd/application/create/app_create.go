@@ -3,10 +3,11 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
@@ -19,18 +20,18 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
+	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
 type AppCreateOpt struct {
-	Name           string
-	LocalPath      string
-	NonInteractive bool
-	FromTemplate   string
-	Tenant         string
-	ArgsFile       string
-	Args           []string
-	DryRun         bool
+	Name         string
+	LocalPath    string
+	FromTemplate string
+	Tenant       string
+	ArgsFile     string
+	Args         []string
+	DryRun       bool
 
 	Streams userio.IOStreams
 }
@@ -60,10 +61,16 @@ NOTE:
 			} else {
 				opts.LocalPath = "./" + opts.Name
 			}
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				log.Panic().Err(err).Msg("could not get non-interactive flag")
+			}
+
 			opts.Streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
-				!opts.NonInteractive,
+				!nonInteractive,
 			)
 			return run(&opts, cfg)
 		},
@@ -95,12 +102,6 @@ NOTE:
 		"a",
 		[]string{},
 		"Template argument in the format: <arg-name>=<arg-value>",
-	)
-	appCreateCmd.Flags().BoolVar(
-		&opts.NonInteractive,
-		"nonint",
-		false,
-		"Disable interactive inputs",
 	)
 
 	appCreateCmd.Flags().BoolVarP(
