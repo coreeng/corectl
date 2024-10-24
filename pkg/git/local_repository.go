@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/shell"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
@@ -327,25 +328,16 @@ type PullResult struct {
 }
 
 func (localRepo *LocalRepository) Pull(auth AuthMethod) (PullResult, error) {
-	var gitAuth transport.AuthMethod
-	if auth != nil {
-		gitAuth = auth.toGitAuthMethod()
-	}
-	var err error
 	log.Debug().
 		Str("repo", localRepo.Path()).
 		Bool("dry_run", localRepo.DryRun).
 		Msg("git: pull")
 	if !localRepo.DryRun {
-		err = localRepo.worktree.Pull(&git.PullOptions{
-			RemoteName: OriginRemote,
-			Auth:       gitAuth,
-		})
+		if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote); err != nil {
+			return PullResult{}, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%+v", stdout, stderr, err)
+		}
 	}
-	if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-		return PullResult{}, err
-	}
-	return PullResult{IsUpdated: err == nil}, nil
+	return PullResult{IsUpdated: true}, nil
 }
 
 type PushOp struct {
@@ -354,16 +346,15 @@ type PushOp struct {
 }
 
 func (localRepo *LocalRepository) Push(op PushOp) error {
-
-	var gitAuth transport.AuthMethod
-	if op.Auth != nil {
-		gitAuth = op.Auth.toGitAuthMethod()
-	}
-	var refSpecs []config.RefSpec
+	gitArgs := []string{"push", "--set-upstream", "origin"}
 	if op.BranchName != "" {
-		refSpecs = append(refSpecs, config.RefSpec(
-			fmt.Sprintf("+refs/heads/%s:refs/heads/%s", op.BranchName, op.BranchName),
-		))
+		gitArgs = append(gitArgs, op.BranchName)
+	} else {
+		currentBranch, err := localRepo.CurrentBranch()
+		if err != nil {
+			return fmt.Errorf("failed to find current branch: %+v", err)
+		}
+		gitArgs = append(gitArgs, currentBranch)
 	}
 	log.Debug().
 		Str("repo", localRepo.Path()).
@@ -371,11 +362,8 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 		Str("branch_name", op.BranchName).
 		Msg("git: pushing branch to remote")
 	if !localRepo.DryRun {
-		if err := localRepo.repo.Push(&git.PushOptions{
-			Auth:     gitAuth,
-			RefSpecs: refSpecs,
-		}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-			return err
+		if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", gitArgs...); err != nil {
+			return fmt.Errorf("git push failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%+v", stdout, stderr, err)
 		}
 	}
 	return nil
