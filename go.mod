@@ -2,6 +2,7 @@ module github.com/coreeng/corectl
 
 go 1.23
 
+replace github.com/coreeng/developer-platform/pkg => ../developer-platform/pkg
 require (
 	cloud.google.com/go/container v1.40.0
 	github.com/charmbracelet/bubbles v0.20.0
