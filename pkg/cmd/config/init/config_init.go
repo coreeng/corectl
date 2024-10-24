@@ -187,7 +187,7 @@ func run(opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	opt.Streams.Info("Configuration is saved to: ", cfg.Path())
+	opt.Streams.Info("Configuration is saved to: " + cfg.Path())
 	opt.Streams.Info(`
 To keep configuration up to date, periodically run:
 corectl config update`,

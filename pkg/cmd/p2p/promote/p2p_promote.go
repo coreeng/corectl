@@ -2,11 +2,12 @@ package promote
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 type promoteOpts struct {
@@ -136,26 +137,26 @@ func run(opts *promoteOpts) error {
 	}
 
 	for _, registry := range []string{opts.SourceRegistry, opts.DestRegistry} {
-		logInfo("Configuring docker for registry: ", registry)
+		logInfo("Configuring docker for registry: " + registry)
 		_, err := configureDockerWithGcloud(basePath(registry), opts.Exec)
 		if err != nil {
 			return err
 		}
 	}
 
-	logInfo("Pulling image ", imageUri(sourceImage))
+	logInfo("Pulling image " + imageUri(sourceImage))
 	_, err := pullDockerImage(sourceImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 
-	logInfo("Tagging image ", imageUri(sourceImage), " with ", imageUri(destinationImage))
+	logInfo(fmt.Sprintf("Tagging image %s with %s", imageUri(sourceImage), imageUri(destinationImage)))
 	_, err = tagDockerImage(sourceImage, destinationImage, opts.Exec)
 	if err != nil {
 		return err
 	}
 
-	logInfo("Pushing image ", imageUri(destinationImage))
+	logInfo("Pushing image " + imageUri(destinationImage))
 	_, err = pushDockerImage(destinationImage, opts.Exec)
 	if err != nil {
 		return err

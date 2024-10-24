@@ -1,6 +1,7 @@
 package root
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -71,10 +72,12 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 						os.Stdout,
 						false,
 					)
-					streams.GetOutput().Write([]byte(
-						styles.WarnMessageStyle.Render("Config not initialised, please run ") +
-							styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init") +
-							styles.WarnMessageStyle.Render(". Most commands will not be available.")))
+					streams.Warn(
+						fmt.Sprintf(
+							"Config not initialised, please run %s.",
+							styles.Bold.Inherit(styles.WarnMessageStyle).Render("corectl config init"),
+						),
+					)
 				}
 			}
 			return nil

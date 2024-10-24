@@ -21,9 +21,12 @@ type styles struct {
 
 	err  lipgloss.Style
 	info lipgloss.Style
+	warn lipgloss.Style
 }
 
 func newStyles(renderer *lipgloss.Renderer) *styles {
+	niStyles := NewNonInteractiveStyles()
+
 	return &styles{
 		title:        renderer.NewStyle().MarginLeft(2),
 		item:         renderer.NewStyle().PaddingLeft(2),
@@ -33,11 +36,9 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 		suggestion:   renderer.NewStyle().Faint(true),
 		bold:         renderer.NewStyle().Bold(true),
 
-		err: renderer.NewStyle().
-			MarginLeft(2).
-			Foreground(redColor),
-		info: renderer.NewStyle().
-			Foreground(blueColor),
+		err:  niStyles.WarnMessageStyle,
+		info: niStyles.InfoStyle,
+		warn: niStyles.WarnMessageStyle,
 	}
 }
 

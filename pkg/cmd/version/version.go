@@ -26,7 +26,7 @@ func VersionCmd(cfg *config.Config) *cobra.Command {
 				os.Stdout,
 				false,
 			)
-			streams.GetOutput().Write([]byte(fmt.Sprintf("corectl %s (commit: %s) %s %s\n", tag, version.Commit, version.Date, version.Arch)))
+			streams.Print(fmt.Sprintf("corectl %s (commit: %s) %s %s\n", tag, version.Commit, version.Date, version.Arch))
 		},
 	}
 

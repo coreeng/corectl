@@ -5,18 +5,17 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/phuslu/log"
 )
 
-func (s IOStreams) InfoE(messages ...string) error {
-	msg := strings.Join(messages, "")
-	styledMsg := s.styles.info.Render(msg)
-	_, err := s.out.Output().Write([]byte(styledMsg))
+func (s IOStreams) MsgE(message string, style lipgloss.Style) error {
+	_, err := s.out.Output().Write([]byte(style.Render(message)))
 	if err != nil {
 		return fmt.Errorf("couldn't output info message: %v", err)
 	}
-	if len(messages) > 0 && !strings.HasSuffix(msg, "\n") {
+	if !strings.HasSuffix(message, "\n") {
 		if _, err = s.out.Output().Write([]byte("\n")); err != nil {
 			return fmt.Errorf("couldn't output info message: %v", err)
 		}
@@ -24,8 +23,29 @@ func (s IOStreams) InfoE(messages ...string) error {
 	return nil
 }
 
-func (s IOStreams) Info(messages ...string) {
-	err := s.InfoE(messages...)
+func (s IOStreams) Print(messages string) {
+	err := s.MsgE(messages, lipgloss.NewStyle())
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func (s IOStreams) Info(messages string) {
+	err := s.MsgE(messages, s.styles.info)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func (s IOStreams) Warn(messages string) {
+	err := s.MsgE(messages, s.styles.warn)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func (s IOStreams) Error(messages string) {
+	err := s.MsgE(messages, s.styles.err)
 	if err != nil {
 		panic(err.Error())
 	}

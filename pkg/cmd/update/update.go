@@ -122,10 +122,12 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 				os.Stdout,
 				false,
 			)
-			streams.GetOutput().Write([]byte(
-				styles.Bold.Inherit(styles.InfoStyle).
-					Render(fmt.Sprintf("corectl %s is available, run `corectl update` to install.", version)),
-			))
+
+			streams.Info(
+				styles.Bold.Render(
+					fmt.Sprintf("corectl %s is available, run `corectl update` to install.", version),
+				),
+			)
 		}
 	} else {
 		timeLeft := (updateInterval - timeSince).Round(time.Second)
