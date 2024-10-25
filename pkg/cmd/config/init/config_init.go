@@ -51,6 +51,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 			opt.Streams = userio.NewIOStreamsWithInteractive(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 				!opt.NonInteractive,
 			)
 			return run(&opt, cfg)

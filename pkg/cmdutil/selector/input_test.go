@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
+var streams = userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
 
 func TestMain(m *testing.M) {
 	log.DefaultLogger.SetLevel(log.PanicLevel)

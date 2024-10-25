@@ -30,7 +30,7 @@ func (ifp *FilePicker) GetInput(streams IOStreams) (string, error) {
 	expandedValue, err := expandPath(ifp.WorkingDir, initialValue)
 
 	model := textinput.New()
-	if streams.out.ColorProfile() != termenv.Ascii {
+	if streams.stdout.ColorProfile() != termenv.Ascii {
 		model.ShowSuggestions = true
 		model.PlaceholderStyle = streams.styles.suggestion
 		model.CompletionStyle = streams.styles.suggestion

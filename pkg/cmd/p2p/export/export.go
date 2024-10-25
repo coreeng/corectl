@@ -84,6 +84,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 			opts.streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 			)
 			return run(opts, cfg.Repositories.AllowDirty.Value, &cfg.Repositories.CPlatform)
 		},

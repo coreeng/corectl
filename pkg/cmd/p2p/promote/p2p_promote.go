@@ -43,6 +43,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 			)
 			opts.Exec = NewCommander(
 				WithStdout(cmd.OutOrStdout()),

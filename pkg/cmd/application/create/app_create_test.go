@@ -89,7 +89,7 @@ var _ = Describe("AppCreateOpt", func() {
 			})
 
 			It("should handle interactive mode", func() {
-				value, err := input.GetValue(userio.NewIOStreamsWithInteractive(nil, nil, false))
+				value, err := input.GetValue(userio.NewIOStreamsWithInteractive(nil, nil, nil, false))
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(value).To(BeNil())

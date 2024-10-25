@@ -37,6 +37,7 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 			)
 			return run(&opts, cfg)
 		},

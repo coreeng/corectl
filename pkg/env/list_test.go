@@ -45,6 +45,7 @@ NAME        ID                   CLOUD PLATFORM
 	streams := userio.NewIOStreams(
 		os.Stdin,
 		os.Stdout,
+		os.Stderr,
 	)
 
 	for _, tt := range tests {
@@ -95,6 +96,7 @@ NAME          ID    CLOUD PLATFORM
 	streams := userio.NewIOStreams(
 		os.Stdin,
 		os.Stdout,
+		os.Stderr,
 	)
 
 	for _, tt := range tests {

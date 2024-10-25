@@ -32,7 +32,7 @@ func (ti *TextInput[V]) GetInput(streams IOStreams) (V, error) {
 		panic("ValidateAndMap is required")
 	}
 	model := textinput.New()
-	if streams.out.ColorProfile() != termenv.Ascii {
+	if streams.stdout.ColorProfile() != termenv.Ascii {
 		model.Placeholder = ti.Placeholder
 		model.PlaceholderStyle = streams.styles.suggestion
 		model.CompletionStyle = streams.styles.suggestion

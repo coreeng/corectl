@@ -120,6 +120,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 			streams := userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				false,
 			)
 
@@ -173,6 +174,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			opts.streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				!nonInteractive,
 			)
 
@@ -320,8 +322,13 @@ func update(opts UpdateOpts) error {
 	// simulate the rename
 	err = moveFile(tmpPath, partialPath)
 	if err != nil {
-		wizard.Abort(err.Error())
-		return fmt.Errorf("could not move file to partial path %s: %+v", path, err)
+		if strings.Contains(err.Error(), "permission denied") {
+			wizard.Abort(fmt.Sprintf("Could not write to %s, try `sudo corectl update`", path))
+			return fmt.Errorf("could not move file to partial path, try `sudo corectl update %s: %+v", path, err)
+		} else {
+			wizard.Abort(err.Error())
+			return fmt.Errorf("could not move file to partial path %s: %+v", path, err)
+		}
 	}
 	err = os.Rename(partialPath, path)
 	if err != nil {

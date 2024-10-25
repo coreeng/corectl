@@ -70,6 +70,7 @@ NOTE:
 			opts.Streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				!nonInteractive,
 			)
 			return run(&opts, cfg)

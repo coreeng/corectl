@@ -32,7 +32,7 @@ func Test_run(t *testing.T) {
 			DestStage:          "prod",
 			DestAuthOverride:   "/dest-auth.json",
 			Exec:               mockCommander,
-			Streams:            userio.NewIOStreams(os.Stdin, os.Stdout),
+			Streams:            userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 			FileSystem:         mockFS,
 		}
 		err := run(opts)

@@ -1,11 +1,12 @@
 package userio
 
 import (
-	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"io"
 	"os"
 	"slices"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 )
 
 type testEnviron struct{}
@@ -28,8 +29,8 @@ func NewTestIOStreams(in io.Reader, out io.Writer, isInteractive bool) IOStreams
 		termenv.WithEnvironment(testEnviron{}),
 	)
 	return IOStreams{
-		in:            in,
-		out:           renderer,
+		stdin:         in,
+		stdout:        renderer,
 		styles:        newStyles(renderer),
 		isInteractive: isInteractive,
 	}

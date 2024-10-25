@@ -18,26 +18,30 @@ var (
 )
 
 type IOStreams struct {
-	in             io.Reader
-	out            *lipgloss.Renderer
-	outRaw         io.Writer
+	stdin          io.Reader
+	stdout         *lipgloss.Renderer
+	stdoutRaw      io.Writer
+	stderr         *lipgloss.Renderer
+	stderrRaw      io.Writer
 	styles         *styles
 	isInteractive  bool
 	CurrentHandler wizard.Handler
 }
 
-func NewIOStreams(in io.Reader, out io.Writer) IOStreams {
-	return NewIOStreamsWithInteractive(in, out, true)
+func NewIOStreams(stdin io.Reader, stdout io.Writer, stderr io.Writer) IOStreams {
+	return NewIOStreamsWithInteractive(stdin, stdout, stderr, true)
 }
 
-func NewIOStreamsWithInteractive(in io.Reader, out io.Writer, isInteractive bool) IOStreams {
-	renderer := lipgloss.NewRenderer(out, termenv.WithColorCache(true))
+func NewIOStreamsWithInteractive(stdin io.Reader, stdout io.Writer, stderr io.Writer, isInteractive bool) IOStreams {
+	renderer := lipgloss.NewRenderer(stdout, termenv.WithColorCache(true))
 	return IOStreams{
-		in:             in,
-		out:            renderer,
-		outRaw:         out,
+		stdin:          stdin,
+		stdout:         renderer,
+		stdoutRaw:      stdout,
+		stderr:         lipgloss.NewRenderer(stderr, termenv.WithColorCache(true)),
+		stderrRaw:      stderr,
 		styles:         newStyles(renderer),
-		isInteractive:  isInteractive && IsTerminalInteractive(in, out),
+		isInteractive:  isInteractive && IsTerminalInteractive(stdin, stdout),
 		CurrentHandler: nil,
 	}
 }
@@ -47,7 +51,7 @@ func (s IOStreams) IsInteractive() bool {
 }
 
 func (s IOStreams) GetOutput() io.Writer {
-	return s.out.Output()
+	return s.stdout.Output()
 }
 
 func IsTerminalInteractive(in io.Reader, out io.Writer) bool {
@@ -69,8 +73,8 @@ func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Mod
 		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
 
 		options := append([]tea.ProgramOption{
-			tea.WithInput(s.in),
-			tea.WithOutput(s.outRaw),
+			tea.WithInput(s.stdin),
+			tea.WithOutput(s.stdoutRaw),
 		}, opts...)
 
 		model, err := tea.NewProgram(

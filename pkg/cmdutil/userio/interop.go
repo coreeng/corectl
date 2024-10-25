@@ -26,10 +26,10 @@ func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 }
 
 func (nih nonInteractiveHandler) Info(message string) {
-	_, _ = nih.streams.outRaw.Write([]byte(nih.InfoLog(message) + "\n"))
+	_, _ = nih.streams.stdoutRaw.Write([]byte(nih.InfoLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) Warn(message string) {
-	_, _ = nih.streams.outRaw.Write([]byte(nih.WarnLog(message) + "\n"))
+	_, _ = nih.streams.stdoutRaw.Write([]byte(nih.WarnLog(message) + "\n"))
 }
 func (nih nonInteractiveHandler) SetTask(title string, _ string) {
 	nih.Info(fmt.Sprintf("[%s]", nih.styles.Bold.Render(title)))
