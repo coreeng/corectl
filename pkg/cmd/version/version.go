@@ -10,9 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const CmdName = "version"
+
 func VersionCmd(cfg *config.Config) *cobra.Command {
 	versionCmd := &cobra.Command{
-		Use:   "version",
+		Use:   CmdName,
 		Short: "List corectl version",
 		Long:  `This command allows you to list the currently running corectl version.`,
 		Args:  cobra.NoArgs,
@@ -20,6 +22,7 @@ func VersionCmd(cfg *config.Config) *cobra.Command {
 			streams := userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				false,
 			)
 			streams.Print(fmt.Sprintf("corectl %s (commit: %s) %s %s\n", version.Version, version.Commit, version.Date, version.Arch))

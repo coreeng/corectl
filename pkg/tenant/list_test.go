@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"bytes"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	. "github.com/onsi/ginkgo/v2"
@@ -11,8 +12,8 @@ import (
 var _ = Describe("tenant table", func() {
 	DescribeTable("render",
 		func(tenants []coretnt.Tenant, expectedOutput string) {
-			stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
-			streams := userio.NewIOStreams(&stdin, &stdout)
+			var stdin, stdout, stderr bytes.Buffer
+			streams := userio.NewIOStreams(&stdin, &stdout, &stderr)
 			table := NewTable(streams)
 			for _, t := range tenants {
 				table.AppendRow(t)

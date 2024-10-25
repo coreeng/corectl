@@ -62,14 +62,16 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 				ConfigureGlobalLogger(logLevel)
 				cmd.SilenceErrors = true
 
-				if cmd.Name() != update.CmdName {
+				cmdName := cmd.Name()
+				if cmdName != update.CmdName {
 					update.CheckForUpdates(cfg, cmd)
 				}
-				if !cfg.IsPersisted() && !(cmd.Name() == configcmd.CmdName) {
+				if !cfg.IsPersisted() && !(cmdName == configcmd.CmdName || cmdName == version.CmdName) {
 					styles := userio.NewNonInteractiveStyles()
 					streams := userio.NewIOStreamsWithInteractive(
 						os.Stdin,
 						os.Stdout,
+						os.Stderr,
 						false,
 					)
 					streams.Warn(

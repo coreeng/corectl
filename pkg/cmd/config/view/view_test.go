@@ -13,13 +13,13 @@ import (
 
 var _ = Describe("config view", func() {
 	It("no options", func() {
-		stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
+		var stdin, stdout, stderr bytes.Buffer
 		originalCfg := config.NewTestPersistedConfig()
 		fillCfgWithMockValues(originalCfg)
 
 		cfg := *originalCfg
 		err := run(&ConfigViewOpts{
-			Streams: userio.NewIOStreams(&stdin, &stdout),
+			Streams: userio.NewIOStreams(&stdin, &stdout, &stderr),
 			Raw:     false,
 		}, &cfg)
 		Expect(err).NotTo(HaveOccurred())
@@ -33,13 +33,13 @@ var _ = Describe("config view", func() {
 		Expect(cfg).To(Equal(*originalCfg), "config value is modified")
 	})
 	It("raw output", func() {
-		stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
+		var stdin, stdout, stderr bytes.Buffer
 		originalCfg := config.NewTestPersistedConfig()
 		fillCfgWithMockValues(originalCfg)
 
 		cfg := *originalCfg
 		err := run(&ConfigViewOpts{
-			Streams: userio.NewIOStreams(&stdin, &stdout),
+			Streams: userio.NewIOStreams(&stdin, &stdout, &stderr),
 			Raw:     true,
 		}, &cfg)
 		Expect(err).NotTo(HaveOccurred())
@@ -53,17 +53,17 @@ var _ = Describe("config view", func() {
 		Expect(cfg).To(Equal(*originalCfg), "config value is modified")
 	})
 	It("config is not persisted", func() {
-		stdin, stdout := bytes.Buffer{}, bytes.Buffer{}
+		var stdin, stdout, stderr bytes.Buffer
 		originalCfg := config.NewConfig()
 		fillCfgWithMockValues(originalCfg)
 
 		cfg := *originalCfg
 		err := run(&ConfigViewOpts{
-			Streams: userio.NewIOStreams(&stdin, &stdout),
+			Streams: userio.NewIOStreams(&stdin, &stdout, &stderr),
 			Raw:     false,
 		}, &cfg)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stdout.String()).To(ContainSubstring("No config found"))
+		Expect(stderr.String()).To(ContainSubstring("No config found"))
 		Expect(cfg).To(Equal(*originalCfg), "config value is modified")
 	})
 })

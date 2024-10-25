@@ -2,6 +2,7 @@ package set
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/spf13/cobra"
@@ -26,6 +27,7 @@ func NewConfigSetCmd(cfg *config.Config) *cobra.Command {
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 			)
 			return run(&opts, cfg)
 		},

@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var streams = userio.NewIOStreams(os.Stdin, os.Stdout)
+var streams = userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
 
 func TestMain(m *testing.M) {
 	log.DefaultLogger.SetLevel(log.PanicLevel)
@@ -25,17 +25,17 @@ func TestMain(m *testing.M) {
 }
 
 func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
-	var output bytes.Buffer
+	var output, stderr bytes.Buffer
 
 	err := run(&exportOpts{
 		tenant:          testdata.DefaultTenant(),
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
-		streams:         userio.NewIOStreams(os.Stdin, &output),
+		streams:         userio.NewIOStreams(os.Stdin, &output, &stderr),
 	}, false, &config.Parameter[string]{Value: testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()})
 
 	assert.NoError(t, err)
-	assert.Contains(t, output.String(), "export", p2p.BaseDomain, p2p.Registry, p2p.Version, p2p.RepoPath, p2p.TenantName, p2p.Region)
+	assert.Contains(t, stderr.String(), "export", p2p.BaseDomain, p2p.Registry, p2p.Version, p2p.RepoPath, p2p.TenantName, p2p.Region)
 }
 
 func TestRunExportNonExistingAppRepo(t *testing.T) {

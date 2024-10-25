@@ -120,6 +120,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 			streams := userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				false,
 			)
 
@@ -173,6 +174,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 			opts.streams = userio.NewIOStreamsWithInteractive(
 				os.Stdin,
 				os.Stdout,
+				os.Stderr,
 				!nonInteractive,
 			)
 

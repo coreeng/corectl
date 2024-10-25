@@ -1,10 +1,11 @@
 package env
 
 import (
-	"github.com/coreeng/corectl/pkg/command"
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/developer-platform/pkg/environment"
@@ -23,6 +24,7 @@ func TestConnectSuccess(t *testing.T) {
 	streams := userio.NewIOStreams(
 		os.Stdin,
 		os.Stdout,
+		os.Stderr,
 	)
 	err := Connect(streams, env, mockCommanderSuccess{}, proxy)
 	assert.NoError(t, err)
@@ -40,6 +42,7 @@ func TestConnectFail(t *testing.T) {
 	streams := userio.NewIOStreams(
 		os.Stdin,
 		os.Stdout,
+		os.Stderr,
 	)
 	err := Connect(streams, env, mockCommanderFail{}, proxy)
 	assert.Error(t, err)

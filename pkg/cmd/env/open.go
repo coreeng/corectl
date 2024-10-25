@@ -31,6 +31,7 @@ func openResource(cfg *config.Config) *cobra.Command {
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
 			)
 			return run(cfg, &opts)
 		},

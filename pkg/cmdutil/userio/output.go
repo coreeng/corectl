@@ -10,13 +10,13 @@ import (
 	"github.com/phuslu/log"
 )
 
-func (s IOStreams) MsgE(message string, style lipgloss.Style) error {
-	_, err := s.out.Output().Write([]byte(style.Render(message)))
+func (s IOStreams) MsgE(message string, style lipgloss.Style, stream *lipgloss.Renderer) error {
+	_, err := stream.Output().Write([]byte(style.Render(message)))
 	if err != nil {
 		return fmt.Errorf("couldn't output info message: %v", err)
 	}
 	if !strings.HasSuffix(message, "\n") {
-		if _, err = s.out.Output().Write([]byte("\n")); err != nil {
+		if _, err = stream.Output().Write([]byte("\n")); err != nil {
 			return fmt.Errorf("couldn't output info message: %v", err)
 		}
 	}
@@ -24,28 +24,28 @@ func (s IOStreams) MsgE(message string, style lipgloss.Style) error {
 }
 
 func (s IOStreams) Print(messages string) {
-	err := s.MsgE(messages, lipgloss.NewStyle())
+	err := s.MsgE(messages, lipgloss.NewStyle(), s.stdout)
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func (s IOStreams) Info(messages string) {
-	err := s.MsgE(messages, s.styles.info)
+	err := s.MsgE(messages, s.styles.info, s.stderr)
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func (s IOStreams) Warn(messages string) {
-	err := s.MsgE(messages, s.styles.warn)
+	err := s.MsgE(messages, s.styles.warn, s.stderr)
 	if err != nil {
 		panic(err.Error())
 	}
 }
 
 func (s IOStreams) Error(messages string) {
-	err := s.MsgE(messages, s.styles.err)
+	err := s.MsgE(messages, s.styles.err, s.stderr)
 	if err != nil {
 		panic(err.Error())
 	}
