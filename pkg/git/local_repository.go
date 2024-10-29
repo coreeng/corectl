@@ -328,12 +328,15 @@ type PullResult struct {
 }
 
 func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
-	var gitAuth transport.AuthMethod
+	var (
+		gitAuth         transport.AuthMethod
+		err             error
+		alreadyUpToDate bool = false
+	)
 	if auth != nil {
 		gitAuth = auth.toGitAuthMethod()
 	}
 
-	var err error
 	originType := unknownOriginType
 	if !localRepo.DryRun {
 		originType, err = localRepo.originType()
@@ -355,17 +358,20 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
 				RemoteName: OriginRemote,
 				Auth:       gitAuth,
 			})
-			if err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
+			if err != nil {
 				return nil, err
 			}
+			alreadyUpToDate = errors.Is(err, git.NoErrAlreadyUpToDate)
 		} else {
-			if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote); err != nil {
+			stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote)
+			if err != nil {
 				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%v", stdout, stderr, err)
 			}
+			alreadyUpToDate = strings.Contains(stdout, "Already up to date.")
 		}
 
 	}
-	return &PullResult{IsUpdated: true}, nil
+	return &PullResult{IsUpdated: !alreadyUpToDate}, nil
 }
 
 type PushOp struct {
