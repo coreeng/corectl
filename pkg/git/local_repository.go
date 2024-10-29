@@ -360,7 +360,7 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
 			}
 		} else {
 			if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote); err != nil {
-				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%s", stdout, stderr, err.Error())
+				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%v", stdout, stderr, err)
 			}
 		}
 
@@ -384,7 +384,7 @@ var (
 func (localRepo *LocalRepository) originType() (originType, error) {
 	remotes, err := localRepo.repo.Remotes()
 	if err != nil {
-		return unknownOriginType, fmt.Errorf("failed to list git remotes: %s", err.Error())
+		return unknownOriginType, fmt.Errorf("failed to list git remotes: %v", err)
 	}
 	remoteNames := []string{}
 	for _, remote := range remotes {
@@ -450,12 +450,12 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 			} else {
 				currentBranch, err := localRepo.CurrentBranch()
 				if err != nil {
-					return fmt.Errorf("failed to find current branch: %s", err.Error())
+					return fmt.Errorf("failed to find current branch: %v", err)
 				}
 				gitArgs = append(gitArgs, currentBranch)
 			}
 			if stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", gitArgs...); err != nil {
-				return fmt.Errorf("git push failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%s", stdout, stderr, err.Error())
+				return fmt.Errorf("git push failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%v", stdout, stderr, err)
 			}
 		}
 	}
