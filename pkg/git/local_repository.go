@@ -358,14 +358,15 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
 				RemoteName: OriginRemote,
 				Auth:       gitAuth,
 			})
-			if err != nil {
-				return nil, err
+			if errors.Is(err, git.NoErrAlreadyUpToDate) {
+				alreadyUpToDate = true
+				err = nil
 			}
-			alreadyUpToDate = errors.Is(err, git.NoErrAlreadyUpToDate)
-		} else {
-			stdout, stderr, err := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote)
-			if err != nil {
-				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%v", stdout, stderr, err)
+		}
+		if err != nil || !goGit {
+			stdout, stderr, gitErr := shell.RunCommand(localRepo.Path(), "git", "pull", OriginRemote)
+			if gitErr != nil {
+				return nil, fmt.Errorf("git pull failed:\n\tstdout:[%s]\n\tstderr:[%s]\n%v\ntoken attempt: %v", stdout, stderr, gitErr, err)
 			}
 			alreadyUpToDate = strings.Contains(stdout, "Already up to date.")
 		}
@@ -411,11 +412,14 @@ func (localRepo *LocalRepository) originType() (originType, error) {
 }
 
 func (localRepo *LocalRepository) Push(op PushOp) error {
-	var gitAuth transport.AuthMethod
+	var (
+		gitAuth  transport.AuthMethod
+		refSpecs []config.RefSpec
+	)
+
 	if op.Auth != nil {
 		gitAuth = op.Auth.toGitAuthMethod()
 	}
-	var refSpecs []config.RefSpec
 	if op.BranchName != "" {
 		refSpecs = append(refSpecs, config.RefSpec(
 			fmt.Sprintf("+refs/heads/%s:refs/heads/%s", op.BranchName, op.BranchName),
@@ -440,15 +444,23 @@ func (localRepo *LocalRepository) Push(op PushOp) error {
 		Msg("git: pushing branch to remote")
 
 	if !localRepo.DryRun {
+		err = nil
 		if goGit {
 			// Use go-git if origin is set up for https, this will work with the token auth
-			if err := localRepo.repo.Push(&git.PushOptions{
+			err = localRepo.repo.Push(&git.PushOptions{
 				Auth:     gitAuth,
 				RefSpecs: refSpecs,
-			}); err != nil && !errors.Is(err, git.NoErrAlreadyUpToDate) {
-				return err
+			})
+			if err != nil {
+				if errors.Is(err, git.NoErrAlreadyUpToDate) {
+					err = nil
+				} else {
+					return err
+				}
 			}
-		} else {
+		}
+
+		if err != nil || !goGit {
 			// Use git binary for any other configuration, this will work with various git configs
 			gitArgs := []string{"push", "--set-upstream", OriginRemote}
 			if op.BranchName != "" {
