@@ -11,7 +11,7 @@ import (
 func Run() int {
 	cfg, err := config.DiscoverConfig()
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 10
 	}
 
@@ -20,7 +20,7 @@ func Run() int {
 	err = rootCmd.Execute()
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return 1
 	}
 	return 0
