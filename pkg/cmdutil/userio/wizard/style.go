@@ -3,13 +3,15 @@ package wizard
 import "github.com/charmbracelet/lipgloss"
 
 type Styles struct {
-	Bold           lipgloss.Style
-	Spinner        lipgloss.Style
-	InfoLogHeading lipgloss.Style
-	WarnLogHeading lipgloss.Style
-	InfoLogBody    lipgloss.Style
-	WarnLogBody    lipgloss.Style
-	Marks          TaskStatusStyle
+	Bold            lipgloss.Style
+	Spinner         lipgloss.Style
+	InfoLogHeading  lipgloss.Style
+	InfoLogBody     lipgloss.Style
+	WarnLogHeading  lipgloss.Style
+	WarnLogBody     lipgloss.Style
+	ErrorLogHeading lipgloss.Style
+	ErrorLogBody    lipgloss.Style
+	Marks           TaskStatusStyle
 }
 
 type TaskStatusStyle struct {
@@ -35,13 +37,15 @@ func (s TaskStatusStyle) Render(status TaskStatus) string {
 
 func DefaultStyles() Styles {
 	return Styles{
-		Bold:           lipgloss.NewStyle().Bold(true),
-		Spinner:        lipgloss.NewStyle().Foreground(lipgloss.Color("#0404ff")), // CECG Blue
-		InfoLogHeading: lipgloss.NewStyle().Foreground(lipgloss.Color("051")),
-		InfoLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("159")),
-		WarnLogHeading: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
-		WarnLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
-		Marks:          DefaultMarks(),
+		Bold:            lipgloss.NewStyle().Bold(true),
+		Spinner:         lipgloss.NewStyle().Foreground(lipgloss.Color("#0404ff")), // CECG Blue
+		InfoLogHeading:  lipgloss.NewStyle().Foreground(lipgloss.Color("051")),
+		InfoLogBody:     lipgloss.NewStyle().Foreground(lipgloss.Color("159")),
+		WarnLogHeading:  lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
+		WarnLogBody:     lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
+		ErrorLogHeading: lipgloss.NewStyle().Foreground(lipgloss.Color("203")),
+		ErrorLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("210")),
+		Marks:           DefaultMarks(),
 	}
 }
 

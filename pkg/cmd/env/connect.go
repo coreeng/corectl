@@ -1,13 +1,15 @@
 package env
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
-
-	"github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/coreeng/developer-platform/pkg/environment"
@@ -15,36 +17,68 @@ import (
 	"golang.org/x/net/context"
 )
 
-type EnvConnectOpt struct {
-	Port               int
-	Environment        string
-	RepositoryLocation string
-	ProjectID          string
-	Region             string
-	Streams            userio.IOStreams
-	Exec               command.Commander
-	gcpClient          gcp.Client
+// use os args to capture flags in commands (we can't detect -- otherwise)
+func unfilteredExecuteArgs() []string {
+	for i, arg := range os.Args {
+		if arg == "--" && i+1 < len(os.Args) {
+			return os.Args[i+1:]
+		}
+	}
+	return []string{}
+}
+
+func findEnvironmentByName(name string, environments []environment.Environment) (*environment.Environment, error) {
+	for _, env := range environments {
+		if name == env.Environment {
+			return &env, nil
+		}
+	}
+	return nil, fmt.Errorf("could not find environment: %s", name)
 }
 
 func connectCmd(cfg *config.Config) *cobra.Command {
-	opts := EnvConnectOpt{
-		Exec: command.NewCommander(),
+	opts := corectlenv.EnvConnectOpts{
+		SilentExec: command.NewCommander(
+			command.WithStdout(&bytes.Buffer{}),
+			command.WithStderr(&bytes.Buffer{}),
+		),
+		Exec: command.NewCommander(
+			command.WithStdout(os.Stdout),
+			command.WithStderr(os.Stderr),
+		),
 	}
 	connectCmd := &cobra.Command{
 		Use:   "connect <environment>",
 		Short: "Connect to an environment",
 		Long:  `This command allows you to connect to a specified environment.`,
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			var (
+				err                   error
+				availableEnvironments []environment.Environment
+				envNames              []string
+			)
 			if len(args) > 0 {
-				opts.Environment = args[0]
+				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
+				if err == nil {
+					env, err := findEnvironmentByName(args[0], availableEnvironments)
+					if err != nil {
+						return err
+					}
+					opts.Environment = env
+				}
+				opts.Command = unfilteredExecuteArgs()
+			} else {
+				return fmt.Errorf("please specify the environment as the 1st argument, one of: {%s}", strings.Join(envNames, "|"))
 			}
+			fmt.Printf("\n\n\nARGS: %+v\n\n\n", args)
+			fmt.Printf("\n\n\nCOMMAND: %+v\n\n\n", opts.Command)
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 				cmd.OutOrStderr(),
 			)
-			return connect(opts, cfg)
+			return connect(opts, cfg, availableEnvironments)
 		},
 	}
 
@@ -69,27 +103,22 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 	return connectCmd
 }
 
-func connect(opts EnvConnectOpt, cfg *config.Config) error {
+func connect(opts corectlenv.EnvConnectOpts, cfg *config.Config, availableEnvironments []environment.Environment) error {
 	if !cfg.Repositories.AllowDirty.Value {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err
 		}
 	}
-	envs, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
-	if err != nil {
-		return err
-	}
-	inputEnv := createEnvInputSwitch(opts, envs)
+	inputEnv := createEnvInputSwitch(opts, availableEnvironments)
 	envOutput, err := inputEnv.GetValue(opts.Streams)
 	if err != nil {
 		return err
 	}
-	opts.Environment = envOutput
-
-	env, err := environment.FindByName(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation), opts.Environment)
+	env, err := findEnvironmentByName(envOutput, availableEnvironments)
 	if err != nil {
 		return err
 	}
+	opts.Environment = env
 
 	ctx := context.Background()
 	gcpClient, err := setupSvc(ctx)
@@ -97,16 +126,16 @@ func connect(opts EnvConnectOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.gcpClient = *gcpClient
+	opts.GcpClient = gcpClient
 
-	if err := corectlenv.Validate(ctx, env, opts.Exec, &opts.gcpClient); err != nil {
+	if err := corectlenv.Validate(ctx, env, opts.Exec, opts.GcpClient); err != nil {
 		return err
 	}
 
 	gcpEnv := env.Platform.(*environment.GCPVendor)
 	opts.ProjectID = gcpEnv.ProjectId
 	opts.Region = gcpEnv.Region
-	if err := corectlenv.Connect(opts.Streams, env, opts.Exec, opts.Port); err != nil {
+	if err := corectlenv.Connect(opts); err != nil {
 		return err
 	}
 
@@ -126,7 +155,7 @@ func setupSvc(ctx context.Context) (*gcp.Client, error) {
 	return gcpClient, nil
 }
 
-func createEnvInputSwitch(opts EnvConnectOpt, environments []environment.Environment) *userio.InputSourceSwitch[string, string] {
+func createEnvInputSwitch(opts corectlenv.EnvConnectOpts, environments []environment.Environment) *userio.InputSourceSwitch[string, string] {
 	validateFn := func(s string) (string, error) {
 		s = strings.TrimSpace(s)
 		for _, env := range environments {
@@ -137,7 +166,7 @@ func createEnvInputSwitch(opts EnvConnectOpt, environments []environment.Environ
 		return s, errors.New("unknown environment")
 	}
 	return &userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(opts.Environment),
+		DefaultValue: userio.AsZeroable(opts.Environment.Environment),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			envs := make([]string, len(environments))
 			for i, t := range environments {

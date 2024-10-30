@@ -18,6 +18,9 @@ func (nih nonInteractiveHandler) InfoLog(message string) string {
 func (nih nonInteractiveHandler) WarnLog(message string) string {
 	return fmt.Sprintf("%s %s", nih.styles.WarnHeadingStyle.Render("WARN:"), nih.styles.WarnMessageStyle.Render(message))
 }
+func (nih nonInteractiveHandler) ErrorLog(message string) string {
+	return fmt.Sprintf("%s %s", nih.styles.ErrorHeadingStyle.Render("ERROR:"), nih.styles.ErrorMessageStyle.Render(message))
+}
 
 func (*nonInteractiveHandler) Done()            {}
 func (*nonInteractiveHandler) Abort(err string) {}
@@ -31,8 +34,14 @@ func (nih nonInteractiveHandler) Info(message string) {
 func (nih nonInteractiveHandler) Warn(message string) {
 	_, _ = nih.streams.stdoutRaw.Write([]byte(nih.WarnLog(message) + "\n"))
 }
+func (nih nonInteractiveHandler) Error(message string) {
+	_, _ = nih.streams.stdoutRaw.Write([]byte(nih.ErrorLog(message) + "\n"))
+}
 func (nih nonInteractiveHandler) SetTask(title string, _ string) {
 	nih.Info(fmt.Sprintf("[%s]", nih.styles.Bold.Render(title)))
+}
+func (nih nonInteractiveHandler) SetCurrentTaskCompleted() {
+	nih.Info(fmt.Sprintf("[%s %s]", nih.styles.Status.Render(wizard.TaskStatusSuccess), nih.styles.Bold.Render("Task completed")))
 }
 func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitle(completedTitle string) {
 	nih.Info(fmt.Sprintf("[%s %s]", nih.styles.Status.Render(wizard.TaskStatusSuccess), nih.styles.Bold.Render(completedTitle)))

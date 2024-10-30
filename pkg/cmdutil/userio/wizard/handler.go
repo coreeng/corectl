@@ -8,15 +8,17 @@ import (
 )
 
 type Handler interface {
-	Done()
 	Abort(string)
+	Done()
+	SetCurrentTaskCompleted()
+	Error(string)
 	Info(string)
+	OnQuit(tea.Model, tea.Msg) tea.Msg
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
 	SetInputModel(tea.Model) tea.Model
 	SetTask(string, string)
 	Warn(string)
-	OnQuit(tea.Model, tea.Msg) tea.Msg
 }
 
 type asyncHandler struct {
@@ -78,6 +80,7 @@ func (handler asyncHandler) Info(message string) {
 		message: message,
 	})
 }
+
 func (handler asyncHandler) Warn(message string) {
 	handler.update(logMsg{
 		level:   log.WarnLevel,
@@ -85,8 +88,19 @@ func (handler asyncHandler) Warn(message string) {
 	})
 }
 
+func (handler asyncHandler) Error(message string) {
+	handler.update(logMsg{
+		level:   log.ErrorLevel,
+		message: message,
+	})
+}
+
 func (handler asyncHandler) update(message tea.Msg) {
 	handler.messageChannel <- message
+}
+
+func (handler asyncHandler) SetCurrentTaskCompleted() {
+	handler.update(taskComplete(true))
 }
 
 func (handler asyncHandler) SetCurrentTaskCompletedTitle(title string) {

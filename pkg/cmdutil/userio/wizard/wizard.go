@@ -56,6 +56,7 @@ type logMsg struct {
 	level   log.Level
 }
 type quittingMsg bool
+type taskComplete bool
 type doneMsg bool
 type errorMsg string
 
@@ -142,6 +143,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
 		}
 		return m, tea.Quit
+	case taskComplete:
+		m.markLatestTaskComplete()
+		return m, updateListener
 	case doneMsg:
 		m.markLatestTaskComplete()
 		return m, func() tea.Msg { return quittingMsg(true) }
@@ -231,6 +235,10 @@ func (m Model) WarnLog(message string) string {
 	return fmt.Sprintf("%s %s", m.Styles.WarnLogHeading.Render("WARN:"), m.Styles.WarnLogBody.Render(message))
 }
 
+func (m Model) ErrorLog(message string) string {
+	return fmt.Sprintf("%s %s", m.Styles.ErrorLogHeading.Render("ERROR:"), m.Styles.ErrorLogBody.Render(message))
+}
+
 func (m Model) View() string {
 	var buffer strings.Builder
 	for _, task := range m.tasks {
@@ -271,6 +279,8 @@ func (m Model) generateLog(message string, level log.Level) string {
 		return m.InfoLog(message)
 	case log.WarnLevel:
 		return m.WarnLog(message)
+	case log.ErrorLevel:
+		return m.ErrorLog(message)
 	default:
 		log.Warn().Str("log", message).Str("level", level.String()).Msg("Wizard: log level not set")
 		return "[LEVEL NOT SET] " + message

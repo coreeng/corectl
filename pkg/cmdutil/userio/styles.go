@@ -43,19 +43,24 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 }
 
 type NonInteractiveStyles struct {
-	InfoStyle        lipgloss.Style
-	WarnHeadingStyle lipgloss.Style
-	WarnMessageStyle lipgloss.Style
-	Bold             lipgloss.Style
-	Status           wizard.TaskStatusStyle
+	InfoStyle         lipgloss.Style
+	ErrorHeadingStyle lipgloss.Style
+	ErrorMessageStyle lipgloss.Style
+	WarnHeadingStyle  lipgloss.Style
+	WarnMessageStyle  lipgloss.Style
+	Bold              lipgloss.Style
+	Status            wizard.TaskStatusStyle
 }
 
 func NewNonInteractiveStyles() NonInteractiveStyles {
+	styles := wizard.DefaultStyles()
 	return NonInteractiveStyles{
-		InfoStyle:        lipgloss.NewStyle().Foreground(lipgloss.Color("123")),
-		WarnHeadingStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("227")),
-		WarnMessageStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("228")),
-		Bold:             lipgloss.NewStyle().Bold(true),
-		Status:           wizard.DefaultMarks(),
+		InfoStyle:         styles.InfoLogBody,
+		ErrorHeadingStyle: styles.ErrorLogHeading,
+		ErrorMessageStyle: styles.ErrorLogBody,
+		WarnHeadingStyle:  styles.WarnLogHeading,
+		WarnMessageStyle:  styles.WarnLogBody,
+		Bold:              styles.Bold,
+		Status:            styles.Marks,
 	}
 }

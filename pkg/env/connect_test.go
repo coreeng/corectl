@@ -26,7 +26,7 @@ func TestConnectSuccess(t *testing.T) {
 		os.Stdout,
 		os.Stderr,
 	)
-	err := Connect(streams, env, mockCommanderSuccess{}, proxy)
+	err := Connect(streams, env, mockCommanderSuccess{}, proxy, true, []string{})
 	assert.NoError(t, err)
 }
 
@@ -44,7 +44,7 @@ func TestConnectFail(t *testing.T) {
 		os.Stdout,
 		os.Stderr,
 	)
-	err := Connect(streams, env, mockCommanderFail{}, proxy)
+	err := Connect(streams, env, mockCommanderFail{}, proxy, true, []string{})
 	assert.Error(t, err)
 }
 
