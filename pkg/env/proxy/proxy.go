@@ -37,12 +37,12 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	wizardH.Info(fmt.Sprintf("Listening on %s", listen))
 	log.Info().Msgf("listening: %+v", listener)
 
-	executionFinished := make(chan bool)
+	executionFinished := make(chan error)
 	go func() {
 		if execute != nil {
-			execute()
+			err := execute()
 			listener.Close()
-			executionFinished <- true
+			executionFinished <- err
 		}
 	}()
 
@@ -56,7 +56,11 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 			if err != nil {
 				if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
 					log.Info().Msg("Listener closed, stopping new connections.")
-					<-executionFinished
+					err := <-executionFinished
+					if err != nil {
+						wizardH.Abort(err.Error())
+						log.Fatal().Err(err).Msg("Execution failed")
+					}
 					wizardH.Info("Tunnel closed")
 					return
 				}

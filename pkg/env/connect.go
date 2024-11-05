@@ -18,10 +18,10 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-const bastionSquidProxyPort = 3128
-const defaultInterfaceName = "nic0"
-const defaultZone = "europe-west2-a"
-const kubeNamespace = "default"
+const BastionSquidProxyPort = 3128
+const DefaultInterfaceName = "nic0"
+const DefaultZone = "europe-west2-a"
+const KubeNamespace = "default"
 
 var defaultTokenScopes = []string{"https://www.googleapis.com/auth/cloud-platform"}
 
@@ -78,11 +78,11 @@ func Connect(opts EnvConnectOpts) error {
 		startIAPTunnel(
 			s,
 			e.ProjectId,
-			defaultZone,
+			DefaultZone,
 			proxyUrl,
 			bastionName,
-			bastionSquidProxyPort,
-			defaultInterfaceName,
+			BastionSquidProxyPort,
+			DefaultInterfaceName,
 			true,
 			execute,
 		)
@@ -174,7 +174,7 @@ func setCredentials(c Commander, cluster, projectID, region string) error {
 }
 
 func setKubeContext(c Commander, context string) error {
-	namespace := fmt.Sprintf("--namespace=%s", kubeNamespace)
+	namespace := fmt.Sprintf("--namespace=%s", KubeNamespace)
 	if _, err := c.Execute("kubectl", WithArgs("config", "set-context", context, namespace)); err != nil {
 		return fmt.Errorf("set kube context %q: %w", context, err)
 	}

@@ -5,9 +5,8 @@ import (
 	"os/exec"
 	"testing"
 
-	"github.com/coreeng/corectl/pkg/command"
-
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/command"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +25,15 @@ func TestConnectSuccess(t *testing.T) {
 		os.Stdout,
 		os.Stderr,
 	)
-	err := Connect(streams, env, mockCommanderSuccess{}, proxy, true, []string{})
+
+	err := Connect(EnvConnectOpts{
+		Streams:     streams,
+		Environment: env,
+		Port:        proxy,
+		SkipTunnel:  true,
+		Exec:        mockCommanderSuccess{},
+		SilentExec:  mockCommanderSuccess{},
+	})
 	assert.NoError(t, err)
 }
 
@@ -44,7 +51,14 @@ func TestConnectFail(t *testing.T) {
 		os.Stdout,
 		os.Stderr,
 	)
-	err := Connect(streams, env, mockCommanderFail{}, proxy, true, []string{})
+	err := Connect(EnvConnectOpts{
+		Streams:     streams,
+		Environment: env,
+		Port:        proxy,
+		SkipTunnel:  true,
+		Exec:        mockCommanderFail{},
+		SilentExec:  mockCommanderFail{},
+	})
 	assert.Error(t, err)
 }
 
