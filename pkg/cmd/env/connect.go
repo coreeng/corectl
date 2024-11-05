@@ -71,12 +71,17 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 			} else {
 				return fmt.Errorf("please specify the environment as the 1st argument, one of: {%s}", strings.Join(envNames, "|"))
 			}
-			fmt.Printf("\n\n\nARGS: %+v\n\n\n", args)
-			fmt.Printf("\n\n\nCOMMAND: %+v\n\n\n", opts.Command)
-			opts.Streams = userio.NewIOStreams(
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				nonInteractive = true
+			}
+
+			opts.Streams = userio.NewIOStreamsWithInteractive(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
 				cmd.OutOrStderr(),
+				!nonInteractive,
 			)
 			return connect(opts, cfg, availableEnvironments)
 		},

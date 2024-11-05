@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	. "github.com/coreeng/corectl/pkg/command"
+	"github.com/coreeng/corectl/pkg/shell"
 
 	"github.com/cedws/iapc/iap"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -63,9 +64,12 @@ func Connect(opts EnvConnectOpts) error {
 		log.Debug().Msgf("iap tunnel command set to: %s", commandString)
 		execute = func() error {
 			wizard.Info(fmt.Sprintf("Executing: %s", commandString))
-			stdout, err := opts.Exec.Execute(commandString)
-			log.Debug().Str("command", commandString).Msgf("stdout: %s", stdout)
-			s.GetOutput().Write([]byte("\n\n\n\n\n\n\n\nstdout:" + string(stdout) + "\n\n\n"))
+			stdout, stderr, err := shell.RunCommand(".", opts.Command[0], opts.Command[1:]...)
+			log.Debug().Str("command", commandString).Msgf("stdout: %s, stderr: %s", stdout, stderr)
+			s.Print(stdout)
+			if strings.Trim(string(stderr), " \t") != "" {
+				s.CurrentHandler.Warn(fmt.Sprintf("stderr: %s", stderr))
+			}
 			return err
 		}
 	}
