@@ -10,10 +10,11 @@ import (
 type Handler interface {
 	Abort(string)
 	Done()
-	SetCurrentTaskCompleted()
 	Error(string)
 	Info(string)
 	OnQuit(tea.Model, tea.Msg) tea.Msg
+	Print(string)
+	SetCurrentTaskCompleted()
 	SetCurrentTaskCompletedTitle(string)
 	SetCurrentTaskCompletedTitleWithStatus(string, TaskStatus)
 	SetInputModel(tea.Model) tea.Model
@@ -72,6 +73,13 @@ func (handler asyncHandler) SetInputModel(input tea.Model) tea.Model {
 	handler.update(input)
 	modelResult := <-handler.inputResultChannel
 	return modelResult
+}
+
+func (handler asyncHandler) Print(message string) {
+	handler.update(logMsg{
+		level:   log.TraceLevel,
+		message: message,
+	})
 }
 
 func (handler asyncHandler) Info(message string) {

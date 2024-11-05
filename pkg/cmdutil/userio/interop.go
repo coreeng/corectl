@@ -37,6 +37,9 @@ func (nih nonInteractiveHandler) Warn(message string) {
 func (nih nonInteractiveHandler) Error(message string) {
 	nih.streams.Error(message)
 }
+func (nih nonInteractiveHandler) Print(message string) {
+	nih.streams.Print(message)
+}
 func (nih nonInteractiveHandler) SetTask(title string, _ string) {
 	nih.Info(fmt.Sprintf("[%s]", nih.styles.Bold.Render(title)))
 }

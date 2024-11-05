@@ -181,6 +181,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			latestTask.logs = append(latestTask.logs, msg)
 		}
+		if msg.level == log.TraceLevel {
+			return m, tea.Sequence(tea.Println(msg.message), updateListener)
+		}
 		return m, updateListener
 	case updateCurrentTaskCompletedTitle:
 		log.Debug().Msgf("Wizard: Update current task completed title -> %s [%+v]", msg.title, msg.status)

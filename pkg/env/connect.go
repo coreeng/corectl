@@ -66,7 +66,7 @@ func Connect(opts EnvConnectOpts) error {
 			wizard.Info(fmt.Sprintf("Executing: %s", commandString))
 			stdout, stderr, err := shell.RunCommand(".", opts.Command[0], opts.Command[1:]...)
 			log.Debug().Str("command", commandString).Msgf("stdout: %s, stderr: %s", stdout, stderr)
-			s.Print(stdout)
+			wizard.Print(stdout)
 			if strings.Trim(string(stderr), " \t") != "" {
 				s.CurrentHandler.Warn(fmt.Sprintf("stderr: %s", stderr))
 			}
