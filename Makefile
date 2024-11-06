@@ -10,15 +10,32 @@ LDFLAGS = "\
 	-X ${MODULE_PATH}/pkg/version.Date=${TIMESTAMP} \
 	-X ${MODULE_PATH}/pkg/version.Arch=${ARCH}"
 
+.DEFAULT_GOAL :=help
 
+REQ_BINS = go,docker,golangci-lint
+_ := $(foreach exec,$(REQ_BINS), \
+       $(if $(shell which $(exec)),some string,$(error "No $(exec) binary in $$PATH")))
+
+# Lint, test and build
+.PHONY: all
+all: lint test build
+
+# Prints list of tasks
+PHONY: help
+help:
+	@awk 'BEGIN {FS=":"} /^# .*/,/^[a-zA-Z0-9_-]+:/ { if ($$0 ~ /^# /) { desc=substr($$0, 3) } else { printf "\033[36m%-30s\033[0m %s\n", $$1, desc } }' Makefile | grep -v ".PHONY"
+
+# Run lints from golangci.yaml
 .PHONY: lint
 lint:
 	golangci-lint run ./...
 
+# Runs go test
 .PHONY: test
-test:	
+test:
 	go test ./pkg/... -v
 
+# Build binary
 .PHONY: build
 build:
 	go build \
@@ -26,6 +43,7 @@ build:
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
+# Run integration tests locally
 .PHONY: integration-test-local
 integration-test-local: build
 	rm -f /tmp/corectl-autoupdate && \
@@ -33,6 +51,7 @@ integration-test-local: build
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/localintegration -v
 
+# Run integration tests
 .PHONY: integration-test
 integration-test: build integration-test-local
 	rm -f /tmp/corectl-autoupdate && \
@@ -40,12 +59,14 @@ integration-test: build integration-test-local
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/integration -v
 
+# Installs binary 
 .PHONY: install
 install:
 	go install \
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
+# Build docker image for dev
 .PHONY: dev-env
 dev-env:
 	docker build -f ./devenv.Dockerfile -t corectl-dev-env .
@@ -60,11 +81,19 @@ dev-env:
 		--name corectl-dev-env \
 		corectl-dev-env bash
 
+# Runs bash in container
 .PHONY: dev-env-connect
-dev-env-connect:
+dev-env-connect: dot-env
 	docker exec -it corectl-dev-env bash
 
 ARGS=
 DEBUG_PORT=12345
+# Debug binary with dlv
+.PHONY: debug
 debug:
 	dlv debug --headless --listen=:$(DEBUG_PORT) --api-version=2 --accept-multiclient $(CORECTL_MAIN) -- $(ARGS)
+
+# Cleans built artifacts
+.PHONY: clean
+clean:
+	rm -f $(CORECTL_MAIN)
