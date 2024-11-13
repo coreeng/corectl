@@ -30,10 +30,9 @@ jobs:
           git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
           go mod download
       - name: lint
-        uses: reviewdog/action-golangci-lint@v2
+        uses: golangci/golangci-lint-action@v6
         with:
-          go_version_file: 'go.mod'
-          golangci_lint_flags: --timeout 3m --verbose
+          args: --timeout=3m
       - name: test
         run: |
           git config --global user.name "Test Bot"

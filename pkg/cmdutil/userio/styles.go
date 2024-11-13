@@ -7,7 +7,6 @@ import (
 
 var (
 	blueColor = lipgloss.Color("51")
-	redColor  = lipgloss.Color("124")
 )
 
 type styles struct {
