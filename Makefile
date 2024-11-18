@@ -16,9 +16,9 @@ default: help
 ## make help				Prints help command
 .PHONY: help
 help: Makefile
-		@echo "Usage: "
-		@sed -n 's/^##[ -]/   /p' Makefile
-		@echo ""
+	@echo "Usage: "
+	@sed -n 's/^##[ -]/   /p' Makefile
+	@echo ""
 
 ## make lint				Runs lints
 .PHONY: lint
