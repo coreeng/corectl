@@ -10,15 +10,27 @@ LDFLAGS = "\
 	-X ${MODULE_PATH}/pkg/version.Date=${TIMESTAMP} \
 	-X ${MODULE_PATH}/pkg/version.Arch=${ARCH}"
 
+.PHONY: default
+default: help
 
+## make help				Prints help command
+.PHONY: help
+help: Makefile
+	@echo "Usage: "
+	@sed -n 's/^##[ -]/   /p' Makefile
+	@echo ""
+
+## make lint				Runs lints
 .PHONY: lint
 lint:
 	golangci-lint run ./...
 
+## make test				Runs tests
 .PHONY: test
 test:	
 	go test ./pkg/... -v
 
+## make build				Builds corectl
 .PHONY: build
 build:
 	go build \
@@ -26,6 +38,7 @@ build:
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
+## make integration-test-local		Local integration tests
 .PHONY: integration-test-local
 integration-test-local: build
 	rm -f /tmp/corectl-autoupdate && \
@@ -33,6 +46,7 @@ integration-test-local: build
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/localintegration -v
 
+## make integration-test		Integration tests
 .PHONY: integration-test
 integration-test: build integration-test-local
 	rm -f /tmp/corectl-autoupdate && \
@@ -40,12 +54,14 @@ integration-test: build integration-test-local
 		TEST_GITHUB_TOKEN=$${GITHUB_TOKEN} \
 		go test ./tests/integration -v
 
+## make install				Installs corectl
 .PHONY: install
 install:
 	go install \
 		-ldflags ${LDFLAGS} \
 		$(CORECTL_MAIN)
 
+## make dev-env				Build docker image for dev
 .PHONY: dev-env
 dev-env:
 	docker build -f ./devenv.Dockerfile -t corectl-dev-env .
@@ -60,11 +76,19 @@ dev-env:
 		--name corectl-dev-env \
 		corectl-dev-env bash
 
+## make dev-env-connect			Run corectl container
 .PHONY: dev-env-connect
 dev-env-connect:
 	docker exec -it corectl-dev-env bash
 
 ARGS=
 DEBUG_PORT=12345
+## make debug				Debug binary with dlv
+.PHONY: debug
 debug:
 	dlv debug --headless --listen=:$(DEBUG_PORT) --api-version=2 --accept-multiclient $(CORECTL_MAIN) -- $(ARGS)
+
+## make clean				Cleans built artifacts
+.PHONY: clean
+clean:
+	rm -f $(CORECTL_MAIN)
