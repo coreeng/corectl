@@ -3,9 +3,10 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -235,7 +236,14 @@ func createTenant(
 	)
 	defer wizardHandler.Done()
 
-	if err := validateTenant(allTenants, t, wizardHandler); err != nil {
+	tenantMap := map[string]*coretnt.Tenant{
+		t.Name: t,
+	}
+	for _, tenant := range allTenants {
+		tenantMap[tenant.Name] = &tenant
+	}
+
+	if err := validateTenant(tenantMap, t, wizardHandler); err != nil {
 		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(
 			fmt.Sprintf("Unable to create such a tenant: %s", err),
 			wizard.TaskStatusError,
@@ -267,8 +275,8 @@ func createTenant(
 	return result, err
 }
 
-func validateTenant(allTenants []coretnt.Tenant, t *coretnt.Tenant, wizardHandler wizard.Handler) error {
-	validationResult := coretnt.ValidateTenants(slices.Concat(allTenants, []coretnt.Tenant{*t}))
+func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant, wizardHandler wizard.Handler) error {
+	validationResult := coretnt.ValidateTenants(tenantMap)
 	for _, warn := range validationResult.Warnings {
 		var tenantRelatedWarn coretnt.TenantRelatedError
 		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(t) {
