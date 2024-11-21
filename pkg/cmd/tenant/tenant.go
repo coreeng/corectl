@@ -5,6 +5,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/tenant/create"
 	"github.com/coreeng/corectl/pkg/cmd/tenant/describe"
 	"github.com/coreeng/corectl/pkg/cmd/tenant/list"
+	"github.com/coreeng/corectl/pkg/cmd/tenant/tree"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +27,7 @@ func NewTenantCmd(cfg *config.Config) *cobra.Command {
 	tenantCmd.AddCommand(describe.NewTenantDescribeCmd(cfg))
 	tenantCmd.AddCommand(addrepo.NewTenantAddRepoCmd(cfg))
 	tenantCmd.AddCommand(create.NewTenantCreateCmd(cfg))
+	tenantCmd.AddCommand(tree.NewTenantsTreeCmd(cfg))
 
 	return tenantCmd
 }
