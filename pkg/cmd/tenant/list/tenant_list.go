@@ -5,6 +5,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/logger"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/spf13/cobra"
@@ -51,6 +52,8 @@ func run(opts *TenantListOpts, cfg *config.Config) error {
 	for _, t := range tenants {
 		table.AppendRow(t)
 	}
-	table.Render()
+
+	logger.Debug(table.Render())
+
 	return nil
 }

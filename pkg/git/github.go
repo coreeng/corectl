@@ -6,8 +6,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 var gitRepoRegexp = regexp.MustCompile(`^.*[:/]([\w-.]+)/([\w-.]+)(\.git)?$`)
@@ -54,15 +55,15 @@ func CreateGitHubPR(client *github.Client, title string, body string, branchName
 	pr_body := github.String(body)
 	branch := github.String(MainBranch)
 	head := github.String(branchName)
-	log.Info().
-		Str("name", repoName).
-		Str("branch_name", *branch).
-		Str("org", organization).
-		Str("repo", fmt.Sprintf("https://github.com/%s/%s", organization, repoName)).
-		Str("title", *pr_title).
-		Str("body", *pr_body).
-		Bool("dry_run", dryRun).
-		Msg("github: creating PR")
+	logger.Info("github: creating PR",
+		zap.String("name", repoName),
+		zap.String("branch_name", *branch),
+		zap.String("org", organization),
+		zap.String("repo", fmt.Sprintf("https://github.com/%s/%s", organization, repoName)),
+		zap.String("title", *pr_title),
+		zap.String("body", *pr_body),
+		zap.Bool("dry_run", dryRun),
+	)
 	if !dryRun {
 		pullRequest, _, err := client.PullRequests.Create(
 			context.Background(),

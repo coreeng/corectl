@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,13 +53,14 @@ func CreateOrUpdate(
 	if err != nil {
 		return result, err
 	}
-	log.Debug().
-		// TODO: add public method to render Tenant in developer-platform
-		//       so we can log it here when dry-running
-		Str("repo", op.CplatformRepoPath).
-		Bool("dry_run", op.DryRun).
-		Str("definition", string(definition)).
-		Msg("writing tenant definition to cplatform repo")
+	// TODO: add public method to render Tenant in developer-platform
+	//       so we can log it here when dry-running
+	logger.Debug("tenant: writing tenant definition to cplatform repo",
+		zap.String("repo", op.CplatformRepoPath),
+		zap.Bool("dry_run", op.DryRun),
+		zap.String("definition", string(definition)),
+	)
+
 	var relativeFilepath string
 	if !op.DryRun {
 		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
