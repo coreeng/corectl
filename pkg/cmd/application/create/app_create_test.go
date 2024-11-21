@@ -4,14 +4,18 @@ import (
 	"testing"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/template"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 func TestAppCreateSuite(t *testing.T) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "App Create Suite")
 }

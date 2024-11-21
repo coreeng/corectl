@@ -3,9 +3,12 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -14,7 +17,6 @@ import (
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +44,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic("could not get non-interactive flag", zap.Error(err))
 			}
 			opt.NonInteractive = nonInteractive
 

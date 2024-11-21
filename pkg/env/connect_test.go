@@ -7,11 +7,17 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 func TestConnectSuccess(t *testing.T) {
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
+
 	var proxy = 1234
 
 	env := &environment.Environment{
@@ -38,6 +44,10 @@ func TestConnectSuccess(t *testing.T) {
 }
 
 func TestConnectFail(t *testing.T) {
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
+
 	var proxy = 1234
 
 	env := &environment.Environment{
@@ -73,7 +83,6 @@ func helperExecProcess(fn string, args ...string) *exec.Cmd {
 	cs = append(cs, args...)
 	cmd := exec.Command(os.Args[0], cs...)
 	cmd.Env = []string{"GO_TEST_PROCESS=1"}
-
 	return cmd
 }
 
@@ -87,6 +96,7 @@ func TestOutputSuccess(*testing.T) {
 	if os.Getenv("GO_TEST_PROCESS") != "1" {
 		return
 	}
+
 	os.Exit(0)
 }
 

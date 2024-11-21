@@ -11,9 +11,10 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,7 +45,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic("could not get non-interactive flag", zap.Error(err))
 			}
 			opt.NonInteractive = nonInteractive
 

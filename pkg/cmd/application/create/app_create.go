@@ -15,13 +15,14 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 type AppCreateOpt struct {
@@ -64,7 +65,7 @@ NOTE:
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic("could not get non-interactive flag", zap.Error(err))
 			}
 
 			opts.Streams = userio.NewIOStreamsWithInteractive(

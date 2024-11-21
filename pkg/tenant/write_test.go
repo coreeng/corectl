@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
@@ -14,6 +15,7 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("Create or Update", func() {
@@ -48,6 +50,7 @@ repos: []
 	)
 	BeforeEach(OncePerOrdered, func() {
 		var err error
+		logger.Log = zap.NewNop()
 		cplatformServerRepo, cplatformLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),

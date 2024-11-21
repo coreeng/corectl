@@ -12,8 +12,10 @@ import (
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
 )
 
@@ -74,6 +76,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
+				logger.Error("failed to get non-interactive flag", zap.Error(err))
 				nonInteractive = true
 			}
 
@@ -83,7 +86,12 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				cmd.OutOrStderr(),
 				!nonInteractive,
 			)
-			return connect(opts, cfg, availableEnvironments)
+			err = connect(opts, cfg, availableEnvironments)
+			if err != nil {
+				logger.Error("failed to connect to environment", zap.Error(err))
+				return err
+			}
+			return nil
 		},
 	}
 
