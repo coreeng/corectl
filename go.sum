@@ -67,8 +67,8 @@ github.com/cloudflare/circl v1.4.0/go.mod h1:PDRU+oXvdD7KCtgKxW95M5Z8BpSCJXQORiZ
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/coder/websocket v1.8.12 h1:5bUXkEPPIbewrnkU8LTCLVaxi4N4J8ahufH2vlo4NAo=
 github.com/coder/websocket v1.8.12/go.mod h1:LNVeNrXQZfe5qhS9ALED3uA+l5pPqvwXg3CKoDBB2gs=
-github.com/coreeng/developer-platform/pkg v0.26.5 h1:NtRwFaVWGsireq7ATRYTwqfzTIcxPuHhlKHXa4bwuLo=
-github.com/coreeng/developer-platform/pkg v0.26.5/go.mod h1:gan0gdHQ7u8ihMVbI70sqdHtqLqN9IXo+vjeqPTMlxY=
+github.com/coreeng/developer-platform/pkg v0.26.9 h1:qiVdCSVHzJXyWO73kMLd0URd6Plg7afiF7eWJrEZ8b4=
+github.com/coreeng/developer-platform/pkg v0.26.9/go.mod h1:bavQejPo3uvWDBGCp38nYmpxQEBC9NPRjgFMR0M/itE=
 github.com/cpuguy83/go-md2man/v2 v2.0.4/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/cyphar/filepath-securejoin v0.3.2 h1:QhZu5AxQ+o1XZH0Ye05YzvJ0kAdK6VQc0z9NNMek7gc=
 github.com/cyphar/filepath-securejoin v0.3.2/go.mod h1:F7i41x/9cBF7lzCrVsYs9fuzwRZm4NQsGTBdpp6mETc=
