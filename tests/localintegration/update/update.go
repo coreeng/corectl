@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/shell"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("update", Ordered, func() {
@@ -34,7 +35,9 @@ var _ = Describe("update", Ordered, func() {
 		if err != nil {
 			Fail(fmt.Sprintf("failed to get initial version: %v stdout: %s, stderr: %s", err, initialVersion, stderr))
 		}
-		log.Info().Msgf("Initial version: %s", initialVersion)
+		logger.Info("update: initial version",
+			zap.String("version", initialVersion),
+		)
 
 		updateArgs := []string{"update", "--skip-confirmation"}
 		updateArgs = append(updateArgs, args...)
@@ -47,7 +50,9 @@ var _ = Describe("update", Ordered, func() {
 		if err != nil {
 			Fail(fmt.Sprintf("failed to get updated version: %v, stdout: %s, stderr: %s", err, stdout, stderr))
 		}
-		log.Info().Msgf("Updated version: %s", updatedVersion)
+		logger.Info("update: updated version",
+			zap.String("version", updatedVersion),
+		)
 		return initialVersion, updatedVersion, nil
 	}
 

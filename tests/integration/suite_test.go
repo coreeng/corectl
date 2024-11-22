@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
@@ -15,8 +16,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
-	"github.com/phuslu/log"
 	"github.com/thanhpk/randstr"
+	"go.uber.org/zap"
 
 	// Test cases import
 	_ "github.com/coreeng/corectl/tests/integration/application"
@@ -27,12 +28,15 @@ import (
 )
 
 func TestSuite(t *testing.T) {
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Integration Tests")
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
 	testRunId := randstr.String(6)
 	testconfig.SetTestRunId(testRunId)
 	fmt.Println("Test Run ID: ", testRunId)

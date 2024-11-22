@@ -10,7 +10,8 @@ import (
 	"github.com/cedws/iapc/iap"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 )
 
 // Listen starts a proxy server that listens on the given address and port.
@@ -20,7 +21,7 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	if err := testConn(ctx, opts); err != nil {
 		err = fmt.Errorf("failed to test connection: %w", err)
 		wizardH.Abort(err.Error())
-		log.Fatal().Msg(err.Error())
+		logger.Fatal(err.Error())
 	}
 
 	listener, err := net.Listen("tcp", listen)
@@ -30,12 +31,15 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	)
 	if err != nil {
 		wizardH.Abort(fmt.Errorf("failed to test connection: %w", err).Error())
-		log.Fatal().Err(err).Msgf("failed to bind to %s", listen)
+		logger.Fatal("failed to bind to",
+			zap.String("address", listen),
+			zap.Error(err))
 	}
 
 	wizardH.SetCurrentTaskCompleted()
 	wizardH.Info(fmt.Sprintf("Listening on %s", listen))
-	log.Info().Msgf("listening: %+v", listener)
+	logger.Info("listening",
+		zap.Any("listener", listener))
 
 	executionFinished := make(chan error)
 	go func() {
@@ -49,22 +53,23 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	for {
 		select {
 		case <-executionFinished:
-			log.Info().Msg("Execution finished, no longer accepting new connections.")
+			logger.Info("Execution finished, no longer accepting new connections.")
 			return
 		default:
 			conn, err := listener.Accept()
 			if err != nil {
 				if opErr, ok := err.(*net.OpError); ok && opErr.Err.Error() == "use of closed network connection" {
-					log.Info().Msg("Listener closed, stopping new connections.")
+					logger.Info("Listener closed, stopping new connections.")
 					err := <-executionFinished
 					if err != nil {
 						wizardH.Abort(err.Error())
-						log.Fatal().Err(err).Msg("Execution failed")
+						logger.Fatal(err.Error())
 					}
 					wizardH.Info("Tunnel closed")
 					return
 				}
-				log.Fatal().Err(err).Msg("failed to accept connection")
+				logger.Fatal("failed to accept connection",
+					zap.Error(err))
 			}
 
 			go handleClient(ctx, wizardH, opts, conn)
@@ -83,28 +88,39 @@ func testConn(ctx context.Context, opts []iap.DialOption) error {
 
 func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOption, conn net.Conn) {
 	wizard.Info(fmt.Sprintf("Client connected: %s", conn.RemoteAddr()))
-	log.Info().Msgf("connected: client %s", conn.RemoteAddr())
+	logger.Info("connected",
+		zap.String("client", conn.RemoteAddr().String()))
 
 	tun, err := iap.Dial(ctx, opts...)
 	if err != nil {
 		wizard.Error(fmt.Sprintf("Failed to connect to IAP for client: %s", conn.RemoteAddr()))
-		log.Error().Err(err).Msgf("failed to dial IAP")
+		logger.Error("failed to dial IAP",
+			zap.String("client", conn.RemoteAddr().String()),
+			zap.Error(err))
 		return
 	}
 	defer tun.Close()
 
 	wizard.Info(fmt.Sprintf("IAP connected: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr()))
-	log.Debug().Msgf("iap dialed: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr())
+	logger.Debug("iap dialed",
+		zap.String("client", conn.RemoteAddr().String()),
+		zap.String("remote", tun.RemoteAddr().String()),
+		zap.String("local", tun.LocalAddr().String()))
 
 	go func() {
 		if _, err := io.Copy(conn, tun); err != nil {
-			log.Debug().Err(err).Msg("failed to transfer data")
+			logger.Debug("failed to transfer data",
+				zap.Error(err))
 		}
 	}()
 	if _, err := io.Copy(tun, conn); err != nil {
-		log.Debug().Err(err).Msg("")
+		logger.Debug("failed to transfer data",
+			zap.Error(err))
 	}
 
 	wizard.Info(fmt.Sprintf("Client disconnected: %s | sentbytes %d | recvbytes %d", conn.RemoteAddr(), tun.Sent(), tun.Received()))
-	log.Info().Msgf("disconnected: client %s | sentbytes %d | recvbytes %d", conn.RemoteAddr(), tun.Sent(), tun.Received())
+	logger.Info("disconnected",
+		zap.String("client", conn.RemoteAddr().String()),
+		zap.Uint64("sentbytes", tun.Sent()),
+		zap.Uint64("recvbytes", tun.Received()))
 }

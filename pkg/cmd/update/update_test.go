@@ -10,15 +10,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 func TestUpdate(t *testing.T) {
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
+
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Auto Update Suite")
 }
@@ -37,7 +42,6 @@ var _ = Describe("corectl update", func() {
 	)
 
 	BeforeEach(OncePerOrdered, func() {
-		log.DefaultLogger.SetLevel(log.PanicLevel)
 		githubErrorString = "api error"
 		latestReleaseTag = "v100.0.0"
 		specificReleaseTag = "v0.0.1"
