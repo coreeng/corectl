@@ -7,18 +7,21 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/developer-platform/pkg/environment"
 	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
-	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
 
 func TestMain(m *testing.M) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
 	m.Run()
 }
 

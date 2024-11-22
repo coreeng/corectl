@@ -5,7 +5,8 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func RunCommand(dir string, name string, args ...string) (string, string, error) {
@@ -19,7 +20,10 @@ func RunCommand(dir string, name string, args ...string) (string, string, error)
 	} else {
 		cmd.Dir = dir
 	}
-	log.Info().Msgf("Running %s in %s", name, dir)
+	logger.Info("shell: running command",
+		zap.String("command", name),
+		zap.String("directory", dir),
+	)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -27,7 +31,11 @@ func RunCommand(dir string, name string, args ...string) (string, string, error)
 
 	err := cmd.Run()
 	if err != nil {
-		log.Debug().Msgf("err %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+		logger.Debug("shell: command failed",
+			zap.Error(err),
+			zap.String("stdout", stdout.String()),
+			zap.String("stderr", stderr.String()),
+		)
 	}
 	return stdout.String(), stderr.String(), err
 }

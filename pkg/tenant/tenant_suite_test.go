@@ -3,13 +3,16 @@ package tenant
 import (
 	"testing"
 
+	"github.com/coreeng/corectl/pkg/logger"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 func TestTenant(t *testing.T) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
+	oldLogger := logger.Log
+	logger.Log = zap.NewNop()
+	defer func() { logger.Log = oldLogger }()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Tenant tests")
 }

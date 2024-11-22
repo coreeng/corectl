@@ -8,7 +8,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 )
 
 const blankListHeight = 6
@@ -96,19 +97,20 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 		case tea.KeyEnter:
-			log.Debug().Msg("SingleSelect: received enter")
+			logger.Debug("SingleSelect: received enter")
 			if m.model.FilterState() == list.Filtering {
 				break
 			}
 			it, ok := m.model.SelectedItem().(item)
-			log.Debug().Msgf("SingleSelect: selected item is %s", it)
+			logger.Debug("SingleSelect: selected item",
+				zap.String("item", string(it)))
 			if !ok {
 				return m, nil
 			}
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
-			log.Debug().Msg("SingleSelect: sending tea.Quit")
+			logger.Debug("SingleSelect: sending tea.Quit")
 			return m, tea.Quit
 		}
 	}

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/command"
 	"os"
 	"os/exec"
 	"testing"
+
+	"github.com/coreeng/corectl/pkg/command"
 
 	"github.com/coreeng/corectl/pkg/gcp"
 	gcptest "github.com/coreeng/corectl/pkg/testutil/gcp"
