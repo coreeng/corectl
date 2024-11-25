@@ -31,9 +31,6 @@ func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 func (nih nonInteractiveHandler) Info(message string) {
 	nih.streams.Info(message)
 }
-func (nih nonInteractiveHandler) Debug(message string) {
-	nih.streams.Debug(message)
-}
 func (nih nonInteractiveHandler) Warn(message string) {
 	nih.streams.Warn(message)
 }

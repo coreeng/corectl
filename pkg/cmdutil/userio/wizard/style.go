@@ -5,8 +5,6 @@ import "github.com/charmbracelet/lipgloss"
 type Styles struct {
 	Bold            lipgloss.Style
 	Spinner         lipgloss.Style
-	DebugLogHeading lipgloss.Style
-	DebugLogBody    lipgloss.Style
 	InfoLogHeading  lipgloss.Style
 	InfoLogBody     lipgloss.Style
 	WarnLogHeading  lipgloss.Style
@@ -41,8 +39,6 @@ func DefaultStyles() Styles {
 	return Styles{
 		Bold:            lipgloss.NewStyle().Bold(true),
 		Spinner:         lipgloss.NewStyle().Foreground(lipgloss.Color("#0404ff")), // CECG Blue
-		DebugLogHeading: lipgloss.NewStyle().Foreground(lipgloss.Color("051")),
-		DebugLogBody:    lipgloss.NewStyle().Foreground(lipgloss.Color("159")),
 		InfoLogHeading:  lipgloss.NewStyle().Foreground(lipgloss.Color("051")),
 		InfoLogBody:     lipgloss.NewStyle().Foreground(lipgloss.Color("159")),
 		WarnLogHeading:  lipgloss.NewStyle().Foreground(lipgloss.Color("227")),

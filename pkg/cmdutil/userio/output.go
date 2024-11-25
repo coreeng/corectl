@@ -37,13 +37,6 @@ func (s IOStreams) Info(messages string) {
 	}
 }
 
-func (s IOStreams) Debug(messages string) {
-	err := s.MsgE(messages, s.styles.debug, s.stderr)
-	if err != nil {
-		panic(err.Error())
-	}
-}
-
 func (s IOStreams) Warn(messages string) {
 	err := s.MsgE(messages, s.styles.warn, s.stderr)
 	if err != nil {
