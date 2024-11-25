@@ -12,6 +12,7 @@ type Handler interface {
 	Done()
 	Error(string)
 	Info(string)
+	Debug(string)
 	OnQuit(tea.Model, tea.Msg) tea.Msg
 	Print(string)
 	SetCurrentTaskCompleted()
@@ -85,6 +86,13 @@ func (handler asyncHandler) Print(message string) {
 func (handler asyncHandler) Info(message string) {
 	handler.update(logMsg{
 		level:   log.InfoLevel,
+		message: message,
+	})
+}
+
+func (handler asyncHandler) Debug(message string) {
+	handler.update(logMsg{
+		level:   log.DebugLevel,
 		message: message,
 	})
 }

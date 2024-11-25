@@ -2,3 +2,4 @@
 corectl
 corectl*.log
 dist/
+.vscode

@@ -18,9 +18,10 @@ type styles struct {
 	suggestion   lipgloss.Style
 	bold         lipgloss.Style
 
-	err  lipgloss.Style
-	info lipgloss.Style
-	warn lipgloss.Style
+	err   lipgloss.Style
+	info  lipgloss.Style
+	debug lipgloss.Style
+	warn  lipgloss.Style
 }
 
 func newStyles(renderer *lipgloss.Renderer) *styles {
@@ -35,14 +36,16 @@ func newStyles(renderer *lipgloss.Renderer) *styles {
 		suggestion:   renderer.NewStyle().Faint(true),
 		bold:         renderer.NewStyle().Bold(true),
 
-		err:  niStyles.WarnMessageStyle,
-		info: niStyles.InfoStyle,
-		warn: niStyles.WarnMessageStyle,
+		err:   niStyles.WarnMessageStyle,
+		info:  niStyles.InfoStyle,
+		debug: niStyles.DebugStyle,
+		warn:  niStyles.WarnMessageStyle,
 	}
 }
 
 type NonInteractiveStyles struct {
 	InfoStyle         lipgloss.Style
+	DebugStyle        lipgloss.Style
 	ErrorHeadingStyle lipgloss.Style
 	ErrorMessageStyle lipgloss.Style
 	WarnHeadingStyle  lipgloss.Style
@@ -55,6 +58,7 @@ func NewNonInteractiveStyles() NonInteractiveStyles {
 	styles := wizard.DefaultStyles()
 	return NonInteractiveStyles{
 		InfoStyle:         styles.InfoLogBody,
+		DebugStyle:        styles.DebugLogBody,
 		ErrorHeadingStyle: styles.ErrorLogHeading,
 		ErrorMessageStyle: styles.ErrorLogBody,
 		WarnHeadingStyle:  styles.WarnLogHeading,

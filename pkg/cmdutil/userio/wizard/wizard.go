@@ -230,6 +230,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmd, inputCmd)
 }
 
+func (m Model) DebugLog(message string) string {
+	return fmt.Sprintf("%s %s", m.Styles.DebugLogHeading.Render("DEBUG:"), m.Styles.DebugLogBody.Render(message))
+}
+
 func (m Model) InfoLog(message string) string {
 	return fmt.Sprintf("%s %s", m.Styles.InfoLogHeading.Render("INFO:"), m.Styles.InfoLogBody.Render(message))
 }
@@ -278,6 +282,8 @@ func (m Model) View() string {
 
 func (m Model) generateLog(message string, level log.Level) string {
 	switch level {
+	case log.DebugLevel:
+		return m.DebugLog(message)
 	case log.InfoLevel:
 		return m.InfoLog(message)
 	case log.WarnLevel:
