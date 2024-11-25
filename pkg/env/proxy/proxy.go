@@ -34,7 +34,6 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	}
 
 	wizardH.SetCurrentTaskCompleted()
-	wizardH.Info(fmt.Sprintf("Listening on %s", listen))
 	log.Info().Msgf("listening: %+v", listener)
 
 	executionFinished := make(chan error)
