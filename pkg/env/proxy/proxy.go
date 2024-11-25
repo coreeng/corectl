@@ -34,7 +34,6 @@ func Listen(streams userio.IOStreams, ctx context.Context, listen string, opts [
 	}
 
 	wizardH.SetCurrentTaskCompleted()
-	wizardH.Info(fmt.Sprintf("Listening on %s", listen))
 	log.Info().Msgf("listening: %+v", listener)
 
 	executionFinished := make(chan error)
@@ -82,8 +81,7 @@ func testConn(ctx context.Context, opts []iap.DialOption) error {
 }
 
 func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOption, conn net.Conn) {
-	wizard.Info(fmt.Sprintf("Client connected: %s", conn.RemoteAddr()))
-	log.Info().Msgf("connected: client %s", conn.RemoteAddr())
+	log.Debug().Msgf("connected: client %s", conn.RemoteAddr())
 
 	tun, err := iap.Dial(ctx, opts...)
 	if err != nil {
@@ -93,7 +91,6 @@ func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOpt
 	}
 	defer tun.Close()
 
-	wizard.Info(fmt.Sprintf("IAP connected: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr()))
 	log.Debug().Msgf("iap dialed: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr())
 
 	go func() {
@@ -105,6 +102,5 @@ func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOpt
 		log.Debug().Err(err).Msg("")
 	}
 
-	wizard.Info(fmt.Sprintf("Client disconnected: %s | sentbytes %d | recvbytes %d", conn.RemoteAddr(), tun.Sent(), tun.Received()))
-	log.Info().Msgf("disconnected: client %s | sentbytes %d | recvbytes %d", conn.RemoteAddr(), tun.Sent(), tun.Received())
+	log.Debug().Msgf("disconnected: client %s | sentbytes %d | recvbytes %d", conn.RemoteAddr(), tun.Sent(), tun.Received())
 }
