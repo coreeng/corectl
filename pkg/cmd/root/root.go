@@ -2,12 +2,12 @@ package root
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmd/env"
 	"os"
 	"time"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
-	"github.com/coreeng/corectl/pkg/cmd/env"
 	"github.com/coreeng/corectl/pkg/cmd/p2p"
 	"github.com/coreeng/corectl/pkg/cmd/template"
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
@@ -129,15 +129,13 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	}
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(p2pCmd)
+	
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
+	rootCmd.AddCommand(env.NewEnvCmd(cfg))
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
-	rootCmd.AddCommand(env.NewEnvCmd(cfg))
-	rootCmd.AddCommand(version.VersionCmd(cfg))
 	rootCmd.AddCommand(update.UpdateCmd(cfg))
-	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
 	rootCmd.AddCommand(version.VersionCmd(cfg))
-	rootCmd.AddCommand(update.UpdateCmd(cfg))
 
 	return rootCmd
 }
