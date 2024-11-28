@@ -40,6 +40,7 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		prompt:         op.Prompt,
 		model:          m,
 		validateAndMap: op.ValidateAndMap,
+		styles:         streams.styles,
 	}
 
 	result, err := streams.Execute(model)
@@ -141,6 +142,10 @@ func (m *multiSelectModel) validateIfNeeded() {
 func (m multiSelectModel) View() string {
 	if !m.quitting {
 		var s strings.Builder
+		if m.model.Title != "" {
+			// For some reason, `bubbles.list.Model` does not render the title...
+			s.WriteString(m.styles.title.Render(m.model.Title))
+		}
 		s.WriteString(m.model.View())
 		s.WriteString("\n")
 		if m.err != nil {
