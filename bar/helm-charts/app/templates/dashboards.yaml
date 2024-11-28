@@ -1,0 +1,32 @@
+{{- if .Values.dashboarding -}}
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: test-run
+  namespace: {{ .Release.Namespace }}
+spec:
+  resyncPeriod: 1m
+  folder: General
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana: grafana-{{ .Values.tenantName }}
+  json: |-
+{{ tpl (.Files.Get "dashboards/dashboard-test-run.json") . | indent 4 }}
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: load-testing
+  namespace: {{ .Release.Namespace }}
+spec:
+  resyncPeriod: 1m
+  folder: General
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      grafana: grafana-{{ .Values.tenantName }}
+  json: |-
+{{ tpl (.Files.Get "dashboards/dashboard-load-testing.json") . | indent 4 }}
+{{- end -}}

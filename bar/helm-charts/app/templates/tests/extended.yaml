@@ -1,0 +1,56 @@
+{{- $endpoint := printf "https://%s" .Values.appName }}
+{{- if eq .Values.extended.endpoint "ingress" }}
+  {{- $endpoint = printf "https://%s%s.%s" .Values.appName .Values.appUrlSuffix .Values.domain }}
+{{- end}}
+---
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: "{{ .Values.appName }}-extended-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  parallelism: {{ .Values.extended.parallelism }}
+  script:
+    localFile: ./load-testing/hello.js
+  ports:
+    - containerPort: 5656
+  runner:
+    image: "{{ .Values.registry }}/{{ .Values.extended.image }}:{{ .Values.tag }}"
+    metadata:
+      labels:
+        app.kubernetes.io/name: k6
+    resources: {{ .Values.extended.resources | toJson }}
+    env:
+      - name: SERVICE_ENDPOINT
+        value: {{ $endpoint }}
+      - name: REQ_PER_SECOND
+        value: "10000"
+      - name: VUS
+        value: "2000"
+      - name: DURATION
+        value: "10m"
+      - name: K6_NO_THRESHOLDS
+        value: "true"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Values.appName }}-extended-test-validate"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: prometheus
+      image: "{{ .Values.registry }}/{{ .Values.extended.image }}:{{ .Values.tag }}"
+      env:
+        - name: NAMESPACE
+          value: {{ .Release.Namespace }}
+        - name: PROMETHEUS_ENDPOINT
+          value: {{ .Values.prometheusEndpoint }}
+        - name: REQ_PER_SECOND
+          value: "10000"
+        - name: DURATION
+          value: "10m"
+      command: [ "./load-testing/validate.sh" ]
+  restartPolicy: Never

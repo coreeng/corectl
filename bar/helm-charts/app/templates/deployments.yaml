@@ -1,0 +1,41 @@
+{{- $registry := .Values.registry | required ".Values.registry is required." -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.appName }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.appName }}
+spec:
+  replicas: {{ .Values.service.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.appName }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.appName }}
+    spec:
+      containers:
+        - name: {{ .Values.appName }}
+          image: "{{ $registry }}/{{ .Values.service.image }}:{{ .Values.tag }}"
+          resources: {{ .Values.service.resources | toJson }}
+          livenessProbe:
+            httpGet:
+              port: 8081
+              path: /internal/status
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /hello
+          {{- if .Values.service.environmentVariables }}
+          env:
+            {{- range $key, $value := .Values.service.environmentVariables }}
+            - name: {{ $key }}
+              value: {{ $value }}
+          {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: 8080
+            - name: metrics
+              containerPort: 8081

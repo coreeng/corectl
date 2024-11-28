@@ -1,0 +1,30 @@
+{{- $endpoint := printf "http://%s" .Values.appName }}
+{{- if eq .Values.nft.endpoint "ingress" }}
+  {{- $endpoint = printf "https://%s%s.%s" .Values.appName .Values.appUrlSuffix .Values.domain }}
+{{- end}}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Values.appName }}-nft-test"
+  labels:
+    app.kubernetes.io/name: k6
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: nft-load-testing-hello
+      image: "{{ .Values.registry }}/{{ .Values.nft.image }}:{{ .Values.tag }}"
+      resources: {{ .Values.nft.resources | toJson }}
+      env:
+        - name: SERVICE_ENDPOINT
+          value: {{ $endpoint }}
+        - name: REQ_PER_SECOND
+          value: "1000"
+        - name: VUS
+          value: "200"
+      command: [ 'sh' ]
+      args: [ "-c", "k6 run ./load-testing/hello.js" ]
+      ports:
+        - containerPort: 5656
+  restartPolicy: Never
