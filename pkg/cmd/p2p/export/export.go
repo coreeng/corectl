@@ -81,6 +81,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 		Use:   "export",
 		Short: "Produce export statements for environment variables required to execute p2p targets, to automatically export in current shell run 'eval $(corectl p2p export [flags])'",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),

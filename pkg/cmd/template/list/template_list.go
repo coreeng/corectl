@@ -18,6 +18,7 @@ func NewTemplateListCmd(cfg *config.Config) *cobra.Command {
 		Use:   "list",
 		Short: "List templates",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			if !opts.IgnoreChecks {
 				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
 					return err

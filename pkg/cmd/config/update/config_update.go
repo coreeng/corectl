@@ -20,6 +20,7 @@ func NewConfigUpdateCmd(cfg *config.Config) *cobra.Command {
 		Short: "Pull updates from remote repositories",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),

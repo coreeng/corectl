@@ -39,6 +39,7 @@ func NewP2PPromoteCmd() (*cobra.Command, error) {
 		Short: "Promotes image from source to destination registry. Only GCP is supported for now",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.ImageWithTag = args[0]
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),

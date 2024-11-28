@@ -41,6 +41,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		Use:   "create",
 		Short: "Creates tenant",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
 				log.Panic().Err(err).Msg("could not get non-interactive flag")

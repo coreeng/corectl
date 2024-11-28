@@ -161,6 +161,7 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 		Long:  `Update to the latest corectl version.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			if len(args) > 0 {
 				opts.targetVersion = args[0]
 			}
