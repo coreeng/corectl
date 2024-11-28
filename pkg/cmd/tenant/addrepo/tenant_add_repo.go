@@ -27,6 +27,7 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 		Short: "Add a repository to the tenant",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			// TODO: Change this to named params, and use same GetInput prompts as `apps create`
 			opts.TenantName = args[0]
 			opts.RepositoryUrl = args[1]

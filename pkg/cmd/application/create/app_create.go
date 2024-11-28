@@ -55,6 +55,7 @@ NOTE:
 `,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Name = args[0]
 			if len(args) > 1 {
 				opts.LocalPath = args[1]

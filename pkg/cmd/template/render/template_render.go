@@ -30,6 +30,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 		Short: "Render template locally",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Streams = userio.NewIOStreams(cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStderr())
 			opts.TemplateName = args[0]
 			opts.TargetPath = args[1]

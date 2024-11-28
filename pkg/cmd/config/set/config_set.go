@@ -22,6 +22,7 @@ func NewConfigSetCmd(cfg *config.Config) *cobra.Command {
 		Short: "Set configuration parameters",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Path = args[0]
 			opts.Value = args[1]
 			opts.Streams = userio.NewIOStreams(
