@@ -20,6 +20,7 @@ func NewTenantListCmd(cfg *config.Config) *cobra.Command {
 		Use:   "list",
 		Short: "List tenants",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),

@@ -22,6 +22,7 @@ func NewTenantDescribeCmd(cfg *config.Config) *cobra.Command {
 		Short: "Describe tenant",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.TenantName = args[0]
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),

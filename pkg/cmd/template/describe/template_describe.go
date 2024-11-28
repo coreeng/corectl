@@ -21,6 +21,7 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 		Short: "Show detailed information about passed template",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			templateName := args[0]
 			if !opts.IgnoreChecks {
 				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {

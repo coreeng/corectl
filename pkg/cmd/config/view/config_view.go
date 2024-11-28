@@ -21,6 +21,7 @@ func NewConfigViewCmd(cfg *config.Config) *cobra.Command {
 		Short: "Displays local corectl configuration",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),

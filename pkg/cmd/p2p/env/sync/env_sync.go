@@ -31,6 +31,7 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 		Short: "Synchronise Environments",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cmd.SilenceUsage = true
 			opts.AppRepo = args[0]
 			opts.Tenant = args[1]
 
