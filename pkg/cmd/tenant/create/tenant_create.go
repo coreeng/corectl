@@ -465,7 +465,7 @@ func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Env
 		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
 			return &userio.MultiSelect{
-				Prompt: "Environments:",
+				Prompt: "Environments ('space' to select, 'enter' to validate):",
 				Items:  envNames,
 			}, nil
 		},
