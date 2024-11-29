@@ -30,6 +30,7 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 	m.SetFilteringEnabled(true)
 	m.SetShowHelp(false)
 	m.DisableQuitKeybindings()
+	m.SetWidth(70)
 	m.Title = op.Prompt
 	m.Styles.Title = streams.styles.title
 	m.Styles.PaginationStyle = streams.styles.pagination
@@ -40,6 +41,7 @@ func (op *MultiSelect) GetInput(streams IOStreams) ([]string, error) {
 		prompt:         op.Prompt,
 		model:          m,
 		validateAndMap: op.ValidateAndMap,
+		styles:         streams.styles,
 	}
 
 	result, err := streams.Execute(model)

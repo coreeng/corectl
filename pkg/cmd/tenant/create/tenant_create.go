@@ -441,30 +441,36 @@ func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Env
 	for _, env := range envs {
 		envNames = append(envNames, env.Environment)
 	}
+
+	validateFn := func(inp []string) ([]string, error) {
+		envs := []string{}
+		for _, env := range inp {
+			env = strings.TrimSpace(env)
+			if env == "" {
+				continue
+			}
+			if !slices.Contains(envNames, env) {
+				return nil, fmt.Errorf("unknown environment: %s", env)
+			}
+			envs = append(envs, env)
+		}
+		if len(envs) == 0 {
+			return nil, fmt.Errorf("at least one environment must be selected")
+		}
+		return envs, nil
+	}
+
 	return userio.InputSourceSwitch[[]string, []string]{
 		DefaultValue: userio.AsZeroableSlice(opt.Environments),
 		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
 			return &userio.MultiSelect{
-				Prompt: "Environments:",
+				Prompt: "Environments ('space' to select, 'enter' to validate):",
 				Items:  envNames,
 			}, nil
 		},
-		ValidateAndMap: func(inp []string) ([]string, error) {
-			envs := make([]string, len(inp))
-			for i, env := range inp {
-				env = strings.TrimSpace(env)
-				if env == "" {
-					continue
-				}
-				if !slices.Contains(envNames, env) {
-					return nil, fmt.Errorf("unknown environment: %s", env)
-				}
-				envs[i] = env
-			}
-			return envs, nil
-		},
-		ErrMessage: "invalid environment list",
+		ValidateAndMap: validateFn,
+		ErrMessage:     "invalid environment list",
 	}
 }
 
