@@ -143,10 +143,10 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	repoName, err := git.GetRepoName(filepath.Dir(opts.LocalPath))
 	var msg string
 	if err != nil {
-		// We are creating the new app in a monorepo
+		// We are creating the new app in its own repo
 		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
 	} else {
-		// We are creating the new app in its own repo
+		// We are creating the new app in a monorepo
 		msg = fmt.Sprintf("Creating new application %s in existing repo: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, repoName)
 	}
 	wizard := opts.Streams.Wizard(msg, "")
