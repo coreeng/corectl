@@ -99,6 +99,38 @@ func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 	return result, nil
 }
 
+func GetRepoName(localpath string) (string, error) {
+	repo, err := git.PlainOpen(localpath)
+	if err != nil {
+		return "", err
+	}
+
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return "", fmt.Errorf("failed to get remotes for repository '%s': %w", localpath, err)
+	}
+	if len(remotes) == 0 {
+		return "", fmt.Errorf("no remote found for repository '%s'", localpath)
+	}
+
+	// If there is an "origin", return its name (from the URL)
+	for _, remote := range remotes {
+		if remote.Config().Name == "origin" && len(remote.Config().URLs) > 0 {
+			url := remote.Config().URLs[0]
+			return path.Base(strings.TrimSuffix(url, ".git")), nil
+		}
+	}
+
+	// Otherwise, just take the first one
+	for _, remote := range remotes {
+		if len(remote.Config().URLs) > 0 {
+			url := remote.Config().URLs[0]
+			return path.Base(strings.TrimSuffix(url, ".git")), nil
+		}
+	}
+	return "", fmt.Errorf("no remote URL found for repository '%s'", localpath)
+}
+
 func OpenLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 	log.Debug().
 		Str("repo", path).
