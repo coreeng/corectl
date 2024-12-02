@@ -15,6 +15,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
@@ -141,6 +142,22 @@ NOTE:
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
 	repoName, err := git.GetRepoName(filepath.Dir(opts.LocalPath))
+	if err == nil && opts.Streams.IsInteractive() {
+		confirmation, err := confirmation.GetInput(
+			opts.Streams,
+			fmt.Sprintf("Creating application %s in existing repo https://github.com/%s/%s, are you sure?",
+				opts.Name,
+				cfg.GitHub.Organization.Value,
+				repoName,
+			),
+		)
+		if err != nil {
+			return fmt.Errorf("could not get confirmation from user: %w", err)
+		}
+		if !confirmation {
+			return fmt.Errorf("aborted by user")
+		}
+	}
 	var msg string
 	if err != nil {
 		// We are creating the new app in its own repo
