@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -139,10 +140,16 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	wizard := opts.Streams.Wizard(
-		fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name),
-		"",
-	)
+	repoName, err := git.GetRepoName(filepath.Dir(opts.LocalPath))
+	var msg string
+	if err != nil {
+		// We are creating the new app in its own repo
+		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
+	} else {
+		// We are creating the new app in a monorepo
+		msg = fmt.Sprintf("Creating new application %s in existing repo: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, repoName)
+	}
+	wizard := opts.Streams.Wizard(msg, "")
 	defer wizard.Done()
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
