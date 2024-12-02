@@ -1,0 +1,55 @@
+appName: kkonstan-test-app
+registry:
+domain:
+appUrlSuffix:
+tenantName:
+tag: latest
+monitoring: false
+dashboarding: false
+prometheusEndpoint:
+
+functional:
+  image:
+  resources:
+    requests:
+      cpu: 0m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+nft:
+  image:
+  endpoint: ingress
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+integration:
+  image:
+  resources:
+    requests:
+      cpu: 0m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+extended:
+  image:
+  endpoint: service
+  parallelism: 10
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+service:
+  image:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 700m
+      memory: 100Mi
+    limits:
+      memory: 100Mi

@@ -1,0 +1,24 @@
+name: kkonstan-test-app Prod
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 5 * * 1,5'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  get-latest-version:
+    uses: coreeng/p2p/.github/workflows/p2p-get-latest-image-prod.yaml@v1
+    with:
+      image-name: kkonstan-test-app
+
+  prod:
+    needs: [get-latest-version]
+    uses: coreeng/p2p/.github/workflows/p2p-workflow-prod.yaml@v1
+    with:
+      version: ${{ needs.get-latest-version.outputs.version }}
+      version-prefix: kkonstan-test-app/v
+      working-directory: kkonstan-test-app

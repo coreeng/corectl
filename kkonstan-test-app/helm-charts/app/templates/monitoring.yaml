@@ -1,0 +1,34 @@
+{{- if .Values.monitoring }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.appName }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.appName }}
+    monitoring/instance: {{ .Values.tenantName }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.appName }}
+  endpoints:
+  - interval: 30s
+    port: metrics
+    path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: k6
+  labels:
+    app.kubernetes.io/name: k6
+    monitoring/instance: {{ .Values.tenantName }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k6
+  endpoints:
+    - port: 5656
+      path: /
+      interval: 5s
+{{- end }}

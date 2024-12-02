@@ -1,0 +1,18 @@
+{{- $domain := .Values.domain | required ".Values.domain is required." -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Values.appName }}-integration-test"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: functional-tests
+      image: "{{ .Values.registry }}/{{ .Values.integration.image }}:{{ .Values.tag }}"
+      resources: {{ .Values.integration.resources | toJson }}
+      env:
+        - name: SERVICE_ENDPOINT
+          value: "http://{{ .Values.appName }}"
+        - name: INGRESS_ENDPOINT
+          value: https://{{ .Values.appName }}{{ .Values.appUrlSuffix }}.{{ $domain }}
+  restartPolicy: Never
