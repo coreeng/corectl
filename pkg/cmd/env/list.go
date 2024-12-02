@@ -62,9 +62,9 @@ func list(opts ListOpt, cfg *config.Config) error {
 		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)
 	}
 
-	table := corectlenv.NewTable(opts.Streams)
+	table := corectlenv.NewTable(opts.Streams, false)
 	for _, env := range existing {
-		table.AppendEnv(env)
+		table.AppendEnv(env, "-", "-")
 	}
 	table.Render()
 
