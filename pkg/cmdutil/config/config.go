@@ -10,8 +10,6 @@ import (
 
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
-
-	"github.com/coreeng/corectl/pkg/git"
 )
 
 const (
@@ -194,11 +192,6 @@ func ReadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	config.path = path
-	org, _, err := git.GetLocalRepoOrgAndName(".")
-	if err != nil {
-		org = config.GitHub.Organization.Value
-	}
-	config.GitHub.Organization.help = fmt.Sprintf("GitHub organization to create the app into (default: '%s')", org)
 	return config, nil
 }
 

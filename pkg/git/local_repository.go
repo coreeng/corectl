@@ -118,7 +118,6 @@ func getRepoAndNameFromUrl(url string) (string, string, error) {
 	if !found {
 		return "", "", fmt.Errorf("Malformated git remote URL: '%s'", url)
 	}
-	fmt.Sprintf("\n\n\nXXX repo=%s name=%s\n\n\n", repo, name)
 	return repo, name, nil
 }
 
