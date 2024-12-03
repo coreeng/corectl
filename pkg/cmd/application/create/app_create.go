@@ -141,7 +141,7 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	repoName, err := git.GetRepoName(filepath.Dir(opts.LocalPath))
+	_, repoName, err := git.GetLocalRepoOrgAndName(filepath.Dir(opts.LocalPath))
 	if err == nil && opts.Streams.IsInteractive() {
 		confirmation, err := confirmation.GetInput(
 			opts.Streams,

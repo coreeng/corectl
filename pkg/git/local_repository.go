@@ -99,25 +99,48 @@ func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 	return result, nil
 }
 
-func GetRepoName(localpath string) (string, error) {
+func getRepoAndNameFromUrl(url string) (string, string, error) {
+	s := strings.TrimSuffix(url, ".git")
+	name := path.Base(s)
+	s, found := strings.CutSuffix(s, "/"+name)
+	if !found {
+		return "", "", fmt.Errorf("Malformated git remote URL: '%s'", url)
+	}
+	var sep string
+	if strings.HasPrefix(s, "git") {
+		// This is an ssh-type remote URL
+		sep = ":"
+	} else {
+		// This is an http-type remote URL
+		sep = "/"
+	}
+	_, repo, found := strings.Cut(s, sep)
+	if !found {
+		return "", "", fmt.Errorf("Malformated git remote URL: '%s'", url)
+	}
+	fmt.Sprintf("\n\n\nXXX repo=%s name=%s\n\n\n", repo, name)
+	return repo, name, nil
+}
+
+func GetLocalRepoOrgAndName(localpath string) (string, string, error) {
 	repo, err := git.PlainOpen(localpath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	remotes, err := repo.Remotes()
 	if err != nil {
-		return "", fmt.Errorf("failed to get remotes for repository '%s': %w", localpath, err)
+		return "", "", fmt.Errorf("failed to get remotes for repository '%s': %w", localpath, err)
 	}
 	if len(remotes) == 0 {
-		return "", fmt.Errorf("no remote found for repository '%s'", localpath)
+		return "", "", fmt.Errorf("no remote found for repository '%s'", localpath)
 	}
 
 	// If there is an "origin", return its name (from the URL)
 	for _, remote := range remotes {
 		if remote.Config().Name == "origin" && len(remote.Config().URLs) > 0 {
 			url := remote.Config().URLs[0]
-			return path.Base(strings.TrimSuffix(url, ".git")), nil
+			return getRepoAndNameFromUrl(url)
 		}
 	}
 
@@ -125,10 +148,10 @@ func GetRepoName(localpath string) (string, error) {
 	for _, remote := range remotes {
 		if len(remote.Config().URLs) > 0 {
 			url := remote.Config().URLs[0]
-			return path.Base(strings.TrimSuffix(url, ".git")), nil
+			return getRepoAndNameFromUrl(url)
 		}
 	}
-	return "", fmt.Errorf("no remote URL found for repository '%s'", localpath)
+	return "", "", fmt.Errorf("no remote URL found for repository '%s'", localpath)
 }
 
 func OpenLocalRepository(path string, dryRun bool) (*LocalRepository, error) {

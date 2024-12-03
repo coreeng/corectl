@@ -10,6 +10,8 @@ import (
 
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+
+	"github.com/coreeng/corectl/pkg/git"
 )
 
 const (
@@ -136,7 +138,7 @@ func NewConfig() *Config {
 			},
 			Organization: Parameter[string]{
 				flag: "github-org",
-				help: "GitHub organization your company is using",
+				help: "GitHub organization to create the app into (if different from default)",
 			},
 		},
 		Repositories: RepositoriesConfig{
@@ -192,6 +194,11 @@ func ReadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	config.path = path
+	org, _, err := git.GetLocalRepoOrgAndName(".")
+	if err != nil {
+		org = config.GitHub.Organization.Value
+	}
+	config.GitHub.Organization.help = fmt.Sprintf("GitHub organization to create the app into (default: '%s')", org)
 	return config, nil
 }
 
