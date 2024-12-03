@@ -99,12 +99,12 @@ func InitLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 	return result, nil
 }
 
-func getRepoAndNameFromUrl(url string) (string, string, error) {
+func getOrgAndNameFromUrl(url string) (string, string, error) {
 	s := strings.TrimSuffix(url, ".git")
 	name := path.Base(s)
 	s, found := strings.CutSuffix(s, "/"+name)
 	if !found {
-		return "", "", fmt.Errorf("Malformated git remote URL: '%s'", url)
+		return "", "", fmt.Errorf("malformated git remote URL: '%s'", url)
 	}
 	var sep string
 	if strings.HasPrefix(s, "git") {
@@ -114,11 +114,11 @@ func getRepoAndNameFromUrl(url string) (string, string, error) {
 		// This is an http-type remote URL
 		sep = "/"
 	}
-	_, repo, found := strings.Cut(s, sep)
+	_, org, found := strings.Cut(s, sep)
 	if !found {
-		return "", "", fmt.Errorf("Malformated git remote URL: '%s'", url)
+		return "", "", fmt.Errorf("malformated git remote URL: '%s'", url)
 	}
-	return repo, name, nil
+	return org, name, nil
 }
 
 func GetLocalRepoOrgAndName(localpath string) (string, string, error) {
@@ -139,7 +139,7 @@ func GetLocalRepoOrgAndName(localpath string) (string, string, error) {
 	for _, remote := range remotes {
 		if remote.Config().Name == "origin" && len(remote.Config().URLs) > 0 {
 			url := remote.Config().URLs[0]
-			return getRepoAndNameFromUrl(url)
+			return getOrgAndNameFromUrl(url)
 		}
 	}
 
@@ -147,7 +147,7 @@ func GetLocalRepoOrgAndName(localpath string) (string, string, error) {
 	for _, remote := range remotes {
 		if len(remote.Config().URLs) > 0 {
 			url := remote.Config().URLs[0]
-			return getRepoAndNameFromUrl(url)
+			return getOrgAndNameFromUrl(url)
 		}
 	}
 	return "", "", fmt.Errorf("no remote URL found for repository '%s'", localpath)
