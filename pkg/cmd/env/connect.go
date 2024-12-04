@@ -12,7 +12,7 @@ import (
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

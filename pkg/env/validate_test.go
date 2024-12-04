@@ -11,7 +11,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/gcp"
 	gcptest "github.com/coreeng/corectl/pkg/testutil/gcp"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/stretchr/testify/assert"
 )
 

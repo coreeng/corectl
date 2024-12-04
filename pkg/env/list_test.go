@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/stretchr/testify/assert"
 )
 

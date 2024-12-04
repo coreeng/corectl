@@ -3,8 +3,8 @@ package selector
 import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/developer-platform/pkg/environment"
-	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"slices"
 	"strings"
 )
