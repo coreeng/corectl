@@ -104,7 +104,7 @@ func getOrgAndNameFromUrl(url string) (string, string, error) {
 	name := path.Base(s)
 	s, found := strings.CutSuffix(s, "/"+name)
 	if !found {
-		return "", "", fmt.Errorf("malformated git remote URL: '%s'", url)
+		return "", "", fmt.Errorf("malformed git remote URL: '%s'", url)
 	}
 	var sep string
 	if strings.HasPrefix(s, "git") {
@@ -114,10 +114,8 @@ func getOrgAndNameFromUrl(url string) (string, string, error) {
 		// This is an http-type remote URL
 		sep = "/"
 	}
-	_, org, found := strings.Cut(s, sep)
-	if !found {
-		return "", "", fmt.Errorf("malformated git remote URL: '%s'", url)
-	}
+	parts := strings.Split(s, sep)
+	org := parts[len(parts)-1]
 	return org, name, nil
 }
 
