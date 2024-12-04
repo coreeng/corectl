@@ -3,7 +3,7 @@ package env
 import (
 	"errors"
 
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 )
 
 var (

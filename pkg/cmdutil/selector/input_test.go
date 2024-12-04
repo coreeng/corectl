@@ -9,8 +9,8 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/coreeng/developer-platform/pkg/environment"
-	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )

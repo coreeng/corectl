@@ -5,7 +5,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )

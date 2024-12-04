@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-`corectl` is a client for [Core Platform](https://github.com/coreeng/developer-platform) which simplifies common use-cases.
+`corectl` is a client for [Core Platform](https://github.com/coreeng/core-platform) which simplifies common use-cases.
 Examples:
 - creating a new tenancy
 - creating a new application

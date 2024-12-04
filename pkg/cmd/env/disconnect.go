@@ -7,7 +7,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 	"os"
 )

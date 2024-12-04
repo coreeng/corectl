@@ -9,7 +9,7 @@ import (
 	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/coreeng/corectl/pkg/shell"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/phuslu/log"
 	"golang.org/x/oauth2/google"
 	"strconv"
