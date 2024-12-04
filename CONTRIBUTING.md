@@ -5,7 +5,7 @@ Small contributions are welcome but it is best to raise an issue for larger pric
 
 # Set up
 
-Set env variable: `GOPRIVATE=github.com/coreeng`
+Set env variable: `GOPRIVATE=github.com/coreeng/*`
 
 Configure git to use https seamlessly. 
 For example, with [git-credential-manager](https://github.com/git-ecosystem/git-credential-manager).

@@ -12,7 +12,7 @@ import (
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -58,6 +58,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				availableEnvironments []environment.Environment
 				envNames              []string
 			)
+			cmd.SilenceUsage = true
 			if len(args) > 0 {
 				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 				if err == nil {
@@ -73,7 +74,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-			if err != nil {
+			if err != nil || corectlenv.IsConnectChild(opts) {
 				nonInteractive = true
 			}
 
@@ -91,8 +92,23 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 		&opts.Port,
 		"port",
 		"p",
-		54808,
+		0,
 		"Local port to use for connection to the cluster",
+	)
+	connectCmd.Flags().BoolVarP(
+		&opts.Background,
+		"background",
+		"b",
+		false,
+		"Run in background",
+	)
+
+	connectCmd.Flags().BoolVarP(
+		&opts.Force,
+		"force",
+		"f",
+		false,
+		"Force replacement of existing connection",
 	)
 
 	config.RegisterStringParameterAsFlag(

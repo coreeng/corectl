@@ -7,7 +7,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/developer-platform/pkg/environment"
-	coretnt "github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 )
 
 const (

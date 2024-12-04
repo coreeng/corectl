@@ -3,7 +3,7 @@ package userio
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/developer-platform/pkg/validator"
+	"github.com/coreeng/core-platform/pkg/validator"
 )
 
 var (

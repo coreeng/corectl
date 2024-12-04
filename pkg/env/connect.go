@@ -3,19 +3,17 @@ package env
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
-
-	. "github.com/coreeng/corectl/pkg/command"
-	"github.com/coreeng/corectl/pkg/shell"
-
 	"github.com/cedws/iapc/iap"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/env/proxy"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/coreeng/corectl/pkg/gcp"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/shell"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/phuslu/log"
 	"golang.org/x/oauth2/google"
+	"strconv"
+	"strings"
 )
 
 const BastionSquidProxyPort = 3128
@@ -37,22 +35,44 @@ type EnvConnectOpts struct {
 	GcpClient          *gcp.Client
 	Command            []string
 	SkipTunnel         bool
+	Background         bool
+	Force              bool
 }
 
 // Connect establishes a connection with a gke cluster via a bastion host
 func Connect(opts EnvConnectOpts) error {
 	s := opts.Streams
-	wizard := s.Wizard(
-		"Checking platform is supported",
-		"Platform is supported",
-	)
-	defer wizard.Done()
-	if err := checkPlatformSupported(opts.Environment); err != nil {
-		return err
+	var wizard wizard.Handler
+
+	if opts.Port == 0 {
+		opts.Port = GenerateConnectPort(opts.Environment.Environment)
+	}
+	if IsConnectStartup(opts) {
+		existingPid := ExistingPidForConnection(opts.Environment.Environment)
+		if existingPid != 0 {
+			if !opts.Force {
+				s.Info(fmt.Sprintf("connection already exists for environment %s with pid %d", opts.Environment.Environment, existingPid))
+				return nil
+			}
+			if err := KillProcess(opts.Environment.Environment, int32(existingPid), false); err != nil {
+				return fmt.Errorf("[%s] failed to kill process: %w", opts.Environment.Environment, err)
+			}
+		}
+
+		wizard = s.Wizard(
+			"Checking platform is supported",
+			"Platform is supported",
+		)
+		defer wizard.Done()
+
+		if err := checkPlatformSupported(opts.Environment); err != nil {
+			return err
+		}
 	}
 
 	e := opts.Environment.Platform.(*environment.GCPVendor)
-	proxyUrl, err := setupConnection(s, opts.SilentExec, opts.Environment, opts.Port)
+	// Only run startup if we are in the foreground or in the background and parent process
+	proxyUrl, err := setupConnection(s, opts, opts.SilentExec, opts.Environment, opts.Port)
 	if err != nil {
 		return err
 	}
@@ -63,10 +83,8 @@ func Connect(opts EnvConnectOpts) error {
 		commandString := strings.Join(opts.Command, " ")
 		log.Debug().Msgf("iap tunnel command set to: %s", commandString)
 		execute = func() error {
-			wizard.Info(fmt.Sprintf("Executing: %s", commandString))
 			stdout, stderr, err := shell.RunCommand(".", opts.Command[0], opts.Command[1:]...)
 			log.Debug().Str("command", commandString).Msgf("stdout: %s, stderr: %s", stdout, stderr)
-			wizard.Print(stdout)
 			if strings.Trim(string(stderr), " \t") != "" {
 				s.CurrentHandler.Warn(fmt.Sprintf("stderr: %s", stderr))
 			}
@@ -76,6 +94,7 @@ func Connect(opts EnvConnectOpts) error {
 	if !opts.SkipTunnel { // solely for testing the rest of Connect - IAPC's target websocket endpoint cannot be configured
 		bastionName := fmt.Sprintf("%s-bastion", opts.Environment.Environment)
 		startIAPTunnel(
+			opts,
 			s,
 			e.ProjectId,
 			DefaultZone,
@@ -91,6 +110,7 @@ func Connect(opts EnvConnectOpts) error {
 }
 
 func startIAPTunnel(
+	opts EnvConnectOpts,
 	streams userio.IOStreams,
 	project string,
 	zone string,
@@ -109,7 +129,7 @@ func startIAPTunnel(
 	}
 
 	stringPort := strconv.FormatUint(uint64(port), 10)
-	opts := []iap.DialOption{
+	dialOpts := []iap.DialOption{
 		iap.WithProject(project),
 		iap.WithInstance(instanceName, zone, interfaceName),
 		iap.WithPort(stringPort),
@@ -124,17 +144,22 @@ func startIAPTunnel(
 		Str("tokenScopes", strings.Join(defaultTokenScopes, ", ")).
 		Msgf("setting iap options")
 	if compress {
-		opts = append(opts, iap.WithCompression())
+		dialOpts = append(dialOpts, iap.WithCompression())
 	}
 
 	log.Debug().Msgf("binding to %s", bind)
-	proxy.Listen(streams, ctx, bind, opts, execute)
+	Listen(streams, opts, ctx, bind, dialOpts, execute)
 }
 
-func setupConnection(streams userio.IOStreams, c Commander, env *environment.Environment, port int) (string, error) {
+func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander, env *environment.Environment, port int) (string, error) {
 	e := env.Platform.(*environment.GCPVendor)
 	wizard := streams.CurrentHandler
 
+	// TODO: We need to make proxy URL more dynamic
+	proxyUrl := fmt.Sprintf("localhost:%d", port)
+	if !IsConnectStartup(opts) {
+		return proxyUrl, nil
+	}
 	wizard.SetTask(
 		fmt.Sprintf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
 		fmt.Sprintf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
@@ -154,7 +179,6 @@ func setupConnection(streams userio.IOStreams, c Commander, env *environment.Env
 		return "", err
 	}
 
-	proxyUrl := fmt.Sprintf("localhost:%d", port)
 	wizard.SetTask(
 		fmt.Sprintf("Setting Kubernetes proxy url to: %s", proxyUrl),
 		fmt.Sprintf("Kubernetes proxy url set to: %s", proxyUrl),

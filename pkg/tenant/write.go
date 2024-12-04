@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/developer-platform/pkg/tenant"
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"gopkg.in/yaml.v3"
@@ -53,7 +53,7 @@ func CreateOrUpdate(
 		return result, err
 	}
 	log.Debug().
-		// TODO: add public method to render Tenant in developer-platform
+		// TODO: add public method to render Tenant in Core Platform
 		//       so we can log it here when dry-running
 		Str("repo", op.CplatformRepoPath).
 		Bool("dry_run", op.DryRun).

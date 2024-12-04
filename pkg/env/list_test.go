@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/developer-platform/pkg/environment"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +25,7 @@ func TestAppendEnv(t *testing.T) {
 				},
 			},
 			expected: `
-NAME    ID               CLOUD PLATFORM 
+NAME    ID               CLOUDPLATFORM 
  predev  gcp-predev-1234  GCP`,
 		},
 		{
@@ -37,7 +37,7 @@ NAME    ID               CLOUD PLATFORM
 				},
 			},
 			expected: `
-NAME        ID                   CLOUD PLATFORM 
+NAME        ID                   CLOUDPLATFORM 
  production  aws-production-5678  AWS`,
 		},
 	}
@@ -50,8 +50,8 @@ NAME        ID                   CLOUD PLATFORM
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			table := NewTable(streams)
-			table.AppendEnv(tt.env)
+			table := NewTable(streams, false)
+			table.AppendEnv(tt.env, "", "")
 			compareOutput(t, table.Render(), tt.expected)
 		})
 	}
@@ -71,7 +71,7 @@ func TestAppendRow(t *testing.T) {
 			name:     "",
 			id:       "",
 			expected: `
-NAME  ID  CLOUD PLATFORM`,
+NAME  ID  CLOUDPLATFORM`,
 		},
 		{
 			title:    "GCP rows",
@@ -79,7 +79,7 @@ NAME  ID  CLOUD PLATFORM`,
 			name:     "gcpdev-1234",
 			id:       "1234",
 			expected: `
-NAME         ID    CLOUD PLATFORM 
+NAME         ID    CLOUDPLATFORM 
  gcpdev-1234  1234  GCP`,
 		},
 		{
@@ -88,7 +88,7 @@ NAME         ID    CLOUD PLATFORM
 			name:     "awsprod-5678",
 			id:       "5678",
 			expected: `
-NAME          ID    CLOUD PLATFORM 
+NAME          ID    CLOUDPLATFORM 
  awsprod-5678  5678  AWS`,
 		},
 	}
@@ -101,8 +101,8 @@ NAME          ID    CLOUD PLATFORM
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			table := NewTable(streams)
-			table.AppendRow(tt.name, tt.id, tt.platform)
+			table := NewTable(streams, false)
+			table.AppendRow(tt.name, tt.id, tt.platform, "", "")
 			compareOutput(t, table.Render(), tt.expected)
 		})
 	}
