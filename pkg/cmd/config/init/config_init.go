@@ -90,7 +90,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"github-organization",
 		"o",
 		"",
-		"GitHub organisation of your company.")
+		"Default GitHub organisation to create apps.")
 
 	return newInitCmd
 }

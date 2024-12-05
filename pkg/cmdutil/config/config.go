@@ -136,7 +136,7 @@ func NewConfig() *Config {
 			},
 			Organization: Parameter[string]{
 				flag: "github-org",
-				help: "GitHub organization your company is using",
+				help: "GitHub organization to create the new app into (if different from default, ignored for monorepos)",
 			},
 		},
 		Repositories: RepositoriesConfig{

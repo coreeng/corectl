@@ -15,6 +15,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
@@ -140,14 +141,23 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	repoName, err := git.GetRepoName(filepath.Dir(opts.LocalPath))
+	repoOrg, repoName, err := git.GetLocalRepoOrgAndName(filepath.Dir(opts.LocalPath))
+	isMonorepo := err == nil
+	if isMonorepo && opts.Streams.IsInteractive() {
+		msg := fmt.Sprintf("Creating application %s in existing repo https://github.com/%s/%s, are you sure?", opts.Name, repoOrg, repoName)
+		confirmation, err := confirmation.GetInput(opts.Streams, msg)
+		if err != nil {
+			return fmt.Errorf("could not get confirmation from user: %w", err)
+		}
+		if !confirmation {
+			return fmt.Errorf("aborted by user")
+		}
+	}
 	var msg string
-	if err != nil {
-		// We are creating the new app in its own repo
-		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
+	if isMonorepo {
+		msg = fmt.Sprintf("Creating new application %s in existing repo: https://github.com/%s/%s", opts.Name, repoOrg, repoName)
 	} else {
-		// We are creating the new app in a monorepo
-		msg = fmt.Sprintf("Creating new application %s in existing repo: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, repoName)
+		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
 	}
 	wizard := opts.Streams.Wizard(msg, "")
 	defer wizard.Done()
@@ -202,7 +212,11 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 
-	createdAppResult, err := createNewApp(opts, cfg, githubClient, appTenant, fromTemplate, existingEnvs)
+	newAppOrg := ""
+	if isMonorepo {
+		newAppOrg = repoOrg
+	}
+	createdAppResult, err := createNewApp(newAppOrg, opts, cfg, githubClient, appTenant, fromTemplate, existingEnvs)
 	if err != nil {
 		return err
 	}
@@ -285,6 +299,7 @@ GitHub CLI commands:
 )
 
 func createNewApp(
+	newAppOrg string, // if new app is in a monorepo, `newAppOrg` is the github org of the monorepo; otherwise ""
 	opts *AppCreateOpt,
 	cfg *config.Config,
 	githubClient *github.Client,
@@ -303,9 +318,12 @@ func createNewApp(
 		Streams:  opts.Streams,
 	}
 	service := application.NewService(templateRenderer, githubClient, opts.DryRun)
+	if newAppOrg == "" {
+		newAppOrg = cfg.GitHub.Organization.Value
+	}
 	createOp := application.CreateOp{
 		Name:             opts.Name,
-		OrgName:          cfg.GitHub.Organization.Value,
+		OrgName:          newAppOrg,
 		LocalPath:        opts.LocalPath,
 		Tenant:           appTenant,
 		FastFeedbackEnvs: fastFeedbackEnvs,
