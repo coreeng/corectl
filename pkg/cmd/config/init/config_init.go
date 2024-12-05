@@ -109,6 +109,9 @@ type p2pStageConfig struct {
 	DefaultEnvs []string `yaml:"default-envs"`
 }
 type initConfig struct {
+	Github struct {
+		Organization string `yaml:"organization"`
+	} `yaml:"github"`
 	Repositories struct {
 		Cplatform string `yaml:"cplatform"`
 		Templates string `yaml:"templates"`
@@ -154,7 +157,6 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		}
 	} else {
 		repoFile := "corectl.yaml"
-		initFile = fmt.Sprintf("%s/%s", environmentsRepoFlagValue, repoFile)
 
 		// Prompt user if `--environments-repo` wasn't set on the command line
 		environmentsRepoInput := opt.createEnvironmentsRepoInputSwitch()
@@ -162,6 +164,7 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
+		initFile = fmt.Sprintf("%s/%s", environmentsRepoFlagValue, repoFile)
 
 		configBytes, err = fetchInitConfigFromGitHub(githubClient, environmentsRepoFlagValue, repoFile)
 		if err != nil {
@@ -174,6 +177,7 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	githubOrgInInitFile := initC.Github.Organization
 
 	repositoriesDir := opt.RepositoriesDir
 	if repositoriesDir == "" {
@@ -207,6 +211,9 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	cplatformRepoFullName, err := git.DeriveRepositoryFullname(clonedRepositories.cplatform)
 	if err != nil {
 		return err
+	}
+	if githubOrgInInitFile != "" && opt.GitHubOrganisation == "" {
+		opt.GitHubOrganisation = githubOrgInInitFile
 	}
 	//TODO: can we fail quick if noninteractive mode is turned on and the flag is not set?
 	githubOrgInput := opt.createGitHubOrganisationInputSwitch(cplatformRepoFullName.Organization())
