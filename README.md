@@ -14,7 +14,7 @@ and add to your path.
 
 # Usage 
 
-## Initialisztion
+## Initialisation
 
 Before usage, you should initialise `corectl`. This will set up your GitHub integration with your developer environments.
 
