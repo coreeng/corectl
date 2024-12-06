@@ -14,27 +14,24 @@ and add to your path.
 
 # Usage 
 
-Before usage, you should initialize. It sets up your github integration with your developer environments.
-It requires the following:
-- initialization file: [init-example.yaml](examples/init-example.yaml)
-- your person GitHub token to perform operations on your behalf. See more info [here](#GitHub-Access-Token)
+## Initialisation
 
-**NOTE: Ensure that you update [init-example.yaml](examples/init-example.yaml) repositories to reference to your actual environments and software template repositories**.
+Before usage, you should initialise `corectl`. This will set up your GitHub integration with your developer environments.
 
-To run initialization run:
+But first, you will need:
+  - A [GitHub personal token](#GitHub-Access-Token)
+  - To know which GitHub repository is your "environments repository". Please ask your administrator for this.
+
+To initialise `corectl`, run:
+
 ```bash
 corectl config init
 ```
 
-Saves configuration options and clones repositories: `cplatform-environments` and `software-templates`. 
-
-`cplatform-environments` - client repository that holds the configuration settings and parameters for core platform environments.
-
-`software-templates` - public repository featuring bootstrap templates designed for quick project setups.
-
-The repositories mentioned above are available for testing purposes. To gain access, you must be added to the appropriate organization and granted the necessary permissions.
+It will ask you to enter your GitHub token and the URL of your environments repository.
 
 ## Updates
+
 Periodically update local `corectl` configuration by running:
 ```bash
 corectl config update
