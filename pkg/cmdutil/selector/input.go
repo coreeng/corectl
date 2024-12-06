@@ -2,11 +2,12 @@ package selector
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 )
 
 func Tenant(cPlatRepoPath string, overrideTenantName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
@@ -81,6 +82,7 @@ func createEnvInputSwitch(defaultEnv string, environments []environment.Environm
 }
 
 func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *userio.InputSourceSwitch[string, *coretnt.Tenant] {
+	// XXX FABRICE: Modify this function to use the tree
 	var validateFq = func(e string) (*coretnt.Tenant, error) {
 		inpName := strings.TrimSpace(e)
 		tenantIndex := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
