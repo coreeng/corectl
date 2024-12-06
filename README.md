@@ -19,7 +19,7 @@ and add to your path.
 Before usage, you should initialise `corectl`. This will set up your GitHub integration with your developer environments.
 
 But first, you will need:
-  - A [GitHub personal token first](#GitHub-Access-Token)
+  - A [GitHub personal token](#GitHub-Access-Token)
   - To know which GitHub repository is your "environments repository". Please ask your administrator for this.
 
 To initialise `corectl`, run:
