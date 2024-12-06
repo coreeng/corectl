@@ -10,12 +10,14 @@ import (
 )
 
 type TenantTreeOpts struct {
+	From string // Name of the tenant to start the tenant tree from; use "" to start from root
+
 	Streams userio.IOStreams
 }
 
 func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 	opts := TenantTreeOpts{}
-	tenantListCmd := &cobra.Command{
+	tenantTreeCmd := &cobra.Command{
 		Use:   "tree",
 		Short: "List tenants as a tree",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -29,11 +31,18 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantListCmd.Flags())
-	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantListCmd.Flags())
-	// XXX FABRICE: add a flag to start the tree somewhere else than root
+	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantTreeCmd.Flags())
+	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantTreeCmd.Flags())
 
-	return tenantListCmd
+	tenantTreeCmd.Flags().StringVarP(
+		&opts.From,
+		"from",
+		"f",
+		"",
+		"The tenant to start the tree view from.",
+	)
+
+	return tenantTreeCmd
 }
 
 func run(opts *TenantTreeOpts, cfg *config.Config) error {
@@ -43,14 +52,17 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 		}
 	}
 
-	node, err := corectltnt.GetTenantTree(cfg, "")
+	rootNodes, err := corectltnt.GetTenantTrees(cfg, opts.From)
 	if err != nil {
-		return fmt.Errorf("failed to build tenants tree: %w", err)
+		return fmt.Errorf("failed to build tenant trees: %w", err)
 	}
 
-	output := corectltnt.RenderTenantTree(node)
-	for _, line := range output {
-		fmt.Println(line)
+	for _, rootNode := range rootNodes {
+		output := corectltnt.RenderTenantTree(rootNode)
+		for _, line := range output {
+			// XXX FABRICE use opts.Streams instead of fmt.println()
+			fmt.Println(line)
+		}
 	}
 
 	return nil
