@@ -14,7 +14,7 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Test
     steps:
       - name: checkout
@@ -39,7 +39,7 @@ jobs:
           git config --global user.email "test@bot.com"
           make test
   integration-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: Integration Test
     needs: [test]
     steps:
