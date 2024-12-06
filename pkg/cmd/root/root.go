@@ -2,9 +2,11 @@ package root
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmd/env"
 	"os"
+	"strings"
 	"time"
+
+	"github.com/coreeng/corectl/pkg/cmd/env"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
@@ -66,7 +68,8 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 				if cmdName != update.CmdName {
 					update.CheckForUpdates(cfg, cmd)
 				}
-				if !cfg.IsPersisted() && !(cmdName == configcmd.CmdName || cmdName == version.CmdName) {
+				cmdPath := cmd.CommandPath()
+				if !cfg.IsPersisted() && !strings.HasPrefix(cmdPath, "corectl config") && cmdName != version.CmdName {
 					styles := userio.NewNonInteractiveStyles()
 					streams := userio.NewIOStreamsWithInteractive(
 						os.Stdin,
@@ -129,7 +132,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	}
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(p2pCmd)
-	
+
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
 	rootCmd.AddCommand(env.NewEnvCmd(cfg))
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))
