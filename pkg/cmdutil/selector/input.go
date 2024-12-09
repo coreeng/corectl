@@ -96,17 +96,12 @@ func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *
 		return &existingTenants[tenantIndex], nil
 	}
 
-	items := []string{}
-	lines := []string{}
-	nodes, err := tenant.GetTenantTrees(existingTenants, "")
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
+	rootNode, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
-	for _, node := range nodes {
-		tmpItems, tmpLines := tenant.RenderTenantTree(node)
-		items = append(items, tmpItems...)
-		lines = append(lines, tmpLines...)
-	}
+	items, lines := tenant.RenderTenantTree(rootNode)
 
 	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(defaultTenant),

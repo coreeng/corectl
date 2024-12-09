@@ -16,10 +16,10 @@ type Node struct {
 // Arguments:
 //
 //	 tenants   Tenants to build the tree(s) from
-//		from   Name of the tenant to start the tree from; "" to start from the top-level tenant
+//		root   Name of the tenant to start the tree from
 //
-// Returns: A slice of pointers to the root nodes of the trees. If `from` has been provided, the slice will have only one item.
-func GetTenantTrees(tenants []coretnt.Tenant, from string) ([]*Node, error) {
+// Returns: A pointer to the root node of the tree
+func GetTenantTree(tenants []coretnt.Tenant, root string) (*Node, error) {
 	// Build a map of tenants indexed by name for faster access
 	nodeMap := make(map[string]*Node)
 	for _, tenant := range tenants {
@@ -37,27 +37,11 @@ func GetTenantTrees(tenants []coretnt.Tenant, from string) ([]*Node, error) {
 		}
 	}
 
-	rootNodes := []*Node{}
-	if from != "" {
-		fromNode, exists := nodeMap[from]
-		if !exists {
-			return nil, fmt.Errorf("no tenant found with name '%s'", from)
-		}
-		rootNodes = append(rootNodes, fromNode)
-
-	} else {
-		for _, tenant := range tenants {
-			if tenant.Parent == coretnt.RootName {
-				node, exists := nodeMap[tenant.Name]
-				if !exists {
-					panic("Internal inconsistency, this is a bug, please fix it")
-				}
-				rootNodes = append(rootNodes, node)
-			}
-		}
+	rootNode, exists := nodeMap[root]
+	if !exists {
+		return nil, fmt.Errorf("root tenant '%s' not found", root)
 	}
-
-	return rootNodes, nil
+	return rootNode, nil
 }
 
 // Renders a tree

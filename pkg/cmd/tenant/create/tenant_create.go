@@ -329,17 +329,12 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 }
 
 func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
-	items := []string{coretnt.RootName}
-	lines := []string{coretnt.RootName}
-	nodes, err := tenant.GetTenantTrees(existingTenants, "")
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
+	node, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
-	for _, node := range nodes {
-		tmpItems, tmpLines := tenant.RenderTenantTree(node)
-		items = append(items, tmpItems...)
-		lines = append(lines, tmpLines...)
-	}
+	items, lines := tenant.RenderTenantTree(node)
 
 	return userio.InputSourceSwitch[string, coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(opt.Parent),

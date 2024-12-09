@@ -7,109 +7,84 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateTenantTreeWithNoTenantShouldSucceed(t *testing.T) {
+func TestGenerateTenantTreeWithNoRootShouldFail(t *testing.T) {
 	tenants := []coretnt.Tenant{
 		{Name: coretnt.RootName},
 	}
 
-	nodes, err := GetTenantTrees(tenants, "")
-	assert.Equal(t, err, nil)
-	assert.Equal(t, len(nodes), 0)
+	_, err := GetTenantTree(tenants, "")
+	assert.NotEqual(t, err, nil)
 }
 
-func TestGenerateTenantTreeFromJustOneTenantShouldSucceed(t *testing.T) {
+func TestGenerateTenantTreeWithOnlyTheRootTenantShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
 		{Name: coretnt.RootName},
-		{Name: "top-level", Parent: coretnt.RootName},
 	}
 
-	nodes, err := GetTenantTrees(tenants, "")
+	node, err := GetTenantTree(tenants, coretnt.RootName)
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(nodes), 1)
+	assert.NotEqual(t, node, nil)
 
-	items, lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(node)
 
 	assert.Equal(t, len(items), 1)
-	assert.Equal(t, items[0], "top-level")
+	assert.Equal(t, items[0], coretnt.RootName)
 
 	assert.Equal(t, len(lines), 1)
-	assert.Equal(t, lines[0], "top-level")
+	assert.Equal(t, lines[0], coretnt.RootName)
 }
 
-func TestGenerateTenantTreeFromSingleTopLevelTenantShouldSucceed(t *testing.T) {
+func TestGenerateTenantTreeFromManyTenantsShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
-		{Name: coretnt.RootName},
-		{Name: "top", Parent: coretnt.RootName},
+		{Name: "myroot"},
+
+		{Name: "top", Parent: "myroot"},
 		{Name: "child1", Parent: "top"},
 		{Name: "child11", Parent: "child1"},
 		{Name: "child12", Parent: "child1"},
 		{Name: "child2", Parent: "top"},
 		{Name: "child21", Parent: "child2"},
 		{Name: "child22", Parent: "child2"},
+
+		{Name: "bottom", Parent: "myroot"},
+		{Name: "childA", Parent: "bottom"},
+		{Name: "childAA", Parent: "childA"},
+		{Name: "childB", Parent: "bottom"},
 	}
 
-	nodes, err := GetTenantTrees(tenants, "")
+	node, err := GetTenantTree(tenants, "myroot")
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(nodes), 1)
+	assert.NotEqual(t, node, nil)
 
-	items, lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(node)
 
-	assert.Equal(t, len(items), 7)
-	assert.Equal(t, items[0], "top")
-	assert.Equal(t, items[1], "child1")
-	assert.Equal(t, items[2], "child11")
-	assert.Equal(t, items[3], "child12")
-	assert.Equal(t, items[4], "child2")
-	assert.Equal(t, items[5], "child21")
-	assert.Equal(t, items[6], "child22")
+	assert.Equal(t, len(items), 12)
+	assert.Equal(t, items[0], "myroot")
+	assert.Equal(t, items[1], "top")
+	assert.Equal(t, items[2], "child1")
+	assert.Equal(t, items[3], "child11")
+	assert.Equal(t, items[4], "child12")
+	assert.Equal(t, items[5], "child2")
+	assert.Equal(t, items[6], "child21")
+	assert.Equal(t, items[7], "child22")
+	assert.Equal(t, items[8], "bottom")
+	assert.Equal(t, items[9], "childA")
+	assert.Equal(t, items[10], "childAA")
+	assert.Equal(t, items[11], "childB")
 
-	assert.Equal(t, len(lines), 7)
-	assert.Equal(t, lines[0], "top")
-	assert.Equal(t, lines[1], "├── child1")
-	assert.Equal(t, lines[2], "│   ├── child11")
-	assert.Equal(t, lines[3], "│   └── child12")
-	assert.Equal(t, lines[4], "└── child2")
-	assert.Equal(t, lines[5], "    ├── child21")
-	assert.Equal(t, lines[6], "    └── child22")
-}
-
-func TestGenerateTenantTreeFromMultipleTopLevelTenantsShouldSucceed(t *testing.T) {
-	tenants := []coretnt.Tenant{
-		{Name: coretnt.RootName},
-
-		{Name: "top", Parent: coretnt.RootName},
-		{Name: "child1", Parent: "top"},
-		{Name: "child11", Parent: "child1"},
-
-		{Name: "bottom", Parent: coretnt.RootName},
-		{Name: "final", Parent: "bottom"},
-	}
-
-	nodes, err := GetTenantTrees(tenants, "")
-	assert.Equal(t, err, nil)
-	assert.Equal(t, len(nodes), 2)
-
-	items, lines := RenderTenantTree(nodes[0])
-
-	assert.Equal(t, len(items), 3)
-	assert.Equal(t, items[0], "top")
-	assert.Equal(t, items[1], "child1")
-	assert.Equal(t, items[2], "child11")
-
-	assert.Equal(t, len(lines), 3)
-	assert.Equal(t, lines[0], "top")
-	assert.Equal(t, lines[1], "└── child1")
-	assert.Equal(t, lines[2], "    └── child11")
-
-	items, lines = RenderTenantTree(nodes[1])
-
-	assert.Equal(t, len(items), 2)
-	assert.Equal(t, items[0], "bottom")
-	assert.Equal(t, items[1], "final")
-
-	assert.Equal(t, len(lines), 2)
-	assert.Equal(t, lines[0], "bottom")
-	assert.Equal(t, lines[1], "└── final")
+	assert.Equal(t, len(lines), 12)
+	assert.Equal(t, lines[0], "myroot")
+	assert.Equal(t, lines[1], "├── top")
+	assert.Equal(t, lines[2], "│   ├── child1")
+	assert.Equal(t, lines[3], "│   │   ├── child11")
+	assert.Equal(t, lines[4], "│   │   └── child12")
+	assert.Equal(t, lines[5], "│   └── child2")
+	assert.Equal(t, lines[6], "│       ├── child21")
+	assert.Equal(t, lines[7], "│       └── child22")
+	assert.Equal(t, lines[8], "└── bottom")
+	assert.Equal(t, lines[9], "    ├── childA")
+	assert.Equal(t, lines[10], "    │   └── childAA")
+	assert.Equal(t, lines[11], "    └── childB")
 }
 
 func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
@@ -130,11 +105,11 @@ func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
 		{Name: "childB", Parent: "bottom"},
 	}
 
-	nodes, err := GetTenantTrees(tenants, "bottom")
+	node, err := GetTenantTree(tenants, "bottom")
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(nodes), 1)
+	assert.NotEqual(t, node, nil)
 
-	items, lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(node)
 
 	assert.Equal(t, len(items), 4)
 	assert.Equal(t, items[0], "bottom")

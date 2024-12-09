@@ -58,17 +58,19 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
-	rootNodes, err := corectltnt.GetTenantTrees(tenants, opts.From)
+	from := coretnt.RootName
+	if opts.From != "" {
+		from = opts.From
+	}
+	tenants = append(tenants, coretnt.Tenant{Name: coretnt.RootName})
+	rootNode, err := corectltnt.GetTenantTree(tenants, from)
 	if err != nil {
-		return fmt.Errorf("failed to build tenant trees: %w", err)
+		return fmt.Errorf("failed to build tenant tree: %w", err)
 	}
 
-	for _, rootNode := range rootNodes {
-		_, output := corectltnt.RenderTenantTree(rootNode)
-		for _, line := range output {
-			fmt.Fprintln(opts.Streams.GetOutput(), line)
-		}
+	_, lines := corectltnt.RenderTenantTree(rootNode)
+	for _, line := range lines {
+		fmt.Fprintln(opts.Streams.GetOutput(), line)
 	}
-
 	return nil
 }
