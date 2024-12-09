@@ -23,7 +23,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	items := make([]list.Item, len(op.Items))
 	for i, it := range op.Items {
 		var disp string
-		if op.DisplayedItems != nil && len(op.DisplayedItems) <= i {
+		if op.DisplayedItems == nil || len(op.DisplayedItems) <= i {
 			disp = it
 		} else {
 			disp = op.DisplayedItems[i]

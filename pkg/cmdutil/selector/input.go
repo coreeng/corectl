@@ -8,6 +8,7 @@ import (
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/tenant"
 )
 
 func Tenant(cPlatRepoPath string, overrideTenantName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
@@ -82,7 +83,6 @@ func createEnvInputSwitch(defaultEnv string, environments []environment.Environm
 }
 
 func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *userio.InputSourceSwitch[string, *coretnt.Tenant] {
-	// XXX FABRICE: Modify this function to use the tree
 	var validateFq = func(e string) (*coretnt.Tenant, error) {
 		inpName := strings.TrimSpace(e)
 		tenantIndex := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
@@ -95,16 +95,26 @@ func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *
 		}
 		return &existingTenants[tenantIndex], nil
 	}
-	availableTenantNames := make([]string, len(existingTenants))
-	for i, t := range existingTenants {
-		availableTenantNames[i] = t.Name
+
+	items := []string{}
+	lines := []string{}
+	nodes, err := tenant.GetTenantTrees(existingTenants, "")
+	if err != nil {
+		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
+	for _, node := range nodes {
+		tmpItems, tmpLines := tenant.RenderTenantTree(node)
+		items = append(items, tmpItems...)
+		lines = append(lines, tmpLines...)
+	}
+
 	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(defaultTenant),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt: "Tenant:",
-				Items:  availableTenantNames,
+				Prompt:         "Tenant:",
+				Items:          items,
+				DisplayedItems: lines,
 			}, nil
 		},
 		ValidateAndMap: validateFq,
