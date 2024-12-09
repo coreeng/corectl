@@ -27,7 +27,11 @@ func TestGenerateTenantTreeFromJustOneTenantShouldSucceed(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(nodes), 1)
 
-	lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(nodes[0])
+
+	assert.Equal(t, len(items), 1)
+	assert.Equal(t, items[0], "top-level")
+
 	assert.Equal(t, len(lines), 1)
 	assert.Equal(t, lines[0], "top-level")
 }
@@ -48,7 +52,17 @@ func TestGenerateTenantTreeFromSingleTopLevelTenantShouldSucceed(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(nodes), 1)
 
-	lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(nodes[0])
+
+	assert.Equal(t, len(items), 7)
+	assert.Equal(t, items[0], "top")
+	assert.Equal(t, items[1], "child1")
+	assert.Equal(t, items[2], "child11")
+	assert.Equal(t, items[3], "child12")
+	assert.Equal(t, items[4], "child2")
+	assert.Equal(t, items[5], "child21")
+	assert.Equal(t, items[6], "child22")
+
 	assert.Equal(t, len(lines), 7)
 	assert.Equal(t, lines[0], "top")
 	assert.Equal(t, lines[1], "├── child1")
@@ -75,13 +89,24 @@ func TestGenerateTenantTreeFromMultipleTopLevelTenantsShouldSucceed(t *testing.T
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(nodes), 2)
 
-	lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(nodes[0])
+
+	assert.Equal(t, len(items), 3)
+	assert.Equal(t, items[0], "top")
+	assert.Equal(t, items[1], "child1")
+	assert.Equal(t, items[2], "child11")
+
 	assert.Equal(t, len(lines), 3)
 	assert.Equal(t, lines[0], "top")
 	assert.Equal(t, lines[1], "└── child1")
 	assert.Equal(t, lines[2], "    └── child11")
 
-	lines = RenderTenantTree(nodes[1])
+	items, lines = RenderTenantTree(nodes[1])
+
+	assert.Equal(t, len(items), 2)
+	assert.Equal(t, items[0], "bottom")
+	assert.Equal(t, items[1], "final")
+
 	assert.Equal(t, len(lines), 2)
 	assert.Equal(t, lines[0], "bottom")
 	assert.Equal(t, lines[1], "└── final")
@@ -109,7 +134,14 @@ func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(nodes), 1)
 
-	lines := RenderTenantTree(nodes[0])
+	items, lines := RenderTenantTree(nodes[0])
+
+	assert.Equal(t, len(items), 4)
+	assert.Equal(t, items[0], "bottom")
+	assert.Equal(t, items[1], "childA")
+	assert.Equal(t, items[2], "childAA")
+	assert.Equal(t, items[3], "childB")
+
 	assert.Equal(t, len(lines), 4)
 	assert.Equal(t, lines[0], "bottom")
 	assert.Equal(t, lines[1], "├── childA")

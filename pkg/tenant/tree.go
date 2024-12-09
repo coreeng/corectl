@@ -16,7 +16,7 @@ type Node struct {
 // Arguments:
 //
 //	 tenants   Tenants to build the tree(s) from
-//		from      Name of the tenant to start the tree from; "" to start from the top-level tenant
+//		from   Name of the tenant to start the tree from; "" to start from the top-level tenant
 //
 // Returns: A slice of pointers to the root nodes of the trees. If `from` has been provided, the slice will have only one item.
 func GetTenantTrees(tenants []coretnt.Tenant, from string) ([]*Node, error) {
@@ -60,13 +60,21 @@ func GetTenantTrees(tenants []coretnt.Tenant, from string) ([]*Node, error) {
 	return rootNodes, nil
 }
 
-func RenderTenantTree(root *Node) []string {
+// Renders a tree
+//
+// Arguments:
+//
+//	node   Top-level node to render the tree from
+//
+// Returns: The first slice is the list of tenants names. The second slice is how the corresponding line in the first slice should be rendered.
+func RenderTenantTree(root *Node) ([]string, []string) {
 	var lines []string
-	buildTree(root, "", true, true, &lines)
-	return lines
+	var renderedLines []string
+	buildTree(root, "", true, true, &lines, &renderedLines)
+	return lines, renderedLines
 }
 
-func buildTree(node *Node, prefix string, isLastChild bool, isRoot bool, lines *[]string) {
+func buildTree(node *Node, prefix string, isLastChild bool, isRoot bool, lines *[]string, renderedLines *[]string) {
 	if node == nil {
 		return
 	}
@@ -80,8 +88,9 @@ func buildTree(node *Node, prefix string, isLastChild bool, isRoot bool, lines *
 		}
 	}
 
+	*lines = append(*lines, node.Tenant.Name)
 	out := fmt.Sprintf("%s%s%s", prefix, connector, node.Tenant.Name)
-	*lines = append(*lines, out)
+	*renderedLines = append(*renderedLines, out)
 
 	if !isRoot {
 		if isLastChild {
@@ -92,6 +101,6 @@ func buildTree(node *Node, prefix string, isLastChild bool, isRoot bool, lines *
 	}
 
 	for i, child := range node.Children {
-		buildTree(child, prefix, i == len(node.Children)-1, false, lines)
+		buildTree(child, prefix, i == len(node.Children)-1, false, lines, renderedLines)
 	}
 }

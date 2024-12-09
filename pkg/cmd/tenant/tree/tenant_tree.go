@@ -64,10 +64,9 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 	}
 
 	for _, rootNode := range rootNodes {
-		output := corectltnt.RenderTenantTree(rootNode)
+		_, output := corectltnt.RenderTenantTree(rootNode)
 		for _, line := range output {
-			// XXX FABRICE use opts.Streams instead of fmt.println()
-			fmt.Println(line)
+			fmt.Fprintln(opts.Streams.GetOutput(), line)
 		}
 	}
 
