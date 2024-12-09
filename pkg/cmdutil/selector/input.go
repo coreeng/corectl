@@ -2,11 +2,13 @@ package selector
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/tenant"
 )
 
 func Tenant(cPlatRepoPath string, overrideTenantName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
@@ -93,16 +95,21 @@ func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *
 		}
 		return &existingTenants[tenantIndex], nil
 	}
-	availableTenantNames := make([]string, len(existingTenants))
-	for i, t := range existingTenants {
-		availableTenantNames[i] = t.Name
+
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
+	rootNode, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
+	items, lines := tenant.RenderTenantTree(rootNode)
+
 	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(defaultTenant),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt: "Tenant:",
-				Items:  availableTenantNames,
+				Prompt:         "Tenant:",
+				Items:          items,
+				DisplayedItems: lines,
 			}, nil
 		},
 		ValidateAndMap: validateFq,

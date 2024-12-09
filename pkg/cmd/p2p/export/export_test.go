@@ -61,7 +61,7 @@ func TestRunExportNonExistingTenant(t *testing.T) {
 		streams:         streams,
 	}, false, &config.Parameter[string]{Value: cPlatRepoPath})
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent]", cPlatRepoPath, tenantName, tenantName))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepoPath, tenantName, tenantName))
 }
 
 func TestRunExportNonExistingEnvironment(t *testing.T) {

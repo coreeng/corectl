@@ -8,12 +8,12 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
@@ -329,17 +329,20 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 }
 
 func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
-	availableTenantNames := make([]string, len(existingTenants)+1)
-	availableTenantNames[0] = rootTenant.Name
-	for i, t := range existingTenants {
-		availableTenantNames[i+1] = t.Name
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
+	node, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
+	items, lines := tenant.RenderTenantTree(node)
+
 	return userio.InputSourceSwitch[string, coretnt.Tenant]{
 		DefaultValue: userio.AsZeroable(opt.Parent),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt: "Parent tenant:",
-				Items:  availableTenantNames,
+				Prompt:         "Parent tenant:",
+				Items:          items,
+				DisplayedItems: lines,
 			}, nil
 		},
 		ValidateAndMap: func(inp string) (coretnt.Tenant, error) {
