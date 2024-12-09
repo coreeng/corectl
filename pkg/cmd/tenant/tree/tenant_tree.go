@@ -21,6 +21,7 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 	tenantTreeCmd := &cobra.Command{
 		Use:   "tree",
 		Short: "List tenants as a tree",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 			opts.Streams = userio.NewIOStreams(
