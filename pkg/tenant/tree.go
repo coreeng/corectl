@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
-
-	"github.com/coreeng/corectl/pkg/cmdutil/config"
 )
 
 type Node struct {
@@ -17,16 +15,11 @@ type Node struct {
 //
 // Arguments:
 //
-//	cfg    Project configuration
-//	root   Name of the tenant to start the tree from; "" to start from the top-level tenant
+//	 tenants   Tenants to build the tree(s) from
+//		from      Name of the tenant to start the tree from; "" to start from the top-level tenant
 //
-// Returns: A slice of pointers to the root nodes of the trees
-func GetTenantTrees(cfg *config.Config, root string) ([]*Node, error) {
-	tenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list tenants: %w", err)
-	}
-
+// Returns: A slice of pointers to the root nodes of the trees. If `from` has been provided, the slice will have only one item.
+func GetTenantTrees(tenants []coretnt.Tenant, from string) ([]*Node, error) {
 	// Build a map of tenants indexed by name for faster access
 	nodeMap := make(map[string]*Node)
 	for _, tenant := range tenants {
@@ -45,12 +38,12 @@ func GetTenantTrees(cfg *config.Config, root string) ([]*Node, error) {
 	}
 
 	rootNodes := []*Node{}
-	if root != "" {
-		rootNode, exists := nodeMap[root]
+	if from != "" {
+		fromNode, exists := nodeMap[from]
 		if !exists {
-			return nil, fmt.Errorf("no tenant found with name '%s'", root)
+			return nil, fmt.Errorf("no tenant found with name '%s'", from)
 		}
-		rootNodes = append(rootNodes, rootNode)
+		rootNodes = append(rootNodes, fromNode)
 
 	} else {
 		for _, tenant := range tenants {

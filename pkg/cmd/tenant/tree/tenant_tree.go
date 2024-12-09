@@ -3,6 +3,7 @@ package tree
 import (
 	"fmt"
 
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
@@ -52,7 +53,12 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 		}
 	}
 
-	rootNodes, err := corectltnt.GetTenantTrees(cfg, opts.From)
+	tenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
+	if err != nil {
+		return fmt.Errorf("failed to list tenants: %w", err)
+	}
+
+	rootNodes, err := corectltnt.GetTenantTrees(tenants, opts.From)
 	if err != nil {
 		return fmt.Errorf("failed to build tenant trees: %w", err)
 	}
