@@ -175,11 +175,10 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if !ok {
 		return
 	}
-	str := fmt.Sprintf("%3d. %s", index+1, it.displayedValue)
 
 	if index == m.Index() {
-		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
+		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+it.displayedValue))
 	} else {
-		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
+		_, _ = fmt.Fprint(w, d.styles.item.Render(it.displayedValue))
 	}
 }
