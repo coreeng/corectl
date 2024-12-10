@@ -40,6 +40,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	m.SetShowPagination(true)
 	m.SetFilteringEnabled(true)
 	m.DisableQuitKeybindings()
+	m.SetWidth(80)
 	m.Title = op.Prompt
 	m.Styles.Title = streams.styles.title
 	m.Styles.PaginationStyle = streams.styles.pagination
