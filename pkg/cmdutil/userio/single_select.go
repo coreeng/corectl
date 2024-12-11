@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"strconv"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -16,13 +15,24 @@ const blankListHeight = 6
 type SingleSelect struct {
 	Prompt          string
 	Items           []string
+	DisplayedItems  []string
 	PreselectedItem string
 }
 
 func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	items := make([]list.Item, len(op.Items))
 	for i, it := range op.Items {
-		items[i] = item(it)
+		var disp string
+		if op.DisplayedItems == nil || len(op.DisplayedItems) <= i {
+			disp = it
+		} else {
+			disp = op.DisplayedItems[i]
+		}
+
+		items[i] = item{
+			value:          it,
+			displayedValue: disp,
+		}
 	}
 
 	m := list.New(items, itemDelegate{streams.styles}, -1, len(items)+blankListHeight)
@@ -30,6 +40,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	m.SetShowPagination(true)
 	m.SetFilteringEnabled(true)
 	m.DisableQuitKeybindings()
+	m.SetWidth(80)
 	m.Title = op.Prompt
 	m.Styles.Title = streams.styles.title
 	m.Styles.PaginationStyle = streams.styles.pagination
@@ -56,7 +67,7 @@ func (op *SingleSelect) GetInput(streams IOStreams) (string, error) {
 	sSResult := result.(singleSelectModel)
 	choice := ""
 	if sSResult.choice != nil {
-		choice = string(*sSResult.choice)
+		choice = string(sSResult.choice.value)
 	}
 
 	return choice, sSResult.err
@@ -127,13 +138,20 @@ func (m singleSelectModel) View() string {
 		return ""
 	}
 	return m.prompt + "\n" +
-		"> " + string(*m.choice) + "\n\n"
+		"> " + string(m.choice.value) + "\n\n"
 }
 
-type item string
+type item struct {
+	value          string
+	displayedValue string
+}
+
+func (i item) Title() string {
+	return i.displayedValue
+}
 
 func (i item) FilterValue() string {
-	return string(i)
+	return i.value
 }
 
 type itemDelegate struct {
@@ -157,11 +175,10 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	if !ok {
 		return
 	}
-	str := strconv.Itoa(index+1) + ". " + string(it)
 
 	if index == m.Index() {
-		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
+		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+it.displayedValue))
 	} else {
-		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
+		_, _ = fmt.Fprint(w, d.styles.item.Render(it.displayedValue))
 	}
 }

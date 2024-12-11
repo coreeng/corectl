@@ -5,12 +5,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,7 +37,7 @@ func TestTenantSelectorNonExistingTenant(t *testing.T) {
 
 	tenant, err := Tenant(cPlatRepo.Path(), fmt.Sprintf("%s-tenant", t.Name()), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent]", cPlatRepo.Path(), tenantName, tenantName))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepo.Path(), tenantName, tenantName))
 	assert.Nil(t, tenant)
 }
 
