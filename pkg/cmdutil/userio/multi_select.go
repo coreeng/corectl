@@ -198,13 +198,13 @@ func (d multiSelectItemDelegate) Render(w io.Writer, m list.Model, index int, li
 	}
 	str := checkedSign + it.value
 
+	// NB: The "item" style already renders with a padding of 2 spaces on the
+	// left. See [here](styles.go), in the function `newStyles()`. But it's not
+	// possible to instruct lipgloss to add a string prefix, so we have to add
+	// the "> " ourselves for the selected item.
 	if index == m.Index() {
 		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
 	} else {
-		// NB: The "item" style already renders with a padding of 2 spaces on
-		// the left. See [here](styles.go), in the function `newStyles()`. But
-		// it's not possible to instruct lipgloss to add a string prefix, so we
-		// have to add the "> " above ourselves.
 		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
 	}
 }
