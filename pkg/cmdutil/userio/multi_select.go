@@ -3,7 +3,6 @@ package userio
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -197,10 +196,10 @@ func (d multiSelectItemDelegate) Render(w io.Writer, m list.Model, index int, li
 	} else {
 		checkedSign = "[ ] "
 	}
-	str := checkedSign + strconv.Itoa(index+1) + ". " + it.value
+	str := checkedSign + it.value
 
 	if index == m.Index() {
-		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render(str))
+		_, _ = fmt.Fprint(w, d.styles.selectedItem.Render("> "+str))
 	} else {
 		_, _ = fmt.Fprint(w, d.styles.item.Render(str))
 	}
