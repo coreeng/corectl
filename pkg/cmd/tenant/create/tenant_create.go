@@ -3,6 +3,8 @@ package create
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 type TenantCreateOpt struct {
@@ -151,9 +154,18 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	}
 	rootTenant := coretnt.RootTenant(tenantsPath)
 
-	envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+	envsDir := environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value)
+	envFilePath := filepath.Join(envsDir, "environments.yaml")
+	envs, err := listEnabledEnvironments(envFilePath)
 	if err != nil {
-		return err
+		log.Warn().Msgf("Failed to read environments file '%s': %s. Falling back to listing directories in '%s'.", envFilePath, err, envsDir)
+		envs, err = environment.List(envsDir)
+		if err != nil {
+			return err
+		}
+	}
+	if len(envs) == 0 {
+		return fmt.Errorf("no enabled environment found in '%s' and no environment directory found in '%s'", envFilePath, envsDir)
 	}
 
 	nameInput := opt.createNameInputSwitch(existingTenants)
@@ -561,4 +573,28 @@ func (opt *TenantCreateOpt) createReadOnlyGroupInputSwitch() userio.InputSourceS
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid read only group",
 	}
+}
+
+type envFile struct {
+	Enabled []string `yaml:"enabled"`
+}
+
+func listEnabledEnvironments(envFilePath string) ([]environment.Environment, error) {
+	file, err := os.Open(envFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("can't open file '%s': %w", envFilePath, err)
+	}
+
+	var data envFile
+	decoder := yaml.NewDecoder(file)
+	err = decoder.Decode(&data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file '%s': %w", envFilePath, err)
+	}
+
+	var envs []environment.Environment
+	for _, env := range data.Enabled {
+		envs = append(envs, environment.Environment{Environment: env})
+	}
+	return envs, nil
 }
