@@ -10,7 +10,10 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/application"
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
@@ -19,8 +22,6 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
@@ -141,6 +142,11 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
+	err := update.Update(cfg, opts.Streams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	repoOrg, repoName, err := git.GetLocalRepoOrgAndName(filepath.Dir(opts.LocalPath))
 	isMonorepo := err == nil
 	if isMonorepo && opts.Streams.IsInteractive() {

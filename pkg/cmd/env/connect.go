@@ -7,12 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -58,6 +59,24 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				availableEnvironments []environment.Environment
 				envNames              []string
 			)
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil || corectlenv.IsConnectChild(opts) {
+				nonInteractive = true
+			}
+
+			opts.Streams = userio.NewIOStreamsWithInteractive(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
+				!nonInteractive,
+			)
+
+			err = update.Update(cfg, opts.Streams)
+			if err != nil {
+				return fmt.Errorf("failed to update config repos: %w", err)
+			}
+
 			cmd.SilenceUsage = true
 			if len(args) > 0 {
 				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
@@ -73,17 +92,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("please specify the environment as the 1st argument, one of: {%s}", strings.Join(envNames, "|"))
 			}
 
-			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-			if err != nil || corectlenv.IsConnectChild(opts) {
-				nonInteractive = true
-			}
-
-			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
-				cmd.OutOrStderr(),
-				!nonInteractive,
-			)
 			return connect(opts, cfg, availableEnvironments)
 		},
 	}

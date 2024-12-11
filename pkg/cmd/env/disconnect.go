@@ -3,13 +3,15 @@ package env
 import (
 	"bytes"
 	"fmt"
+	"os"
+
+	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func disconnectCmd(cfg *config.Config) *cobra.Command {
@@ -33,6 +35,24 @@ func disconnectCmd(cfg *config.Config) *cobra.Command {
 				err                   error
 				availableEnvironments []environment.Environment
 			)
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				nonInteractive = true
+			}
+
+			opts.Streams = userio.NewIOStreamsWithInteractive(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
+				!nonInteractive,
+			)
+
+			err = update.Update(cfg, opts.Streams)
+			if err != nil {
+				return fmt.Errorf("failed to update config repos: %w", err)
+			}
+
 			cmd.SilenceUsage = true
 			availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 			if err != nil {
@@ -50,17 +70,6 @@ func disconnectCmd(cfg *config.Config) *cobra.Command {
 			}
 			availableEnvironments = selectedEnvironments
 
-			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-			if err != nil {
-				nonInteractive = true
-			}
-
-			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
-				cmd.OutOrStderr(),
-				!nonInteractive,
-			)
 			return disconnect(opts, cfg, availableEnvironments)
 		},
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
@@ -48,6 +49,11 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantTreeOpts, cfg *config.Config) error {
+	err := update.Update(cfg, opts.Streams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	if !cfg.Repositories.AllowDirty.Value {
 		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
 			return err

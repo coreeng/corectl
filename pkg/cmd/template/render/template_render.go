@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
@@ -42,7 +43,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 				}
 			}
 
-			return run(opts)
+			return run(opts, cfg)
 		},
 	}
 
@@ -72,7 +73,12 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	return templateRenderCmd
 }
 
-func run(opts TemplateRenderOpts) error {
+func run(opts TemplateRenderOpts, cfg *config.Config) error {
+	err := update.Update(cfg, opts.Streams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	stat, err := os.Stat(opts.TargetPath)
 	if err != nil {
 		pathError := err.(*os.PathError)

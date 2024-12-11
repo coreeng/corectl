@@ -13,6 +13,11 @@ type ConfigUpdateOpts struct {
 	Streams userio.IOStreams
 }
 
+func Update(cfg *config.Config, streams userio.IOStreams) error {
+	opts := ConfigUpdateOpts{Streams: streams}
+	return run(&opts, cfg)
+}
+
 func NewConfigUpdateCmd(cfg *config.Config) *cobra.Command {
 	opts := ConfigUpdateOpts{}
 	configUpdateCmd := &cobra.Command{

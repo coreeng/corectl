@@ -3,11 +3,12 @@ package addrepo
 import (
 	"fmt"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )
@@ -48,6 +49,11 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
+	err := update.Update(cfg, opts.Streams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	opts.Streams.Wizard(
 		fmt.Sprintf("Adding repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 		fmt.Sprintf("Added repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
