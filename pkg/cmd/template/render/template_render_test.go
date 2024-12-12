@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"gopkg.in/yaml.v3"
 
@@ -54,9 +56,18 @@ var _ = Describe("Template Render", Ordered, func() {
 			TemplateName:  testdata.BlankTemplate(),
 			TargetPath:    targetDir,
 			TemplatesPath: templatesLocalRepo.Path(),
+			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
 
-		err := run(opts)
+		cfg := config.Config{
+			Repositories: config.RepositoriesConfig{
+				Templates: config.Parameter[string]{
+					Value: templatesLocalRepo.Path(),
+				},
+			},
+		}
+
+		err := run(opts, &cfg)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, ".github", "workflows", "extended-test.yaml"))
@@ -71,9 +82,18 @@ var _ = Describe("Template Render", Ordered, func() {
 			TemplateName:  testdata.BlankTemplate(),
 			TargetPath:    targetDir,
 			TemplatesPath: templatesLocalRepo.Path(),
+			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
 
-		err := run(opts)
+		cfg := config.Config{
+			Repositories: config.RepositoriesConfig{
+				Templates: config.Parameter[string]{
+					Value: templatesLocalRepo.Path(),
+				},
+			},
+		}
+
+		err := run(opts, &cfg)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("required argument name is missing"))
 	})
@@ -91,9 +111,18 @@ var _ = Describe("Template Render", Ordered, func() {
 			TemplateName:  testdata.TemplateWithArgs(),
 			TargetPath:    targetDir,
 			TemplatesPath: templatesLocalRepo.Path(),
+			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
 
-		err := run(opts)
+		cfg := config.Config{
+			Repositories: config.RepositoriesConfig{
+				Templates: config.Parameter[string]{
+					Value: templatesLocalRepo.Path(),
+				},
+			},
+		}
+
+		err := run(opts, &cfg)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, "args.txt"))

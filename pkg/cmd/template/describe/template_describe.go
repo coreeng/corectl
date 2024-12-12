@@ -28,7 +28,7 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 			if !opts.IgnoreChecks {
 				streams := userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
 				repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
-				err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, streams, cfg.Repositories.AllowDirty.Value, repoParams)
+				err := config.Update(cfg.GitHub.Token.Value, streams, cfg.Repositories.AllowDirty.Value, repoParams)
 				if err != nil {
 					return fmt.Errorf("failed to update config repos: %w", err)
 				}

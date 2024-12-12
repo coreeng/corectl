@@ -37,7 +37,6 @@ func run(opts *ConfigUpdateOpts, cfg *config.Config) error {
 	}
 
 	return config.Update(
-		cfg.IsPersisted(),
 		cfg.GitHub.Token.Value,
 		opts.Streams,
 		cfg.Repositories.AllowDirty.Value,

@@ -49,7 +49,7 @@ func openResource(cfg *config.Config) *cobra.Command {
 
 func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
-	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}

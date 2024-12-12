@@ -8,25 +8,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 )
 
-type NoConfigErrorStruct struct {
-}
-
-var NoConfigError = NoConfigErrorStruct{}
-
-func (err *NoConfigErrorStruct) Error() string {
-	return "No config found\n" +
-		"Consider running initializing corectl first:\n" +
-		"  corectl config init"
-}
-
-func Update(isPersisted bool, githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
-	if !isPersisted {
-		streams.Info("No config found\n" +
-			"Consider running initializing corectl first:\n" +
-			"  corectl config init")
-		return nil
-	}
-
+func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
 	gitAuth := git.UrlTokenAuthMethod(githubToken)
 
 	for _, repoParam := range repoParams {

@@ -142,7 +142,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 
 func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
-	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opt.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	err := config.Update(cfg.GitHub.Token.Value, opt.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}

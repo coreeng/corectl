@@ -145,7 +145,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		cfg.Repositories.CPlatform,
 		cfg.Repositories.Templates,
 	}
-	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
