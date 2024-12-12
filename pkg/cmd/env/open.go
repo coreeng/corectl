@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -48,11 +48,12 @@ func openResource(cfg *config.Config) *cobra.Command {
 }
 
 func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
 	}
+
 	env, err := environment.FindByName(
 		environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value),
 		opts.Environment,

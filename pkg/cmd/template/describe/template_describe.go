@@ -2,8 +2,10 @@ package describe
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	"gopkg.in/yaml.v3"
 
@@ -24,8 +26,11 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 			cmd.SilenceUsage = true
 			templateName := args[0]
 			if !opts.IgnoreChecks {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
-					return err
+				streams := userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
+				repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
+				err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, streams, cfg.Repositories.AllowDirty.Value, repoParams)
+				if err != nil {
+					return fmt.Errorf("failed to update config repos: %w", err)
 				}
 			}
 			t, err := template.FindByName(cfg.Repositories.Templates.Value, templateName)

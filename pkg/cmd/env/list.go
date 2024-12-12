@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
@@ -53,16 +52,12 @@ func listCmd(cfg *config.Config) *cobra.Command {
 }
 
 func list(opts ListOpt, cfg *config.Config) error {
-	err := update.Update(cfg, opts.Streams)
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
-	}
 	existing, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 	if err != nil {
 		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)

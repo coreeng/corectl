@@ -1,21 +1,13 @@
 package update
 
 import (
-	"fmt"
-
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/spf13/cobra"
 )
 
 type ConfigUpdateOpts struct {
 	Streams userio.IOStreams
-}
-
-func Update(cfg *config.Config, streams userio.IOStreams) error {
-	opts := ConfigUpdateOpts{Streams: streams}
-	return run(&opts, cfg)
 }
 
 func NewConfigUpdateCmd(cfg *config.Config) *cobra.Command {
@@ -39,56 +31,16 @@ func NewConfigUpdateCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *ConfigUpdateOpts, cfg *config.Config) error {
-	if !cfg.IsPersisted() {
-		opts.Streams.Info(
-			"No config found\n" +
-				"Consider running initializing corectl first:\n" +
-				"  corectl config init",
-		)
-		return nil
+	repoParams := []config.Parameter[string]{
+		cfg.Repositories.CPlatform,
+		cfg.Repositories.Templates,
 	}
 
-	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-
-	err := updateRepository(&cfg.Repositories.CPlatform, gitAuth, opts.Streams)
-	if err != nil {
-		return err
-	}
-
-	err = updateRepository(&cfg.Repositories.Templates, gitAuth, opts.Streams)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func updateRepository(repoParam *config.Parameter[string], gitAuth git.AuthMethod, streams userio.IOStreams) error {
-	isUpdated, err := func() (bool, error) {
-		streams.Wizard(
-			fmt.Sprintf("Updating %s", repoParam.Name()),
-			fmt.Sprintf("Updated %s", repoParam.Name()),
-		)
-		defer streams.CurrentHandler.Done()
-		repo, err := config.ResetConfigRepositoryState(repoParam, false)
-		if err != nil {
-			return false, err
-		}
-		pullResult, err := repo.Pull(gitAuth)
-		if err != nil {
-			return false, fmt.Errorf("couldn't pull changes for %s: %v", repoParam.Name(), err)
-		}
-		return pullResult.IsUpdated, nil
-	}()
-	if err != nil {
-		return err
-	}
-
-	var msg string
-	if isUpdated {
-		msg = fmt.Sprintf("%s is updated succesfully!", repoParam.Name())
-	} else {
-		msg = fmt.Sprintf("%s is up to date!", repoParam.Name())
-	}
-	streams.Info(msg)
-	return nil
+	return config.Update(
+		cfg.IsPersisted(),
+		cfg.GitHub.Token.Value,
+		opts.Streams,
+		cfg.Repositories.AllowDirty.Value,
+		repoParams,
+	)
 }

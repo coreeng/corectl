@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
-	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -49,7 +48,8 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
-	err := update.Update(cfg, opts.Streams)
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
@@ -58,14 +58,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 		fmt.Sprintf("Adding repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 		fmt.Sprintf("Added repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 	)
-
 	defer opts.Streams.CurrentHandler.Done()
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting repo: %s", cfg.Repositories.CPlatform.Value))
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
-			return err
-		}
-	}
 
 	tenantsDir := tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value)
 	t, err := tenant.FindByName(tenantsDir, opts.TenantName)

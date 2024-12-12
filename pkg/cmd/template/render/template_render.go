@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
@@ -36,13 +35,6 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TemplateName = args[0]
 			opts.TargetPath = args[1]
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
-
-			if !cfg.Repositories.AllowDirty.Value {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
-					return err
-				}
-			}
-
 			return run(opts, cfg)
 		},
 	}
@@ -74,7 +66,8 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts TemplateRenderOpts, cfg *config.Config) error {
-	err := update.Update(cfg, opts.Streams)
+	repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
+	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}

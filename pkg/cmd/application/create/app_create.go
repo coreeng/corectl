@@ -13,7 +13,6 @@ import (
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/application"
-	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
@@ -142,7 +141,11 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
-	err := update.Update(cfg, opts.Streams)
+	repoParams := []config.Parameter[string]{
+		cfg.Repositories.CPlatform,
+		cfg.Repositories.Templates,
+	}
+	err := config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
@@ -167,19 +170,6 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	wizard := opts.Streams.Wizard(msg, "")
 	defer wizard.Done()
-
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
-	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
-		}
-	}
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
-	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
-		}
-	}
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
 	if err != nil {

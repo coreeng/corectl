@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/coreeng/corectl/pkg/cmd/config/update"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
@@ -72,7 +71,8 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				!nonInteractive,
 			)
 
-			err = update.Update(cfg, opts.Streams)
+			repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+			err = config.Update(cfg.IsPersisted(), cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 			if err != nil {
 				return fmt.Errorf("failed to update config repos: %w", err)
 			}
@@ -133,11 +133,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 }
 
 func connect(opts corectlenv.EnvConnectOpts, cfg *config.Config, availableEnvironments []environment.Environment) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
-	}
 	inputEnv := createEnvInputSwitch(opts, availableEnvironments)
 	envOutput, err := inputEnv.GetValue(opts.Streams)
 	if err != nil {
