@@ -48,10 +48,10 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantTreeOpts, cfg *config.Config) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
 	tenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))

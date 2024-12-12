@@ -10,6 +10,8 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -19,8 +21,6 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
@@ -141,6 +141,15 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
+	repoParams := []config.Parameter[string]{
+		cfg.Repositories.CPlatform,
+		cfg.Repositories.Templates,
+	}
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	repoOrg, repoName, err := git.GetLocalRepoOrgAndName(filepath.Dir(opts.LocalPath))
 	isMonorepo := err == nil
 	if isMonorepo && opts.Streams.IsInteractive() {
@@ -161,19 +170,6 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	wizard := opts.Streams.Wizard(msg, "")
 	defer wizard.Done()
-
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.CPlatform.Value))
-	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to reset config repository state for CPlatform: %w", err)
-		}
-	}
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("resetting local repository [repo=%s]", cfg.Repositories.Templates.Value))
-	if !opts.DryRun && !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, opts.DryRun); err != nil {
-			return fmt.Errorf("failed to reset config repository state for Templates: %w", err)
-		}
-	}
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
 	if err != nil {
