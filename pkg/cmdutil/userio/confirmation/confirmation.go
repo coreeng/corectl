@@ -20,7 +20,8 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		m.confirmation = msg.String() == "y"
+		key := msg.String()
+		m.confirmation = key == "y" || key == "Y"
 		m.quitting = true
 		return m, tea.Quit
 	}
