@@ -58,6 +58,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				availableEnvironments []environment.Environment
 				envNames              []string
 			)
+			cmd.SilenceUsage = true
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil || corectlenv.IsConnectChild(opts) {
@@ -77,7 +78,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("failed to update config repos: %w", err)
 			}
 
-			cmd.SilenceUsage = true
 			if len(args) > 0 {
 				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 				if err == nil {

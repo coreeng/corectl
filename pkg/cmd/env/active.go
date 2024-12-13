@@ -30,6 +30,7 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 				err                   error
 				availableEnvironments []environment.Environment
 			)
+			cmd.SilenceUsage = true
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
@@ -49,7 +50,6 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("failed to update config repos: %w", err)
 			}
 
-			cmd.SilenceUsage = true
 			availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 			if err != nil {
 				return fmt.Errorf("unable to load environments")
