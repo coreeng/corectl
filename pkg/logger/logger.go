@@ -39,6 +39,9 @@ var (
 	logPath    string
 )
 
+func defaultInit() *CECGLogger {
+	return Init(zapcore.InfoLevel.String())
+}
 func Init(logLevelFlag string) *CECGLogger {
 	if cecgLogger != nil {
 		return cecgLogger
@@ -87,37 +90,43 @@ func Init(logLevelFlag string) *CECGLogger {
 	)
 	cecgLogger = &CECGLogger{logger: zap.New(core)}
 
-	Debug().Msgf("log level configured", zap.String("value", consoleLogLevel.String()))
+	Debug().With(zap.String("value", consoleLogLevel.String())).Msg("log level configured")
 	return cecgLogger
 }
 
 // Debug logs a message at Debug level
 func Debug() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.DebugLevel}
 }
 
 // Info logs a message at Info level
 func Info() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.InfoLevel}
 }
 
 // Info logs a message at Info level
 func Warn() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.WarnLevel}
 }
 
 // Info logs a message at Info level
 func Error() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.ErrorLevel}
 }
 
 // Info logs a message at Info level
 func Fatal() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.FatalLevel}
 }
 
 // Info logs a message at Info level
 func Panic() *CECGLoggerEntry {
+	defaultInit()
 	return &CECGLoggerEntry{logger: cecgLogger.logger, level: zapcore.PanicLevel}
 }
 
@@ -137,6 +146,7 @@ func (e *CECGLoggerEntry) With(fields ...zap.Field) *CECGLoggerEntry {
 
 // Sync flushes any buffered log entries
 func Sync() {
+	defaultInit()
 	err := cecgLogger.logger.Sync()
 
 	// Ignore sync errors from stdout/stderr
