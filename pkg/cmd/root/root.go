@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/coreeng/corectl/pkg/cmd/env"
+	"github.com/coreeng/corectl/pkg/logger"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
@@ -17,35 +17,12 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	versionInfo "github.com/coreeng/corectl/pkg/version"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
 func ConfigureGlobalLogger(logLevelFlag string) {
-	logLevel := log.ParseLevel(logLevelFlag)
-	log.DefaultLogger.SetLevel(logLevel)
-	if !(logLevel == log.Level(8)) {
-		log.DefaultLogger = log.Logger{
-			Level:      logLevel,
-			Caller:     1,
-			TimeField:  "time",
-			TimeFormat: time.TimeOnly,
-			Writer: &log.FileWriter{
-				Filename: "corectl.log",
-			},
-		}
-	} else {
-		log.DefaultLogger = log.Logger{
-			Level: log.PanicLevel,
-		}
-	}
-	log.Debug().
-		Str("version", versionInfo.Version).
-		Str("commit", versionInfo.Commit).
-		Str("date", versionInfo.Commit).
-		Msgf("starting up, args: %+v", os.Args[1:])
-	log.Trace().Msgf("Log level set to %s", logLevelFlag)
+	logger.Init(logLevelFlag)
+
 }
 
 func isCompletion() bool {
@@ -61,7 +38,9 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		Short: "CLI interface for the CECG core platform.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if !isCompletion() {
-				ConfigureGlobalLogger(logLevel)
+				logger.Init(logLevel)
+				defer logger.Sync()
+
 				cmd.SilenceErrors = true
 
 				cmdName := cmd.Name()
@@ -99,8 +78,8 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		&logLevel,
 		"log-level",
 		"l",
-		"disabled",
-		"Log level - writes to ./corectl.log if set",
+		"warn",
+		"Log level - set up console log level. Default: warn. Accepted values: debug|info|warn|error",
 	)
 
 	rootCmd.PersistentFlags().BoolVar(
@@ -119,16 +98,16 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	// --non-interactive is the standard used by other clis
 	err := rootCmd.PersistentFlags().MarkDeprecated("nonint", "please use --non-interactive instead.")
 	if err != nil {
-		log.Panic().Msg("unable to set --nonint as deprecated")
+		logger.Panic().Msg("unable to set --nonint as deprecated")
 	}
 
 	appCmd, err := application.NewAppCmd(cfg)
 	if err != nil {
-		panic("Unable to execute app command")
+		logger.Panic().Msg("Unable to execute app command")
 	}
 	p2pCmd, err := p2p.NewP2PCmd(cfg)
 	if err != nil {
-		panic("Unable to execute p2p command")
+		logger.Panic().Msg("Unable to execute p2p command")
 	}
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(p2pCmd)

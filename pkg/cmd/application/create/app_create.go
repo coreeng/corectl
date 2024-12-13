@@ -9,7 +9,11 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 
+	"github.com/coreeng/core-platform/pkg/environment"
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -19,10 +23,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +68,7 @@ NOTE:
 
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic().With(zap.Error(err)).Msg("could not get non-interactive flag")
 			}
 
 			opts.Streams = userio.NewIOStreamsWithInteractive(

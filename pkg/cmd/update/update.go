@@ -18,11 +18,13 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/version"
 	"github.com/google/go-github/v59/github"
 	"github.com/otiai10/copy"
 	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 const CmdName = "update"
@@ -45,11 +47,11 @@ type CoreCtlAsset struct {
 func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 	updateInterval := 1 * time.Hour
 	updateStatusFileName := "corectl-autoupdate"
-	log.Debug().Msg("checking for updates")
+	logger.Debug().Msg("checking for updates")
 
 	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 	if err != nil {
-		log.Warn().Err(err).Msg("could not get non-interactive flag")
+		logger.Warn().With(zap.Error(err)).Msg("could not get non-interactive flag")
 		return
 	}
 
@@ -59,7 +61,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 	}
 
 	if nonInteractive {
-		log.Debug().Msg("skipping update check for --non-interactive command")
+		logger.Debug().Msg("skipping update check for --non-interactive command")
 		return
 	}
 
@@ -67,14 +69,14 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 	tempFilePath := filepath.Join(tempDir, updateStatusFileName)
 	file, err := os.OpenFile(tempFilePath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		log.Warn().Err(err).Msgf("could not open file to set update status %s", tempFilePath)
+		logger.Warn().With(zap.Error(err)).Msgf("could not open file to set update status %s", tempFilePath)
 		return
 	}
 	defer file.Close()
 
 	data, err := os.ReadFile(tempFilePath)
 	if err != nil {
-		log.Warn().Err(err).Msgf("could not read timestamp from update status file: %s", tempFilePath)
+		logger.Warn().With(zap.Error(err)).Msgf("could not read timestamp from update status file: %s", tempFilePath)
 		return
 	}
 
@@ -83,7 +85,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 	previousTime, err := time.Parse(time.RFC3339, previousTimeString)
 	// This is expected to fail on first run
 	if err != nil {
-		log.Debug().Err(err).Msgf("could not parse timestamp from update status file: %s previousTimeString: \"%s\"", tempFilePath, previousTimeString)
+		logger.Debug().With(zap.Error(err)).Msgf("could not parse timestamp from update status file: %s previousTimeString: \"%s\"", tempFilePath, previousTimeString)
 		// go's time.Sub only works with time.Time, not time.Duration
 		previousTime = now.Add(-updateInterval)
 	}
@@ -95,12 +97,12 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 		// Update the previousTime since we're checking
 		_, err := file.WriteString(now.Format(time.RFC3339))
 		if err != nil {
-			log.Warn().Err(err).Msgf("could not write timestamp to update status file: %s", tempFilePath)
+			logger.Warn().With(zap.Error(err)).Msgf("could not write timestamp to update status file: %s", tempFilePath)
 			return
 		}
 		err = file.Sync()
 		if err != nil {
-			log.Warn().Err(err).Msgf("could not sync update status file: %s", tempFilePath)
+			logger.Warn().With(zap.Error(err)).Msgf("could not sync update status file: %s", tempFilePath)
 			return
 		}
 
@@ -110,7 +112,7 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 		}
 		available, version, err := updateAvailable(githubClient)
 		if err != nil {
-			log.Warn().Err(err).Msg("could not check for updates")
+			logger.Warn().With(zap.Error(err)).Msg("could not check for updates")
 			return
 		}
 
@@ -132,19 +134,19 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 		}
 	} else {
 		timeLeft := (updateInterval - timeSince).Round(time.Second)
-		log.Debug().Msgf("next update check will be in %s", timeLeft)
+		logger.Debug().Msgf("next update check will be in %s", timeLeft)
 	}
 }
 
 func getCurrentExecutablePath() string {
 	execPath, err := os.Executable()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to get executable path")
+		logger.Fatal().With(zap.Error(err)).Msg("Failed to get executable path")
 	}
 
 	absolutePath, err := filepath.Abs(execPath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to get absolute executable path")
+		logger.Fatal().With(zap.Error(err)).Msg("Failed to get absolute executable path")
 	}
 
 	return absolutePath
@@ -212,7 +214,7 @@ func updateAvailable(githubClient *github.Client) (bool, string, error) {
 
 func update(opts UpdateOpts) error {
 	if opts.targetVersion != "" {
-		log.Debug().Msgf("target version set to %s", opts.targetVersion)
+		logger.Debug().Msgf("target version set to %s", opts.targetVersion)
 	}
 
 	wizard := opts.streams.Wizard("Checking for updates", "Retrieved version metadata")
@@ -238,7 +240,7 @@ func update(opts UpdateOpts) error {
 		wizard.Abort(err.Error())
 		return err
 	}
-	log.Debug().Str("current_version", version.Version).Str("remote_version", asset.Version).Msg("comparing versions")
+	logger.Debug().With(zap.String("current_version", version.Version), zap.String("remote_version", asset.Version)).Msg("comparing versions")
 	if version.Version == asset.Version {
 		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Already running %s release (%v)", opts.targetVersion, version.Version))
 		wizard.Done()
@@ -252,7 +254,7 @@ func update(opts UpdateOpts) error {
 	if err == nil {
 		_, _ = opts.streams.GetOutput().Write([]byte(out))
 	} else {
-		log.Warn().Err(err).Msg("could not render changelog markdown, falling back to plaintext")
+		logger.Warn().With(zap.Error(err)).Msg("could not render changelog markdown, falling back to plaintext")
 		_, _ = opts.streams.GetOutput().Write([]byte(asset.Changelog))
 	}
 
@@ -336,7 +338,7 @@ func update(opts UpdateOpts) error {
 		wizard.Abort(err.Error())
 		return fmt.Errorf("could not move file to path %s: %+v", path, err)
 	}
-	log.Debug().Msgf("moved %s -> %s", tmpPath, path)
+	logger.Debug().Msgf("moved %s -> %s", tmpPath, path)
 	wizard.Done()
 	return nil
 }
@@ -356,7 +358,7 @@ func getLatestCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, er
 	for _, asset := range release.Assets {
 		assetName := strings.ToLower(asset.GetName())
 		if assetName == targetAssetName {
-			log.Debug().Str("asset", assetName).Msg("github: found release asset with matching architecture & os")
+			logger.Debug().With(zap.String("asset", assetName)).Msg("github: found release asset with matching architecture & os")
 			return &CoreCtlAsset{
 				Url:       *asset.BrowserDownloadURL,
 				Version:   *release.TagName,
@@ -387,7 +389,7 @@ func getCorectlReleaseByTag(client *github.Client, version string) (*github.Repo
 }
 
 func downloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
-	log.Debug().Msgf("starting download %s", asset.Url)
+	logger.Debug().Msgf("starting download %s", asset.Url)
 	resp, err := http.Get(asset.Url)
 
 	if err != nil {
@@ -397,13 +399,13 @@ func downloadCorectlAsset(asset *CoreCtlAsset) (io.ReadCloser, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to download corectl release: status code %v", resp.StatusCode)
 	}
-	log.Debug().Msgf("downloaded %s: %+v", asset.Url, resp)
+	logger.Debug().Msgf("downloaded %s: %+v", asset.Url, resp)
 
 	return resp.Body, err
 }
 
 func decompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) {
-	log.Debug().Msg("decompressing asset")
+	logger.Debug().Msg("decompressing asset")
 
 	gzr, err := gzip.NewReader(tarData)
 	if err != nil {
@@ -422,7 +424,7 @@ func decompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) 
 		}
 
 		if filepath.Base(header.Name) == "corectl" && header.Typeflag == tar.TypeReg {
-			log.Debug().Msg("found corectl in tar")
+			logger.Debug().Msg("found corectl in tar")
 			return tarReader, nil
 		}
 	}
@@ -437,18 +439,18 @@ func writeCorectlAssetToPath(tarReader *tar.Reader, tmpPath string, outFile *os.
 		return fmt.Errorf("failed to copy %s binary: %v", binaryName, err)
 	}
 
-	log.Debug().Msgf("%d bytes written to %s", written, tmpPath)
+	logger.Debug().Msgf("%d bytes written to %s", written, tmpPath)
 
 	if err := os.Chmod(tmpPath, 0755); err != nil {
 		return fmt.Errorf("failed to set executable permissions on %s binary: %v", binaryName, err)
 	}
 
-	log.Debug().Msgf("%s has been installed to %s", binaryName, tmpPath)
+	logger.Debug().Msgf("%s has been installed to %s", binaryName, tmpPath)
 	return nil
 }
 
 func moveFile(source string, destination string) error {
-	log.Debug().Msgf("moving file from %s -> %s", source, destination)
+	logger.Debug().Msgf("moving file from %s -> %s", source, destination)
 	err := copy.Copy(source, destination)
 	if err != nil {
 		return err
@@ -459,7 +461,7 @@ func moveFile(source string, destination string) error {
 		return err
 	}
 
-	log.Debug().Msgf("moved file from %s -> %s", source, destination)
+	logger.Debug().Msgf("moved file from %s -> %s", source, destination)
 
 	return nil
 }

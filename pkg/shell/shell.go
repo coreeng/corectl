@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
 )
 
 func RunCommand(dir string, name string, args ...string) (string, string, error) {
@@ -19,7 +19,7 @@ func RunCommand(dir string, name string, args ...string) (string, string, error)
 	} else {
 		cmd.Dir = dir
 	}
-	log.Info().Msgf("Running %s in %s", name, dir)
+	logger.Info().Msgf("Running %s in %s", name, dir)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -27,7 +27,7 @@ func RunCommand(dir string, name string, args ...string) (string, string, error)
 
 	err := cmd.Run()
 	if err != nil {
-		log.Debug().Msgf("err %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+		logger.Debug().Msgf("err %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
 	}
 	return stdout.String(), stderr.String(), err
 }

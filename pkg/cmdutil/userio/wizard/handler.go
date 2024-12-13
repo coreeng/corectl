@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 type Handler interface {
@@ -51,19 +53,19 @@ func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	if _, ok := msg.(tea.QuitMsg); !ok {
 		return msg
 	}
-	log.Debug().
-		Str("model", fmt.Sprintf("%T", m)).
-		Str("msg", fmt.Sprintf("%T", msg)).
+	logger.Debug().With(
+		zap.String("model", fmt.Sprintf("%T", m)),
+		zap.String("msg", fmt.Sprintf("%T", msg))).
 		Msg("received msg")
 
 	switch m := m.(type) {
 	case Model:
 		if m.quitting {
-			log.Debug().Msg("received tea.Quit from parent")
+			logger.Debug().Msg("received tea.Quit from parent")
 			return msg
 		}
 		// If we didn't send the tea.Quit - assume it is from the inputModel and forward it
-		log.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
+		logger.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
 		return InputCompleted{model: m.inputModel}
 	}
 	return msg

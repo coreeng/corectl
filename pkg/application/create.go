@@ -10,17 +10,18 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/corectl/pkg/template"
-	"github.com/coreeng/corectl/pkg/undo"
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/core-platform/pkg/p2p"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
+	"github.com/coreeng/corectl/pkg/template"
+	"github.com/coreeng/corectl/pkg/undo"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 )
 
 type Service struct {
@@ -74,11 +75,10 @@ func checkoutNewBranch(localRepo *git.LocalRepository, branchName string) error 
 }
 
 func (svc *Service) Create(op CreateOp) (result CreateResult, err error) {
-	log.Info().
-		Str("name", op.Name).
-		Str("path", op.LocalPath).
-		Str("tenant", op.Tenant.Name).
-		Msg("create local repo")
+	logger.Info().With(zap.String("name", op.Name),
+		zap.String("path", op.LocalPath),
+		zap.String("tenant", op.Tenant.Name)).Msg("create local repo")
+
 	undoSteps := undo.NewSteps()
 	defer undoWhenError(&undoSteps)
 
@@ -237,11 +237,11 @@ func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalR
 }
 
 func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
-	log.Info().
-		Str("name", op.Name).
-		Str("org", op.OrgName).
-		Bool("dry_run", svc.DryRun).
+	logger.Info().With(zap.String("name", op.Name),
+		zap.String("org", op.OrgName),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, op.Name)
+
 	githubRepo, err := svc.createGithubRepository(op)
 	if err != nil {
 		return git.GithubRepoFullId{}, err
@@ -297,9 +297,9 @@ func openMonorepoMaybe(localPath string, dryRun bool) (localRepo *git.LocalRepos
 	}
 	isMonorepo = localRepo.Repository() != nil
 	if isMonorepo {
-		log.Debug().Msg("git: repository is monorepo")
+		logger.Debug().Msg("git: repository is monorepo")
 	} else {
-		log.Debug().Msg("git: repository is single repo")
+		logger.Debug().Msg("git: repository is single repo")
 	}
 	return localRepo, isMonorepo, nil
 }
@@ -319,11 +319,11 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		},
 	}
 	args = append(args, additionalArgs...)
-	log.Debug().
-		Str("tenant", op.Tenant.Name).
-		Str("app", op.Name).
-		Str("target_dir", targetDir).
-		Bool("dry_run", svc.DryRun).
+	logger.Debug().With(
+		zap.String("tenant", op.Tenant.Name),
+		zap.String("app", op.Name),
+		zap.String("target_dir", targetDir),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msg("calling render template")
 
 	return svc.TemplateRenderer.Render(op.Template, targetDir, svc.DryRun, args...)
@@ -351,10 +351,10 @@ func commitAllChanges(localRepo *git.LocalRepository, message string, allowEmpty
 }
 
 func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {
-	log.Debug().
-		Str("name", op.Name).
-		Str("org", op.OrgName).
-		Bool("dry_run", svc.DryRun).
+	logger.Debug().With(
+		zap.String("name", op.Name),
+		zap.String("org", op.OrgName),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: create repository")
 	deleteBranchOnMerge := true
 	visibility := "private"
@@ -381,14 +381,14 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 }
 
 func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId) error {
-	log.Debug().
-		Str("name", op.Name).
-		Str("org", op.OrgName).
-		Str("tenant", op.Tenant.Name).
-		Objects("fast_feedback_envs", op.FastFeedbackEnvs).
-		Objects("extended_test_envs", op.ExtendedTestEnvs).
-		Objects("prod_envs", op.ProdEnvs).
-		Bool("dry_run", svc.DryRun).
+	logger.Debug().With(
+		zap.String("name", op.Name),
+		zap.String("org", op.OrgName),
+		zap.String("tenant", op.Tenant.Name),
+		zap.Any("fast_feedback_envs", op.FastFeedbackEnvs),
+		zap.Any("extended_test_envs", op.ExtendedTestEnvs),
+		zap.Any("prod_envs", op.ProdEnvs),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: setting repository variables")
 	if !svc.DryRun {
 		return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
@@ -410,9 +410,9 @@ func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) er
 		return err
 	}
 
-	log.Debug().
-		Str("path", rootWorkflowsPath).
-		Bool("dry_run", svc.DryRun).
+	logger.Debug().With(
+		zap.String("path", rootWorkflowsPath),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: making workflows directory")
 	if !svc.DryRun {
 		err = os.MkdirAll(rootWorkflowsPath, 0o755)
@@ -428,10 +428,10 @@ func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) er
 		src := filepath.Join(githubWorkflowsPath, file.Name())
 		dst := filepath.Join(rootWorkflowsPath, filePrefix+file.Name())
 
-		log.Debug().
-			Str("source", src).
-			Str("destination", dst).
-			Bool("dry_run", svc.DryRun).
+		logger.Debug().With(
+			zap.String("source", src),
+			zap.String("destination", dst),
+			zap.Bool("dry_run", svc.DryRun)).
 			Msg("github: moving file")
 		if !svc.DryRun {
 			err = os.Rename(src, dst)
@@ -441,9 +441,9 @@ func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) er
 		}
 	}
 	removePath := filepath.Join(path, ".github")
-	log.Debug().
-		Str("path", removePath).
-		Bool("dry_run", svc.DryRun).
+	logger.Debug().With(
+		zap.String("path", removePath),
+		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: removing path")
 	if !svc.DryRun {
 		err = os.RemoveAll(removePath)
@@ -495,9 +495,9 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 	}
 
 	if !isMonorepo {
-		log.Info().
-			Str("org", op.OrgName).
-			Str("name", op.Name).
+		logger.Info().With(
+			zap.String("org", op.OrgName),
+			zap.String("name", op.Name)).
 			Msgf("checking github repo availability: https://github.com/%s/%s", op.OrgName, op.Name)
 		_, response, err := svc.GithubClient.Repositories.Get(
 			context.Background(),

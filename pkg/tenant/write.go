@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,12 +53,12 @@ func CreateOrUpdate(
 	if err != nil {
 		return result, err
 	}
-	log.Debug().
+	logger.Debug().With(
 		// TODO: add public method to render Tenant in Core Platform
 		//       so we can log it here when dry-running
-		Str("repo", op.CplatformRepoPath).
-		Bool("dry_run", op.DryRun).
-		Str("definition", string(definition)).
+		zap.String("repo", op.CplatformRepoPath),
+		zap.Bool("dry_run", op.DryRun),
+		zap.String("definition", string(definition))).
 		Msg("writing tenant definition to cplatform repo")
 	var relativeFilepath string
 	if !op.DryRun {

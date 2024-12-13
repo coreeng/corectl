@@ -6,9 +6,10 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/template"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 type TemplateRenderOpts struct {
@@ -134,11 +135,11 @@ func (r *FlagsAwareTemplateRenderer) Render(spec *template.Spec, targetDirectory
 		Arguments: args,
 	}
 
-	log.Debug().
-		Str("spec.Name", spec.Name).
-		Str("spec.Description", spec.Description).
-		Str("target_dir", targetDirectory).
-		Bool("dry_run", dryRun).
+	logger.Debug().With(
+		zap.String("spec.Name", spec.Name),
+		zap.String("spec.Description", spec.Description),
+		zap.String("target_dir", targetDirectory),
+		zap.Bool("dry_run", dryRun)).
 		Msg("rendering template")
 	if !dryRun {
 		err = template.Render(fulfilledTemplate, targetDirectory)

@@ -3,17 +3,19 @@ package env
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/cedws/iapc/iap"
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/coreeng/corectl/pkg/gcp"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/shell"
-	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2/google"
-	"strconv"
-	"strings"
 )
 
 const BastionSquidProxyPort = 3128
@@ -78,13 +80,13 @@ func Connect(opts EnvConnectOpts) error {
 	}
 
 	var execute func() error = nil
-	log.Debug().Msgf("Commands: %+v", opts.Command)
+	logger.Debug().Msgf("Commands: %+v", opts.Command)
 	if len(opts.Command) > 0 {
 		commandString := strings.Join(opts.Command, " ")
-		log.Debug().Msgf("iap tunnel command set to: %s", commandString)
+		logger.Debug().Msgf("iap tunnel command set to: %s", commandString)
 		execute = func() error {
 			stdout, stderr, err := shell.RunCommand(".", opts.Command[0], opts.Command[1:]...)
-			log.Debug().Str("command", commandString).Msgf("stdout: %s, stderr: %s", stdout, stderr)
+			logger.Debug().With(zap.String("command", commandString)).Msgf("stdout: %s, stderr: %s", stdout, stderr)
 			if strings.Trim(string(stderr), " \t") != "" {
 				s.CurrentHandler.Warn(fmt.Sprintf("stderr: %s", stderr))
 			}
@@ -125,7 +127,7 @@ func startIAPTunnel(
 
 	tokenSource, err := google.DefaultTokenSource(ctx, defaultTokenScopes...)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to get default token source")
+		logger.Fatal().With(zap.Error(err)).Msg("failed to get default token source")
 	}
 
 	stringPort := strconv.FormatUint(uint64(port), 10)
@@ -135,19 +137,19 @@ func startIAPTunnel(
 		iap.WithPort(stringPort),
 		iap.WithTokenSource(&tokenSource),
 	}
-	log.Debug().
-		Str("project", project).
-		Str("instanceName", instanceName).
-		Str("zone", zone).
-		Str("interfaceName", interfaceName).
-		Str("port", stringPort).
-		Str("tokenScopes", strings.Join(defaultTokenScopes, ", ")).
+	logger.Debug().With(
+		zap.String("project", project),
+		zap.String("instanceName", instanceName),
+		zap.String("zone", zone),
+		zap.String("interfaceName", interfaceName),
+		zap.String("port", stringPort),
+		zap.String("tokenScopes", strings.Join(defaultTokenScopes, ", "))).
 		Msgf("setting iap options")
 	if compress {
 		dialOpts = append(dialOpts, iap.WithCompression())
 	}
 
-	log.Debug().Msgf("binding to %s", bind)
+	logger.Debug().Msgf("binding to %s", bind)
 	Listen(streams, opts, ctx, bind, dialOpts, execute)
 }
 
