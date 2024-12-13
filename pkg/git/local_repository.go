@@ -551,7 +551,7 @@ func (localRepo *LocalRepository) Commit(op *CommitOp) error {
 			AllowEmptyCommits: op.AllowEmpty,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to commit, please make sure you configure git locally")
+			return fmt.Errorf("failed to commit, please make sure you configure git locally (error was: %w)", err)
 		}
 	}
 	return nil
