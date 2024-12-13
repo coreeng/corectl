@@ -87,7 +87,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 				cmd.OutOrStdout(),
 				cmd.OutOrStderr(),
 			)
-			return run(opts, cfg.Repositories.AllowDirty.Value, &cfg.Repositories.CPlatform)
+			return run(opts, cfg)
 		},
 	}
 
@@ -126,13 +126,14 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 	return exportCommand, nil
 }
 
-func run(opts *exportOpts, allowDirty bool, cplatRepoPath *config.Parameter[string]) error {
-	if !allowDirty {
-		if _, err := config.ResetConfigRepositoryState(cplatRepoPath, false); err != nil {
-			return err
-		}
+func run(opts *exportOpts, cfg *config.Config) error {
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.GitHub.Token.Value, opts.streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
 	}
-	context, err := opts.processFlags(cplatRepoPath.Value, false)
+
+	context, err := opts.processFlags(cfg.Repositories.CPlatform.Value, false)
 	if err != nil {
 		return err
 	}

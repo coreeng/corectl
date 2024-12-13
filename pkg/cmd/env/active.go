@@ -2,10 +2,11 @@ package env
 
 import (
 	"fmt"
+
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +31,25 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 				availableEnvironments []environment.Environment
 			)
 			cmd.SilenceUsage = true
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil {
+				nonInteractive = true
+			}
+
+			opts.Streams = userio.NewIOStreamsWithInteractive(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
+				!nonInteractive,
+			)
+
+			repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+			err = config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+			if err != nil {
+				return fmt.Errorf("failed to update config repos: %w", err)
+			}
+
 			availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 			if err != nil {
 				return fmt.Errorf("unable to load environments")
@@ -52,17 +72,6 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 				opts.Restricted = true
 			}
 
-			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-			if err != nil {
-				nonInteractive = true
-			}
-
-			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
-				cmd.OutOrStderr(),
-				!nonInteractive,
-			)
 			return active(opts, availableEnvironments)
 		},
 	}

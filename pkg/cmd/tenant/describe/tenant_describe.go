@@ -3,9 +3,9 @@ package describe
 import (
 	"fmt"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -38,10 +38,10 @@ func NewTenantDescribeCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantDescribeOpts, cfg *config.Config) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
 	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.TenantName)
