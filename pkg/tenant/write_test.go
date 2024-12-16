@@ -21,7 +21,6 @@ var _ = Describe("Create or Update", func() {
 parent: parent
 description: Tenant description
 contactEmail: abc@abc.com
-costCentre: cost-centre
 environments:
     - dev
     - prod
@@ -63,7 +62,6 @@ repos: []
 			Parent:       parentTenant.Name,
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
-			CostCentre:   "cost-centre",
 			Environments: []string{
 				testdata.DevEnvironment(),
 				testdata.ProdEnvironment(),

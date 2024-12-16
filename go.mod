@@ -9,12 +9,12 @@ require (
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/coreeng/core-platform/pkg v0.27.2
+	github.com/coreeng/core-platform/pkg v0.28.0
 	github.com/go-git/go-billy/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-github/v59 v59.0.0
 	github.com/jedib0t/go-pretty/v6 v6.6.5
-	github.com/kluctl/go-jinja2 v0.0.0-20240708212116-03ee7eefba4f
+	github.com/kluctl/go-jinja2 v0.0.0-20241217133422-164d7f6ac307
 	github.com/mattn/go-isatty v0.0.20
 	github.com/migueleliasweb/go-github-mock v0.0.23
 	github.com/muesli/reflow v0.3.0
