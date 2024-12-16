@@ -40,7 +40,7 @@ var (
 )
 
 func defaultInit() *CECGLogger {
-	return Init(zapcore.InfoLevel.String())
+	return Init(zapcore.WarnLevel.String())
 }
 func Init(logLevelFlag string) *CECGLogger {
 	if cecgLogger != nil {
