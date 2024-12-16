@@ -7,12 +7,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )
@@ -59,6 +59,25 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				envNames              []string
 			)
 			cmd.SilenceUsage = true
+
+			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+			if err != nil || corectlenv.IsConnectChild(opts) {
+				nonInteractive = true
+			}
+
+			opts.Streams = userio.NewIOStreamsWithInteractive(
+				cmd.InOrStdin(),
+				cmd.OutOrStdout(),
+				cmd.OutOrStderr(),
+				!nonInteractive,
+			)
+
+			repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+			err = config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+			if err != nil {
+				return fmt.Errorf("failed to update config repos: %w", err)
+			}
+
 			if len(args) > 0 {
 				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
 				if err == nil {
@@ -73,17 +92,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("please specify the environment as the 1st argument, one of: {%s}", strings.Join(envNames, "|"))
 			}
 
-			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
-			if err != nil || corectlenv.IsConnectChild(opts) {
-				nonInteractive = true
-			}
-
-			opts.Streams = userio.NewIOStreamsWithInteractive(
-				cmd.InOrStdin(),
-				cmd.OutOrStdout(),
-				cmd.OutOrStderr(),
-				!nonInteractive,
-			)
 			return connect(opts, cfg, availableEnvironments)
 		},
 	}
@@ -125,11 +133,6 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 }
 
 func connect(opts corectlenv.EnvConnectOpts, cfg *config.Config, availableEnvironments []environment.Environment) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
-	}
 	inputEnv := createEnvInputSwitch(opts, availableEnvironments)
 	envOutput, err := inputEnv.GetValue(opts.Streams)
 	if err != nil {

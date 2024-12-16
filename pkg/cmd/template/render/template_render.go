@@ -36,14 +36,7 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TemplateName = args[0]
 			opts.TargetPath = args[1]
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
-
-			if !cfg.Repositories.AllowDirty.Value {
-				if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.Templates, false); err != nil {
-					return err
-				}
-			}
-
-			return run(opts)
+			return run(opts, cfg)
 		},
 	}
 
@@ -73,7 +66,13 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	return templateRenderCmd
 }
 
-func run(opts TemplateRenderOpts) error {
+func run(opts TemplateRenderOpts, cfg *config.Config) error {
+	repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
+	}
+
 	stat, err := os.Stat(opts.TargetPath)
 	if err != nil {
 		pathError := err.(*os.PathError)

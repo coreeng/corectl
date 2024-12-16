@@ -3,10 +3,10 @@ package list
 import (
 	"fmt"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/spf13/cobra"
 )
 
@@ -37,10 +37,10 @@ func NewTenantListCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts *TenantListOpts, cfg *config.Config) error {
-	if !cfg.Repositories.AllowDirty.Value {
-		if _, err := config.ResetConfigRepositoryState(&cfg.Repositories.CPlatform, false); err != nil {
-			return err
-		}
+	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
+	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+	if err != nil {
+		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
 	tenants, err := tenant.List(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))

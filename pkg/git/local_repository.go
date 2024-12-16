@@ -550,8 +550,11 @@ func (localRepo *LocalRepository) Commit(op *CommitOp) error {
 		_, err := localRepo.worktree.Commit(op.Message, &git.CommitOptions{
 			AllowEmptyCommits: op.AllowEmpty,
 		})
+		if err != nil && err.Error() == "author field is required" {
+			return fmt.Errorf("git: %w - please set user.name and user.email in .gitconfig", err)
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("git: %w", err)
 		}
 	}
 	return nil
