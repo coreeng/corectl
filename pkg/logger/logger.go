@@ -60,7 +60,7 @@ func Init(logLevelFlag string) *CECGLogger {
 	logPath = strings.Replace(LogFile, "$HOME", homeDir, 1)
 
 	logDir := filepath.Dir(logPath)
-	if err := os.MkdirAll(logDir, 0644); err != nil {
+	if err := os.MkdirAll(logDir, 0755); err != nil {
 		fmt.Printf("fail to create folder path: %v\n", err)
 		os.Exit(1)
 	}
