@@ -6,8 +6,10 @@ import (
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/muesli/reflow/wrap"
-	"github.com/phuslu/log"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Model struct {
@@ -53,7 +55,7 @@ type updateCurrentTaskCompletedTitle struct {
 }
 type logMsg struct {
 	message string
-	level   log.Level
+	level   zapcore.Level
 }
 type quittingMsg bool
 type taskComplete bool
@@ -108,9 +110,9 @@ func (m Model) getLatestTask() *task {
 func (m Model) markLatestTaskComplete() *task {
 	task := m.getLatestTask()
 	if task == nil {
-		log.Warn().Msgf("Wizard: Marking task complete, but no tasks found")
+		logger.Debug().Msgf("Wizard: Marking task complete, but no tasks found")
 	} else {
-		log.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
+		logger.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
 		task.status = TaskStatusSuccess
 		task.completed = true
 	}
@@ -126,7 +128,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		log.Debug().Msgf("Wizard: Received [%T], (w:%d, h:%d)", msg, msg.Width, msg.Height)
+		logger.Debug().Msgf("Wizard: Received [%T], (w:%d, h:%d)", msg, msg.Width, msg.Height)
 		m.width = msg.Width
 		m.height = msg.Height
 		if m.inputModel != nil {
@@ -137,9 +139,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case quittingMsg:
 		m.quitting = true
-		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		logger.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
-			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
+			logger.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return m, tea.Sequence(updateListener, func() tea.Msg { return doneMsg(true) })
 		}
 		return m, tea.Quit
@@ -150,9 +152,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.markLatestTaskComplete()
 		return m, func() tea.Msg { return quittingMsg(true) }
 	case errorMsg:
-		log.Debug().Msgf("Wizard: Received [%T]", msg)
+		logger.Debug().Msgf("Wizard: Received [%T]", msg)
 		if messageLen := len(m.messageChannel); messageLen > 0 {
-			log.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
+			logger.Debug().Msgf("Wizard: Message channel still has %d items, postponing shutdown", messageLen)
 			return m, updateListener
 		} else {
 			m.quitting = true
@@ -168,11 +170,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case task:
 		m.markLatestTaskComplete()
-		log.Debug().Msgf("Wizard: New task: %s", msg.title)
+		logger.Debug().Msgf("Wizard: New task: %s", msg.title)
 		m.tasks = append(m.tasks, msg)
 		return m, updateListener
 	case logMsg:
-		log.Debug().Msgf("Wizard: Log received %s: %s", msg.level, msg.message)
+		logger.Debug().Msgf("Wizard: Log received %s: %s", msg.level, msg.message)
 		latestTask := m.getLatestTask()
 		if latestTask == nil || latestTask.completed {
 			m.tasks = append(m.tasks, task{
@@ -181,34 +183,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			latestTask.logs = append(latestTask.logs, msg)
 		}
-		if msg.level == log.TraceLevel {
+		if msg.level == zapcore.DebugLevel {
 			return m, tea.Sequence(tea.Println(msg.message), updateListener)
 		}
 		return m, updateListener
 	case updateCurrentTaskCompletedTitle:
-		log.Debug().Msgf("Wizard: Update current task completed title -> %s [%+v]", msg.title, msg.status)
+		logger.Debug().Msgf("Wizard: Update current task completed title -> %s [%+v]", msg.title, msg.status)
 		latestTask := m.getLatestTask()
 		if latestTask != nil && !latestTask.isAnonymous() {
 			latestTask.completedTitle = msg.title
 			latestTask.status = msg.status
 			latestTask.completed = true
 		} else {
-			log.Panic().Bool("isNil", latestTask == nil).Bool("isAnonymous", latestTask.isAnonymous()).
+			logger.Panic().With(zap.Bool("isNil", latestTask == nil), zap.Bool("isAnonymous", latestTask.isAnonymous())).
 				Msg("Wizard: unable to update task completed title")
 		}
 		return m, updateListener
 	case InputCompleted:
-		log.Debug().Msgf("Wizard: Input completed")
+		logger.Debug().Msgf("Wizard: Input completed")
 		m.inputResultChannel <- m.inputModel
 		m.inputModel = nil
 		return m, updateListener
 	case tea.Model:
-		log.Debug().Msgf("Wizard: Input component injected")
+		logger.Debug().Msgf("Wizard: Input component injected")
 		var cmd tea.Cmd
 		m.inputModel, cmd = msg.Update(tea.WindowSizeMsg{Width: m.width, Height: m.height})
 		return m, tea.Sequence(updateListener, cmd)
 	case tea.KeyMsg:
-		log.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
+		logger.Debug().Msgf("Wizard: Received keystroke [%s]", msg.String())
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			if m.inputModel != nil {
@@ -269,23 +271,23 @@ func (m Model) View() string {
 		}
 	}
 
-	log.Trace().Msgf("sm.tasks: %v", m.tasks)
+	logger.Debug().Msgf("sm.tasks: %v", m.tasks)
 	if m.inputModel != nil {
 		buffer.WriteString(m.inputModel.View())
 	}
 	return buffer.String()
 }
 
-func (m Model) generateLog(message string, level log.Level) string {
+func (m Model) generateLog(message string, level zapcore.Level) string {
 	switch level {
-	case log.InfoLevel:
+	case zapcore.PanicLevel:
 		return m.InfoLog(message)
-	case log.WarnLevel:
+	case zapcore.WarnLevel:
 		return m.WarnLog(message)
-	case log.ErrorLevel:
+	case zapcore.ErrorLevel:
 		return m.ErrorLog(message)
 	default:
-		log.Warn().Str("log", message).Str("level", level.String()).Msg("Wizard: log level not set")
+		logger.Warn().With(zap.String("log", message), zap.String("level", level.String())).Msg("Wizard: log level not set")
 		return "[LEVEL NOT SET] " + message
 	}
 }

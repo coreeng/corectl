@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
@@ -17,7 +19,6 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -47,7 +48,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 			cmd.SilenceUsage = true
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic().With(zap.Error(err)).Msg("could not get non-interactive flag")
 			}
 			opt.NonInteractive = nonInteractive
 
@@ -158,7 +159,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
 	envs, err := listEnabledEnvironments(envFilePath)
 	if err != nil {
-		log.Warn().Msgf("Failed to read environments file '%s': %s. Falling back to listing directories in '%s'.", envFilePath, err, envsDir)
+		logger.Warn().Msgf("Failed to read environments file '%s': %s. Falling back to listing directories in '%s'.", envFilePath, err, envsDir)
 		envs, err = environment.List(envsDir)
 		if err != nil {
 			return err

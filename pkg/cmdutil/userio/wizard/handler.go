@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Handler interface {
@@ -31,7 +33,7 @@ type asyncHandler struct {
 
 func (handler *asyncHandler) Done() {
 	if handler.completed {
-		log.Panic().Stack().Msgf("Done: handler is already completed")
+		logger.Panic().Msgf("Done: handler is already completed")
 	}
 	handler.update(doneMsg(true))
 	handler.completed = true
@@ -40,7 +42,7 @@ func (handler *asyncHandler) Done() {
 
 func (handler *asyncHandler) Abort(err string) {
 	if handler.completed {
-		log.Panic().Stack().Msgf("Abort: handler is already completed")
+		logger.Panic().Msgf("Abort: handler is already completed")
 	}
 	handler.update(errorMsg(err))
 	handler.completed = true
@@ -51,19 +53,19 @@ func (handler asyncHandler) OnQuit(m tea.Model, msg tea.Msg) tea.Msg {
 	if _, ok := msg.(tea.QuitMsg); !ok {
 		return msg
 	}
-	log.Debug().
-		Str("model", fmt.Sprintf("%T", m)).
-		Str("msg", fmt.Sprintf("%T", msg)).
+	logger.Debug().With(
+		zap.String("model", fmt.Sprintf("%T", m)),
+		zap.String("msg", fmt.Sprintf("%T", msg))).
 		Msg("received msg")
 
 	switch m := m.(type) {
 	case Model:
 		if m.quitting {
-			log.Debug().Msg("received tea.Quit from parent")
+			logger.Debug().Msg("received tea.Quit from parent")
 			return msg
 		}
 		// If we didn't send the tea.Quit - assume it is from the inputModel and forward it
-		log.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
+		logger.Debug().Msgf("received tea.Quit from child %T", m.inputModel)
 		return InputCompleted{model: m.inputModel}
 	}
 	return msg
@@ -77,28 +79,28 @@ func (handler asyncHandler) SetInputModel(input tea.Model) tea.Model {
 
 func (handler asyncHandler) Print(message string) {
 	handler.update(logMsg{
-		level:   log.TraceLevel,
+		level:   zapcore.DebugLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Info(message string) {
 	handler.update(logMsg{
-		level:   log.InfoLevel,
+		level:   zapcore.InfoLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Warn(message string) {
 	handler.update(logMsg{
-		level:   log.WarnLevel,
+		level:   zapcore.WarnLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Error(message string) {
 	handler.update(logMsg{
-		level:   log.ErrorLevel,
+		level:   zapcore.ErrorLevel,
 		message: message,
 	})
 }

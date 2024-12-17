@@ -15,7 +15,6 @@ import (
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/phuslu/log"
 )
 
 func TestUpdate(t *testing.T) {
@@ -37,7 +36,6 @@ var _ = Describe("corectl update", func() {
 	)
 
 	BeforeEach(OncePerOrdered, func() {
-		log.DefaultLogger.SetLevel(log.PanicLevel)
 		githubErrorString = "api error"
 		latestReleaseTag = "v100.0.0"
 		specificReleaseTag = "v0.0.1"

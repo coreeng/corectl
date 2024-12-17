@@ -11,14 +11,12 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
 var streams = userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
 
 func TestMain(m *testing.M) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
 	m.Run()
 }
 

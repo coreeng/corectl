@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
 )
 
 const blankListHeight = 6
@@ -107,19 +107,19 @@ func (m singleSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 		case tea.KeyEnter:
-			log.Debug().Msg("SingleSelect: received enter")
+			logger.Debug().Msg("SingleSelect: received enter")
 			if m.model.FilterState() == list.Filtering {
 				break
 			}
 			it, ok := m.model.SelectedItem().(item)
-			log.Debug().Msgf("SingleSelect: selected item is %s", it)
+			logger.Debug().Msgf("SingleSelect: selected item is %s", it)
 			if !ok {
 				return m, nil
 			}
 			m.err = nil
 			m.choice = &it
 			m.quitting = true
-			log.Debug().Msg("SingleSelect: sending tea.Quit")
+			logger.Debug().Msg("SingleSelect: sending tea.Quit")
 			return m, tea.Quit
 		}
 	}

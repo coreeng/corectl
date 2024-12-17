@@ -8,9 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
-	"github.com/phuslu/log"
 )
 
 var (
@@ -70,7 +70,7 @@ func IsTerminalInteractive(in io.Reader, out io.Writer) bool {
 
 func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Model, error) {
 	if _, isWizard := model.(wizard.Model); isWizard || s.CurrentHandler == nil {
-		log.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
+		logger.Debug().Msgf("IOStreams.execute: starting new session [%T]", model)
 
 		options := append([]tea.ProgramOption{
 			tea.WithInput(s.stdin),
@@ -83,7 +83,7 @@ func (s *IOStreams) Execute(model tea.Model, opts ...tea.ProgramOption) (tea.Mod
 		).Run()
 		return model, err
 	} else {
-		log.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
+		logger.Debug().Msgf("IOStreams.execute: setting input model inside existing session [%T]", model)
 		// Run inside the existing session
 		return s.CurrentHandler.SetInputModel(model), nil
 	}

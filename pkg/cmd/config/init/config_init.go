@@ -13,9 +13,10 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/google/go-github/v59/github"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -48,7 +49,7 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 			cmd.SilenceUsage = true
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
 			if err != nil {
-				log.Panic().Err(err).Msg("could not get non-interactive flag")
+				logger.Panic().With(zap.Error(err)).Msg("could not get non-interactive flag")
 			}
 			opt.NonInteractive = nonInteractive
 
@@ -127,11 +128,11 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	// We don't allow the user to pass both the `--environments-repo` and the `--file` arguments
 	environmentsRepoFlagValue, err := cmd.Flags().GetString("environments-repo")
 	if err != nil {
-		log.Panic().Err(err).Msg("could not get `--environments-repo` flag")
+		logger.Panic().With(zap.Error(err)).Msg("could not get `--environments-repo` flag")
 	}
 	fileFlagValue, err := cmd.Flags().GetString("file")
 	if err != nil {
-		log.Panic().Err(err).Msg("could not get `--environments-repo` flag")
+		logger.Panic().With(zap.Error(err)).Msg("could not get `--environments-repo` flag")
 	}
 	if environmentsRepoFlagValue != "" && fileFlagValue != "" {
 		return fmt.Errorf("`--environments-repo` and `--file` are mutually exclusive")
