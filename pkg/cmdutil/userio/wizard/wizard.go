@@ -110,7 +110,7 @@ func (m Model) getLatestTask() *task {
 func (m Model) markLatestTaskComplete() *task {
 	task := m.getLatestTask()
 	if task == nil {
-		logger.Warn().Msgf("Wizard: Marking task complete, but no tasks found")
+		logger.Debug().Msgf("Wizard: Marking task complete, but no tasks found")
 	} else {
 		logger.Debug().Msgf("Wizard: Marking task complete: %s", task.completedTitle)
 		task.status = TaskStatusSuccess
