@@ -27,7 +27,6 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 			Parent:       "parent",
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
-			CostCentre:   "cost-centre",
 			Environments: []string{
 				testdata.DevEnvironment(),
 				testdata.ProdEnvironment(),

@@ -28,7 +28,6 @@ type TenantCreateOpt struct {
 	Parent         string
 	Description    string
 	ContactEmail   string
-	CostCentre     string
 	Environments   []string
 	Repositories   []string
 	AdminGroup     string
@@ -85,12 +84,6 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"contact-email",
 		"",
 		"Contact email for tenant",
-	)
-	tenantCreateCmd.Flags().StringVar(
-		&opt.CostCentre,
-		"cost-centre",
-		"",
-		"Cost centre of tenant. Should be valid K8S label.",
 	)
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Environments,
@@ -173,7 +166,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	parentInput := opt.createParentInputSwitch(rootTenant, existingTenants)
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
-	costCentreInput := opt.createCostCentreInputSwitch()
 	envsInput := opt.createEnvironmentsInputSwitch(envs)
 	repositoriesInput := opt.createRepositoriesInputSwitch()
 	adminGroupInput := opt.createAdminGroupInputSwitch()
@@ -192,10 +184,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	contactEmail, err := contactEmailInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
-	}
-	costCentre, err := costCentreInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
 	}
@@ -221,7 +209,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		Parent:        parent.Name,
 		Description:   description,
 		ContactEmail:  contactEmail,
-		CostCentre:    costCentre,
 		Environments:  tenantEnvironments,
 		Repos:         repositories,
 		AdminGroup:    adminGroup,
@@ -424,31 +411,6 @@ func (opt *TenantCreateOpt) createContactEmailInputSwitch() userio.InputSourceSw
 		},
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid contact email",
-	}
-}
-
-func (opt *TenantCreateOpt) createCostCentreInputSwitch() userio.InputSourceSwitch[string, string] {
-	validateFn := func(inp string) (string, error) {
-		inp = strings.TrimSpace(inp)
-		t := &coretnt.Tenant{
-			CostCentre: inp,
-		}
-		err := t.ValidateField("CostCentre")
-		if err != nil {
-			return "", err
-		}
-		return inp, nil
-	}
-	return userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(opt.CostCentre),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.TextInput[string]{
-				Prompt:         "Cost centre (valid K8S label value):",
-				ValidateAndMap: validateFn,
-			}, nil
-		},
-		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid cost centre",
 	}
 }
 

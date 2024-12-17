@@ -44,7 +44,6 @@ var _ = Describe("tenant", Ordered, func() {
 				"--parent", "parent",
 				"--description", "Some tenant description",
 				"--contact-email", "ce@company.com",
-				"--cost-centre", "cc",
 				"--environments", "dev,prod",
 				// Omitting repositories parameter
 				"--admin-group", "ag",
