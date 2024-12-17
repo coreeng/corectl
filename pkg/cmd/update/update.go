@@ -22,7 +22,6 @@ import (
 	"github.com/coreeng/corectl/pkg/version"
 	"github.com/google/go-github/v59/github"
 	"github.com/otiai10/copy"
-	"github.com/phuslu/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -258,7 +257,7 @@ func update(opts UpdateOpts) error {
 		_, _ = opts.streams.GetOutput().Write([]byte(asset.Changelog))
 	}
 
-	log.Debug().Bool("skipConfirmation", opts.skipConfirmation).Msg("checking params")
+	logger.Debug().With(zap.Bool("skipConfirmation", opts.skipConfirmation)).Msg("checking params")
 
 	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
 	if opts.skipConfirmation {

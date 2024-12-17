@@ -7,7 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
-	"github.com/phuslu/log"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func (s IOStreams) MsgE(message string, style lipgloss.Style, stream *lipgloss.Renderer) error {
@@ -58,7 +59,7 @@ func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 		go func() {
 			_, err := s.Execute(model, tea.WithFilter(handler.OnQuit))
 			if err != nil {
-				log.Error().Err(err).Msgf("Error in Wizard execution")
+				logger.Error().With(zap.Error(err)).Msgf("Error in Wizard execution")
 			}
 			doneSync <- true
 			s.CurrentHandler = nil

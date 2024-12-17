@@ -12,7 +12,6 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/phuslu/log"
 	"go.uber.org/zap"
 )
 
@@ -131,7 +130,7 @@ func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOpt
 	tun, err := iap.Dial(ctx, opts...)
 	if err != nil {
 		wizard.Error(fmt.Sprintf("Failed to connect to IAP for client: %s", conn.RemoteAddr()))
-		log.Error().Err(err).Msgf("failed to dial IAP")
+		logger.Error().With(zap.Error(err)).Msgf("failed to dial IAP")
 		return
 	}
 	defer tun.Close()

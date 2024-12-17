@@ -5,8 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/phuslu/log"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Handler interface {
@@ -33,7 +33,7 @@ type asyncHandler struct {
 
 func (handler *asyncHandler) Done() {
 	if handler.completed {
-		log.Panic().Stack().Msgf("Done: handler is already completed")
+		logger.Panic().Msgf("Done: handler is already completed")
 	}
 	handler.update(doneMsg(true))
 	handler.completed = true
@@ -42,7 +42,7 @@ func (handler *asyncHandler) Done() {
 
 func (handler *asyncHandler) Abort(err string) {
 	if handler.completed {
-		log.Panic().Stack().Msgf("Abort: handler is already completed")
+		logger.Panic().Msgf("Abort: handler is already completed")
 	}
 	handler.update(errorMsg(err))
 	handler.completed = true
@@ -79,28 +79,28 @@ func (handler asyncHandler) SetInputModel(input tea.Model) tea.Model {
 
 func (handler asyncHandler) Print(message string) {
 	handler.update(logMsg{
-		level:   log.TraceLevel,
+		level:   zapcore.DebugLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Info(message string) {
 	handler.update(logMsg{
-		level:   log.InfoLevel,
+		level:   zapcore.InfoLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Warn(message string) {
 	handler.update(logMsg{
-		level:   log.WarnLevel,
+		level:   zapcore.WarnLevel,
 		message: message,
 	})
 }
 
 func (handler asyncHandler) Error(message string) {
 	handler.update(logMsg{
-		level:   log.ErrorLevel,
+		level:   zapcore.ErrorLevel,
 		message: message,
 	})
 }

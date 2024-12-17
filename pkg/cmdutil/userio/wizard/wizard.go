@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/muesli/reflow/wrap"
-	"github.com/phuslu/log"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Model struct {
@@ -55,7 +55,7 @@ type updateCurrentTaskCompletedTitle struct {
 }
 type logMsg struct {
 	message string
-	level   log.Level
+	level   zapcore.Level
 }
 type quittingMsg bool
 type taskComplete bool
@@ -183,7 +183,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			latestTask.logs = append(latestTask.logs, msg)
 		}
-		if msg.level == log.TraceLevel {
+		if msg.level == zapcore.DebugLevel {
 			return m, tea.Sequence(tea.Println(msg.message), updateListener)
 		}
 		return m, updateListener
@@ -195,7 +195,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			latestTask.status = msg.status
 			latestTask.completed = true
 		} else {
-			log.Panic().Bool("isNil", latestTask == nil).Bool("isAnonymous", latestTask.isAnonymous()).
+			logger.Panic().With(zap.Bool("isNil", latestTask == nil), zap.Bool("isAnonymous", latestTask.isAnonymous())).
 				Msg("Wizard: unable to update task completed title")
 		}
 		return m, updateListener
@@ -271,20 +271,20 @@ func (m Model) View() string {
 		}
 	}
 
-	log.Trace().Msgf("sm.tasks: %v", m.tasks)
+	logger.Debug().Msgf("sm.tasks: %v", m.tasks)
 	if m.inputModel != nil {
 		buffer.WriteString(m.inputModel.View())
 	}
 	return buffer.String()
 }
 
-func (m Model) generateLog(message string, level log.Level) string {
+func (m Model) generateLog(message string, level zapcore.Level) string {
 	switch level {
-	case log.InfoLevel:
+	case zapcore.PanicLevel:
 		return m.InfoLog(message)
-	case log.WarnLevel:
+	case zapcore.WarnLevel:
 		return m.WarnLog(message)
-	case log.ErrorLevel:
+	case zapcore.ErrorLevel:
 		return m.ErrorLog(message)
 	default:
 		logger.Warn().With(zap.String("log", message), zap.String("level", level.String())).Msg("Wizard: log level not set")
