@@ -9,12 +9,10 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
-	"github.com/phuslu/log"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMain(m *testing.M) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
 	m.Run()
 }
 

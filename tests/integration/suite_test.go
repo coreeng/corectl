@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
-	"github.com/phuslu/log"
 	"github.com/thanhpk/randstr"
 
 	// Test cases import
@@ -32,7 +31,6 @@ func TestSuite(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(ctx SpecContext) {
-	log.DefaultLogger.SetLevel(log.PanicLevel)
 	testRunId := randstr.String(6)
 	testconfig.SetTestRunId(testRunId)
 	fmt.Println("Test Run ID: ", testRunId)
