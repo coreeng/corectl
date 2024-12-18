@@ -13,6 +13,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Listen starts a proxy server that listens on the given address and port.
@@ -23,24 +24,24 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 	var err error
 
 	if IsConnectStartup(opts) { // Common code for foreground and background
-		wizardH.SetTask("Testing IAP connection", "IAP connection succeeded")
+		wizardH.SetTask("Testing IAP connection", "IAP connection succeeded", zapcore.WarnLevel)
 		if err := testConn(ctx, dialOpts); err != nil {
 			err = fmt.Errorf("failed to test connection: %w", err)
 			wizardH.Abort(err.Error())
 			logger.Fatal().Msg(err.Error())
 		}
-		wizardH.SetCurrentTaskCompleted()
+		wizardH.SetCurrentTaskCompleted(zapcore.WarnLevel)
 		listener, err = net.Listen("tcp", listen)
 
-		wizardH.SetTask(fmt.Sprintf("Binding to %s", listen), "")
+		wizardH.SetTask(fmt.Sprintf("Binding to %s", listen), "", zapcore.InfoLevel)
 
 		if err != nil {
 			wizardH.SetCurrentTaskCompletedTitleWithStatus(
-				fmt.Sprintf("failed to bind to port: %s", err), wizard.TaskStatusError)
+				fmt.Sprintf("failed to bind to port: %s", err), wizard.TaskStatusError, zapcore.WarnLevel)
 			logger.Fatal().With(zap.Error(err)).Msgf("failed to bind to %s", listen)
 			return
 		}
-		wizardH.SetCurrentTaskCompletedTitle(fmt.Sprintf("Bound to %s", listen))
+		wizardH.SetCurrentTaskCompletedTitle(fmt.Sprintf("Bound to %s", listen), zapcore.WarnLevel)
 		logger.Info().Msgf("listening: %+v", listener)
 		if !opts.Background {
 			WritePidFile(opts.Environment.Environment, os.Getpid())
@@ -67,7 +68,9 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 			logger.Fatal().With(zap.Error(err)).Msg("failed to start background process")
 		}
 		WritePidFile(opts.Environment.Environment, cmd.Process.Pid)
-		wizardH.SetTask("", fmt.Sprintf("Process started for %s in background with PID %d", opts.Environment.Environment, cmd.Process.Pid))
+		wizardH.SetTask("", fmt.Sprintf("Process started for %s in background with PID %d",
+			opts.Environment.Environment, cmd.Process.Pid),
+			zapcore.WarnLevel)
 		return
 	}
 	if IsConnectChild(opts) {

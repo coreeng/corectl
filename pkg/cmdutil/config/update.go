@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"go.uber.org/zap/zapcore"
 )
 
 func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
@@ -25,7 +26,7 @@ func updateRepository(repoParam *Parameter[string], gitAuth git.AuthMethod, stre
 		streams.Wizard(
 			fmt.Sprintf("Updating %s", repoParam.Name()),
 			fmt.Sprintf("Updated %s", repoParam.Name()),
-		)
+			zapcore.InfoLevel)
 		defer streams.CurrentHandler.Done()
 		repo, err := resetConfigRepositoryState(repoParam, ignoreDirty)
 		if err != nil {

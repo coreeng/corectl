@@ -11,6 +11,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
@@ -234,6 +235,7 @@ func createTenant(
 	wizardHandler := streams.Wizard(
 		fmt.Sprintf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value),
 		"", // We don't know the PR URL yet, using SetCurrentTaskCompletedTitle
+		zapcore.WarnLevel,
 	)
 	defer wizardHandler.Done()
 
@@ -248,6 +250,7 @@ func createTenant(
 		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(
 			fmt.Sprintf("Unable to create such a tenant: %s", err),
 			wizard.TaskStatusError,
+			zapcore.ErrorLevel,
 		)
 		return tenant.CreateOrUpdateResult{}, err
 	}
@@ -269,9 +272,9 @@ func createTenant(
 		}, githubClient,
 	)
 	if err != nil {
-		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(fmt.Sprintf("Failed to create a PR for new tenant: %s", err), wizard.TaskStatusError)
+		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(fmt.Sprintf("Failed to create a PR for new tenant: %s", err), wizard.TaskStatusError, zapcore.ErrorLevel)
 	} else {
-		wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))
+		wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl), zapcore.WarnLevel)
 	}
 	return result, err
 }

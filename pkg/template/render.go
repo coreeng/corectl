@@ -1,8 +1,9 @@
 package template
 
 import (
-	"github.com/kluctl/go-jinja2"
 	"path/filepath"
+
+	"github.com/kluctl/go-jinja2"
 )
 
 func Render(t *FulfilledTemplate, targetPath string) error {

@@ -24,6 +24,7 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const CmdName = "update"
@@ -216,7 +217,7 @@ func update(opts UpdateOpts) error {
 		logger.Debug().Msgf("target version set to %s", opts.targetVersion)
 	}
 
-	wizard := opts.streams.Wizard("Checking for updates", "Retrieved version metadata")
+	wizard := opts.streams.Wizard("Checking for updates", "Retrieved version metadata", zapcore.WarnLevel)
 	githubClient := github.NewClient(nil)
 	if opts.githubToken != "" {
 		githubClient = githubClient.WithAuthToken(opts.githubToken)
@@ -241,11 +242,11 @@ func update(opts UpdateOpts) error {
 	}
 	logger.Debug().With(zap.String("current_version", version.Version), zap.String("remote_version", asset.Version)).Msg("comparing versions")
 	if version.Version == asset.Version {
-		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Already running %s release (%v)", opts.targetVersion, version.Version))
+		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Already running %s release (%v)", opts.targetVersion, version.Version), zapcore.WarnLevel)
 		wizard.Done()
 		return nil
 	} else {
-		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Update available: %v", asset.Version))
+		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Update available: %v", asset.Version), zapcore.WarnLevel)
 		wizard.Done()
 	}
 
@@ -259,7 +260,7 @@ func update(opts UpdateOpts) error {
 
 	logger.Debug().With(zap.Bool("skipConfirmation", opts.skipConfirmation)).Msg("checking params")
 
-	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
+	wizard = opts.streams.Wizard("Confirming update", "Confirmation received", zapcore.WarnLevel)
 	if opts.skipConfirmation {
 		wizard.Info("--skip-confirmation is set, continuing with update")
 	} else {
@@ -283,14 +284,14 @@ func update(opts UpdateOpts) error {
 		}
 	}
 
-	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
+	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version), zapcore.WarnLevel)
 	data, err := downloadCorectlAsset(asset)
 	if err != nil {
 		wizard.Abort(err.Error())
 		return fmt.Errorf("could not download release %s: %+v", asset.Version, err)
 	}
 
-	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Decompressing release %s", asset.Version), fmt.Sprintf("Decompressed release %s", asset.Version))
+	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Decompressing release %s", asset.Version), fmt.Sprintf("Decompressed release %s", asset.Version), zapcore.WarnLevel)
 	var decompressed *tar.Reader
 	decompressed, err = decompressCorectlAssetInMemory(data)
 	if err != nil {
@@ -307,7 +308,8 @@ func update(opts UpdateOpts) error {
 	}
 	tmpPath := tmpFile.Name()
 
-	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
+	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path),
+		fmt.Sprintf("Release %s installed", asset.Version), zapcore.WarnLevel)
 	err = writeCorectlAssetToPath(decompressed, tmpPath, tmpFile)
 	if err != nil {
 		return fmt.Errorf("could not write release %s to path %s: %+v", asset.Version, path, err)
