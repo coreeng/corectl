@@ -30,4 +30,5 @@ func VersionCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	return versionCmd
+
 }

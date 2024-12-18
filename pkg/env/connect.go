@@ -15,6 +15,7 @@ import (
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/shell"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/oauth2/google"
 )
 
@@ -64,6 +65,7 @@ func Connect(opts EnvConnectOpts) error {
 		wizard = s.Wizard(
 			"Checking platform is supported",
 			"Platform is supported",
+			zapcore.WarnLevel,
 		)
 		defer wizard.Done()
 
@@ -165,6 +167,7 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 	wizard.SetTask(
 		fmt.Sprintf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
 		fmt.Sprintf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
+		zapcore.WarnLevel,
 	)
 	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {
 		wizard.Abort(err.Error())
@@ -175,6 +178,7 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 	wizard.SetTask(
 		fmt.Sprintf("Setting Kubernetes config context to: %s", context),
 		fmt.Sprintf("Kubernetes config context set to: %s", context),
+		zapcore.WarnLevel,
 	)
 	if err := setKubeContext(c, context); err != nil {
 		wizard.Abort(err.Error())
@@ -184,6 +188,7 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 	wizard.SetTask(
 		fmt.Sprintf("Setting Kubernetes proxy url to: %s", proxyUrl),
 		fmt.Sprintf("Kubernetes proxy url set to: %s", proxyUrl),
+		zapcore.WarnLevel,
 	)
 	if err := setKubeProxy(c, context, proxyUrl); err != nil {
 		wizard.Abort(err.Error())

@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap/zapcore"
 )
 
 type nonInteractiveHandler struct {
@@ -29,27 +31,38 @@ func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 }
 
 func (nih nonInteractiveHandler) Info(message string) {
-	nih.streams.Info(message)
+	if logger.LogLevel() <= zapcore.InfoLevel {
+		nih.streams.Info(message)
+	}
+	logger.GetFileOnlyLogger().Info(message)
+
 }
 func (nih nonInteractiveHandler) Warn(message string) {
-	nih.streams.Warn(message)
+	if logger.LogLevel() <= zapcore.WarnLevel {
+		nih.streams.Warn(message)
+	}
+	logger.GetFileOnlyLogger().Warn(message)
 }
 func (nih nonInteractiveHandler) Error(message string) {
-	nih.streams.Error(message)
+	if logger.LogLevel() <= zapcore.ErrorLevel {
+		nih.streams.Error(message)
+	}
+	logger.GetFileOnlyLogger().Error(message)
 }
 func (nih nonInteractiveHandler) Print(message string) {
 	nih.streams.Print(message)
 }
-func (nih nonInteractiveHandler) SetTask(title string, _ string) {
+func (nih nonInteractiveHandler) SetTask(title string, _ string, _ zapcore.Level) {
+	// TODO write to file and conditional to output
 	nih.Info(fmt.Sprintf("[%s]", nih.styles.Bold.Render(title)))
 }
-func (nih nonInteractiveHandler) SetCurrentTaskCompleted() {
+func (nih nonInteractiveHandler) SetCurrentTaskCompleted(messageLevel zapcore.Level) {
 	nih.Info(fmt.Sprintf("[%s %s]", nih.styles.Status.Render(wizard.TaskStatusSuccess), nih.styles.Bold.Render("Task completed")))
 }
-func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitle(completedTitle string) {
+func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitle(completedTitle string, messageLevel zapcore.Level) {
 	nih.Info(fmt.Sprintf("[%s %s]", nih.styles.Status.Render(wizard.TaskStatusSuccess), nih.styles.Bold.Render(completedTitle)))
 }
-func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitleWithStatus(completedTitle string, status wizard.TaskStatus) {
+func (nih nonInteractiveHandler) SetCurrentTaskCompletedTitleWithStatus(completedTitle string, status wizard.TaskStatus, messageLevel zapcore.Level) {
 	nih.Info(fmt.Sprintf("[%s %s]", nih.styles.Status.Render(status), nih.styles.Bold.Render(completedTitle)))
 }
 func (nih nonInteractiveHandler) SetInputModel(message tea.Model) tea.Model {

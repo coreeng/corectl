@@ -10,6 +10,7 @@ import (
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
 )
 
 type EnvOpenResourceOpt struct {
@@ -72,6 +73,7 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 		wizard := opts.Streams.Wizard(
 			fmt.Sprintf("Opening %s for env %s: %s", resourceType, env.Environment, url),
 			fmt.Sprintf("Opened %s for env %s: %s", resourceType, env.Environment, url),
+			zapcore.WarnLevel,
 		)
 		defer wizard.Done()
 		return browser.OpenURL(url)

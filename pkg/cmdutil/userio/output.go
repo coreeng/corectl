@@ -9,6 +9,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func (s IOStreams) MsgE(message string, style lipgloss.Style, stream *lipgloss.Renderer) error {
@@ -29,30 +30,41 @@ func (s IOStreams) Print(messages string) {
 	if err != nil {
 		panic(err.Error())
 	}
+	logger.GetFileOnlyLogger().Info(messages)
 }
 
 func (s IOStreams) Info(messages string) {
-	err := s.MsgE(messages, s.styles.info, s.stderr)
-	if err != nil {
-		panic(err.Error())
+	// TODO write to file
+	if logger.LogLevel() <= zapcore.InfoLevel {
+		err := s.MsgE(messages, s.styles.info, s.stderr)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
+	logger.GetFileOnlyLogger().Info(messages)
 }
 
 func (s IOStreams) Warn(messages string) {
-	err := s.MsgE(messages, s.styles.warn, s.stderr)
-	if err != nil {
-		panic(err.Error())
+	if logger.LogLevel() <= zapcore.WarnLevel {
+		err := s.MsgE(messages, s.styles.warn, s.stderr)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
+	logger.GetFileOnlyLogger().Warn(messages)
 }
 
 func (s IOStreams) Error(messages string) {
-	err := s.MsgE(messages, s.styles.err, s.stderr)
-	if err != nil {
-		panic(err.Error())
+	if logger.LogLevel() <= zapcore.ErrorLevel {
+		err := s.MsgE(messages, s.styles.err, s.stderr)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
+	logger.GetFileOnlyLogger().Error(messages)
 }
 
-func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
+func (s *IOStreams) Wizard(title string, completedTitle string, messageLevel zapcore.Level) wizard.Handler {
 	if s.IsInteractive() {
 		model, handler, doneSync := wizard.New()
 		s.CurrentHandler = handler
@@ -70,6 +82,6 @@ func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 			styles:  NewNonInteractiveStyles(),
 		}
 	}
-	s.CurrentHandler.SetTask(title, completedTitle)
+	s.CurrentHandler.SetTask(title, completedTitle, messageLevel)
 	return s.CurrentHandler
 }
