@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.2.4
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
-	github.com/coreeng/core-platform/pkg v0.28.0
+	github.com/coreeng/core-platform/pkg v0.29.1
 	github.com/go-git/go-billy/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.12.0
 	github.com/google/go-github/v59 v59.0.0
@@ -29,10 +29,10 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/thanhpk/randstr v1.0.6
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
-	golang.org/x/net v0.32.0
+	golang.org/x/net v0.33.0
 	golang.org/x/oauth2 v0.24.0
-	google.golang.org/api v0.212.0
-	google.golang.org/grpc v1.69.0
+	google.golang.org/api v0.213.0
+	google.golang.org/grpc v1.69.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
