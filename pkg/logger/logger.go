@@ -167,6 +167,7 @@ func Sync() {
 }
 
 func GetFileOnlyLogger() *zap.Logger {
+	defaultInit()
 	return fileOnlyLogger.logger
 }
 
