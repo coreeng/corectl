@@ -121,6 +121,7 @@ func (m Model) markLatestTaskComplete() *task {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// TODO change here
 	updateListener := m.ReceiveUpdateMessages
 
 	var newInputModel tea.Model
@@ -245,7 +246,6 @@ func (m Model) ErrorLog(message string) string {
 }
 
 func (m Model) View() string {
-	logger.GetFileOnlyLogger().Info("In View")
 	var buffer strings.Builder
 	for _, task := range m.tasks {
 		for _, message := range task.logs {
@@ -276,13 +276,12 @@ func (m Model) View() string {
 	if m.inputModel != nil {
 		buffer.WriteString(m.inputModel.View())
 	}
-
 	return buffer.String()
 }
 
 func (m Model) generateLog(message string, level zapcore.Level) string {
 	switch level {
-	case zapcore.PanicLevel:
+	case zapcore.InfoLevel:
 		return m.InfoLog(message)
 	case zapcore.WarnLevel:
 		return m.WarnLog(message)

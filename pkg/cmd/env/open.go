@@ -8,9 +8,9 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 type EnvOpenResourceOpt struct {
@@ -70,12 +70,8 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 	if url, err := corectlenv.OpenResource(resourceType, env); err != nil {
 		return fmt.Errorf("couldn't open %s: %w", opts.Resource, err)
 	} else {
-		wizard := opts.Streams.Wizard(
-			fmt.Sprintf("Opening %s for env %s: %s", resourceType, env.Environment, url),
-			fmt.Sprintf("Opened %s for env %s: %s", resourceType, env.Environment, url),
-			zapcore.WarnLevel,
-		)
-		defer wizard.Done()
+		logger.Info().Msgf("Opening %s for env %s: %s", resourceType, env.Environment, url)
+		defer logger.Info().Msgf("Opened %s for env %s: %s", resourceType, env.Environment, url)
 		return browser.OpenURL(url)
 	}
 }

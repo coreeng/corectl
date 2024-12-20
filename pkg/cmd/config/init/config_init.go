@@ -17,7 +17,6 @@ import (
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
 )
 
@@ -305,7 +304,7 @@ func cloneRepositories(
 	cplatformRepoFullname git.RepositoryFullname,
 	templatesRepoFullname git.RepositoryFullname,
 ) (cloneRepositoriesResult, error) {
-	streams.Wizard("Cloning repositories", "Cloned repositories", zapcore.WarnLevel)
+	streams.Wizard("Cloning repositories", "Cloned repositories")
 	defer streams.CurrentHandler.Done()
 	cplatformGitHubRepo, _, err := githubClient.Repositories.Get(
 		context.Background(),

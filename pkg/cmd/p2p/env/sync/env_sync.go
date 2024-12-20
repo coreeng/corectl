@@ -6,7 +6,6 @@ import (
 	"slices"
 
 	"github.com/coreeng/core-platform/pkg/environment"
-	"go.uber.org/zap/zapcore"
 
 	corep2p "github.com/coreeng/core-platform/pkg/p2p"
 	"github.com/coreeng/core-platform/pkg/tenant"
@@ -77,7 +76,7 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		return err
 	}
 
-	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments", zapcore.WarnLevel)
+	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
 	defer spinnerHandler.Done()
 
 	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)

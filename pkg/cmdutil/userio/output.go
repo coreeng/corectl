@@ -34,7 +34,6 @@ func (s IOStreams) Print(messages string) {
 }
 
 func (s IOStreams) Info(messages string) {
-	// TODO write to file
 	if logger.LogLevel() <= zapcore.InfoLevel {
 		err := s.MsgE(messages, s.styles.info, s.stderr)
 		if err != nil {
@@ -64,7 +63,7 @@ func (s IOStreams) Error(messages string) {
 	logger.GetFileOnlyLogger().Error(messages)
 }
 
-func (s *IOStreams) Wizard(title string, completedTitle string, messageLevel zapcore.Level) wizard.Handler {
+func (s *IOStreams) Wizard(title string, completedTitle string) wizard.Handler {
 	if s.IsInteractive() {
 		model, handler, doneSync := wizard.New()
 		s.CurrentHandler = handler
@@ -82,6 +81,6 @@ func (s *IOStreams) Wizard(title string, completedTitle string, messageLevel zap
 			styles:  NewNonInteractiveStyles(),
 		}
 	}
-	s.CurrentHandler.SetTask(title, completedTitle, messageLevel)
+	s.CurrentHandler.SetTask(title, completedTitle)
 	return s.CurrentHandler
 }

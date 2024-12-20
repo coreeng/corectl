@@ -10,7 +10,6 @@ import (
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 )
 
 type TenantAddRepoOpts struct {
@@ -58,7 +57,6 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	opts.Streams.Wizard(
 		fmt.Sprintf("Adding repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 		fmt.Sprintf("Added repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
-		zapcore.WarnLevel,
 	)
 	defer opts.Streams.CurrentHandler.Done()
 

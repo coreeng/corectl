@@ -11,7 +11,6 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
@@ -170,8 +169,8 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	} else {
 		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
 	}
-	wizard := opts.Streams.Wizard(msg, "", zapcore.WarnLevel)
-	defer wizard.Done()
+
+	logger.Info().Msg(msg)
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
 	if err != nil {
@@ -219,9 +218,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()), zapcore.WarnLevel)
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
 	} else {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()), zapcore.WarnLevel)
+		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
 	}
 
 	var nextStepsMessage string
@@ -357,20 +356,18 @@ func createPRWithUpdatedReposListForTenant(
 	opts.Streams.CurrentHandler.SetTask(fmt.Sprintf(
 		"Creating PR with new application %s for tenant %s in platform repo %s",
 		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value,
-	), "", zapcore.WarnLevel)
+	), "")
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
 		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
 			"Application is already registered for tenant. Skipping.",
 			wizard.TaskStatusSkipped,
-			zapcore.WarnLevel,
 		)
 		return nil, nil
 	} else if err != nil {
 		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
 			fmt.Sprintf("Failed to add application to tenant: %s", err),
 			wizard.TaskStatusError,
-			zapcore.ErrorLevel,
 		)
 		return nil, err
 	}
@@ -394,14 +391,13 @@ func createPRWithUpdatedReposListForTenant(
 		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
 			fmt.Sprintf("Failed to create PR for tenant to add a new application repository: %s", err),
 			wizard.TaskStatusError,
-			zapcore.ErrorLevel,
 		)
 		return nil, err
 	}
 	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
 		"Created PR with new application %s for tenant %s: %s",
 		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
-	), zapcore.WarnLevel)
+	))
 	return &tenantUpdateResult, nil
 }
 
