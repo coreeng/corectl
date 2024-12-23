@@ -7,8 +7,8 @@ import (
 	"github.com/coreeng/corectl/pkg/command"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/gcp"
 )
 
 var (

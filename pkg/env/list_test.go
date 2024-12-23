@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/stretchr/testify/assert"
 )
 

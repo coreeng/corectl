@@ -4,11 +4,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v59/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
