@@ -61,7 +61,7 @@ func ExistingPidForConnection(name string) int {
 
 	pid, err := strconv.Atoi(strings.TrimSpace(string(content)))
 	if err != nil {
-		log.Printf("failed to parse PID from file %s: %v", filename, err)
+		log.Printf("failed to parse pid from file %s: %v", filename, err)
 		return 0
 	}
 	// This is a pain but os.FindProcess always returns a process even if it doesn't exist
@@ -124,7 +124,7 @@ func GenerateConnectPort(name string) int {
 
 // Get a structure to represent the pids from a directory keyed by filename
 
-func GetProxyPIDs(availableEnvironments []environment.Environment) (map[string]ProcessDetails, error) {
+func GetProxyPids(availableEnvironments []environment.Environment) (map[string]ProcessDetails, error) {
 	files, err := os.ReadDir(PidFileDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory: %w", err)
@@ -156,7 +156,7 @@ func GetProxyPIDs(availableEnvironments []environment.Environment) (map[string]P
 
 		pid, err := strconv.Atoi(strings.TrimSpace(string(content)))
 		if err != nil {
-			log.Printf("failed to parse PID from file %s: %v", file.Name(), err)
+			log.Printf("failed to parse pid from file %s: %v", file.Name(), err)
 			continue
 		}
 		exists := false

@@ -51,7 +51,7 @@ func Connect(opts EnvConnectOpts) error {
 		existingPid := ExistingPidForConnection(opts.Environment.Environment)
 		if existingPid != 0 {
 			if !opts.Force {
-				s.Info(fmt.Sprintf("connection already exists for environment %s with pid %d", opts.Environment.Environment, existingPid))
+				logger.Warn().Msgf("Proxy for %s already running with pid %d", opts.Environment.Environment, existingPid)
 				return nil
 			}
 			if err := KillProcess(opts.Environment.Environment, int32(existingPid), false); err != nil {
@@ -156,16 +156,16 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 		return proxyUrl, nil
 	}
 
-	logger.Warn().Msgf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
+	logger.Info().Msgf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
 
 	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {
 		logger.Error().Msg(err.Error())
 		return "", err
 	}
-	logger.Warn().Msgf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
+	logger.Info().Msgf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
 
 	context := fmt.Sprintf("gke_%s_%s_%s", e.ProjectId, e.Region, env.Environment)
-	logger.Warn().Msgf("Setting Kubernetes config context to: %s", context)
+	logger.Info().Msgf("Setting Kubernetes config context to: %s", context)
 
 	if err := setKubeContext(c, context); err != nil {
 		logger.Error().Msg(err.Error())
@@ -173,13 +173,13 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 	}
 	logger.Warn().Msgf("Kubernetes config context set to: %s", context)
 
-	logger.Warn().Msgf("Setting Kubernetes proxy url to: %s", proxyUrl)
+	logger.Info().Msgf("Setting Kubernetes proxy url to: %s", proxyUrl)
 	if err := setKubeProxy(c, context, proxyUrl); err != nil {
 		logger.Error().Msg(err.Error())
 		return "", err
 	}
 
-	logger.Warn().Msgf("Kubernetes proxy url set to: %s", proxyUrl)
+	logger.Info().Msgf("Kubernetes proxy url set to: %s", proxyUrl)
 	return proxyUrl, nil
 }
 

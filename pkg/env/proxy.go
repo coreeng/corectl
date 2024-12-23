@@ -21,21 +21,21 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 	var err error
 
 	if IsConnectStartup(opts) { // Common code for foreground and background
-		logger.Warn().Msg("Testing IAP connection")
+		logger.Info().Msg("Testing IAP connection")
 		if err := testConn(ctx, dialOpts); err != nil {
 			err = fmt.Errorf("failed to test connection: %w", err)
 			logger.Fatal().Msg(err.Error())
 		}
-		logger.Warn().Msg("IAP connection succeeded")
+		logger.Info().Msg("IAP connection succeeded")
+
+		logger.Info().Msgf("Binding to %s", listen)
 		listener, err = net.Listen("tcp", listen)
-
-		logger.Warn().Msgf("Binding to %s", listen)
-
 		if err != nil {
 			logger.Fatal().With(zap.Error(err)).Msgf("failed to bind to %s", listen)
 			return
 		}
-		logger.Warn().Msgf("Bound to %s", listen)
+
+		logger.Warn().Msgf("Proxy for %s listening at %s", opts.Environment.Environment, listen)
 		if !opts.Background {
 			WritePidFile(opts.Environment.Environment, os.Getpid())
 		}
@@ -61,7 +61,7 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 			logger.Fatal().With(zap.Error(err)).Msg("failed to start background process")
 		}
 		WritePidFile(opts.Environment.Environment, cmd.Process.Pid)
-		logger.Warn().Msgf("Process started for %s in background with PID %d",
+		logger.Warn().Msgf("Proxy for %s running in the background with pid %d",
 			opts.Environment.Environment, cmd.Process.Pid)
 
 		return
