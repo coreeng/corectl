@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 
@@ -353,26 +352,18 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (*tenant.CreateOrUpdateResult, error) {
-	opts.Streams.CurrentHandler.SetTask(fmt.Sprintf(
-		"Creating PR with new application %s for tenant %s in platform repo %s",
-		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value,
-	), "")
+	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo %s",
+		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			"Application is already registered for tenant. Skipping.",
-			wizard.TaskStatusSkipped,
-		)
+		logger.Warn().Msgf("Application is already registered for tenant. Skipping.")
 		return nil, nil
 	} else if err != nil {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			fmt.Sprintf("Failed to add application to tenant: %s", err),
-			wizard.TaskStatusError,
-		)
+		logger.Error().Msgf("Failed to add application to tenant: %s", err)
 		return nil, err
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
+	logger.Warn().Msgf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name())
 
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
@@ -388,16 +379,13 @@ func createPRWithUpdatedReposListForTenant(
 		githubClient,
 	)
 	if err != nil {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			fmt.Sprintf("Failed to create PR for tenant to add a new application repository: %s", err),
-			wizard.TaskStatusError,
-		)
+		logger.Error().Msgf("Failed to create PR for tenant to add a new application repository: %s", err)
+
 		return nil, err
 	}
-	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
-		"Created PR with new application %s for tenant %s: %s",
-		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
-	))
+	logger.Warn().Msgf("Created PR with new application %s for tenant %s: %s",
+		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl)
+
 	return &tenantUpdateResult, nil
 }
 
