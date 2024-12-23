@@ -179,9 +179,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	templateInput := opts.createTemplateInput(existingTemplates)
 	fromTemplate, err := templateInput.GetValue(opts.Streams)
 	if fromTemplate != nil {
-		opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+		logger.Info().Msgf("template selected: %s", fromTemplate.Name)
 	} else {
-		opts.Streams.CurrentHandler.Info("no template selected")
+		logger.Info().Msg("no template selected")
 	}
 
 	if err != nil {
@@ -192,7 +192,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("tenant selected: %s", appTenant.Name))
+	logger.Info().Msgf("tenant selected: %s", appTenant.Name)
 
 	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
@@ -218,9 +218,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
+		logger.Warn().Msgf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl())
 	} else {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
+		logger.Warn().Msgf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl())
 	}
 
 	var nextStepsMessage string
@@ -254,7 +254,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 			)
 		}
 	}
-	opts.Streams.CurrentHandler.Warn(strings.TrimSpace(nextStepsMessage))
+	logger.Warn().Msgf(strings.TrimSpace(nextStepsMessage))
 
 	return nil
 }
