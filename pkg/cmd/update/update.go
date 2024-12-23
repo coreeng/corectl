@@ -216,7 +216,7 @@ func update(opts UpdateOpts) error {
 		logger.Debug().Msgf("target version set to %s", opts.targetVersion)
 	}
 
-	wizard := opts.streams.Wizard("Checking for updates", "Retrieved version metadata")
+	logger.Warn().Msg("Checking for updates")
 	githubClient := github.NewClient(nil)
 	if opts.githubToken != "" {
 		githubClient = githubClient.WithAuthToken(opts.githubToken)
@@ -230,23 +230,21 @@ func update(opts UpdateOpts) error {
 		release, err = getCorectlReleaseByTag(githubClient, opts.targetVersion)
 	}
 	if err != nil {
-		wizard.Abort(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 
 	asset, err := getLatestCorectlAsset(release)
 	if err != nil {
-		wizard.Abort(err.Error())
+		logger.Error().Msg(err.Error())
 		return err
 	}
 	logger.Debug().With(zap.String("current_version", version.Version), zap.String("remote_version", asset.Version)).Msg("comparing versions")
 	if version.Version == asset.Version {
-		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Already running %s release (%v)", opts.targetVersion, version.Version))
-		wizard.Done()
+		logger.Warn().Msgf("Already running %s release (%v)", opts.targetVersion, version.Version)
 		return nil
 	} else {
-		wizard.SetCurrentTaskCompletedTitle(fmt.Sprintf("Update available: %v", asset.Version))
-		wizard.Done()
+		logger.Warn().Msgf("Update available: %v", asset.Version)
 	}
 
 	out, err := glamour.Render(asset.Changelog, "dark")
@@ -259,7 +257,7 @@ func update(opts UpdateOpts) error {
 
 	logger.Debug().With(zap.Bool("skipConfirmation", opts.skipConfirmation)).Msg("checking params")
 
-	wizard = opts.streams.Wizard("Confirming update", "Confirmation received")
+	wizard := opts.streams.Wizard("Confirming update", "Confirmation received")
 	if opts.skipConfirmation {
 		wizard.Info("--skip-confirmation is set, continuing with update")
 	} else {

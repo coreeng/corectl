@@ -10,38 +10,32 @@ import (
 
 	"github.com/cedws/iapc/iap"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 )
 
 // Listen starts a proxy server that listens on the given address and port.
 func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, listen string, dialOpts []iap.DialOption, execute func() error) {
-	wizardH := streams.CurrentHandler
 
 	var listener net.Listener
 	var err error
 
 	if IsConnectStartup(opts) { // Common code for foreground and background
-		wizardH.SetTask("Testing IAP connection", "IAP connection succeeded")
+		logger.Warn().Msg("Testing IAP connection")
 		if err := testConn(ctx, dialOpts); err != nil {
 			err = fmt.Errorf("failed to test connection: %w", err)
-			wizardH.Abort(err.Error())
 			logger.Fatal().Msg(err.Error())
 		}
-		wizardH.SetCurrentTaskCompleted()
+		logger.Warn().Msg("IAP connection succeeded")
 		listener, err = net.Listen("tcp", listen)
 
-		wizardH.SetTask(fmt.Sprintf("Binding to %s", listen), "")
+		logger.Warn().Msgf("Binding to %s", listen)
 
 		if err != nil {
-			wizardH.SetCurrentTaskCompletedTitleWithStatus(
-				fmt.Sprintf("failed to bind to port: %s", err), wizard.TaskStatusError)
 			logger.Fatal().With(zap.Error(err)).Msgf("failed to bind to %s", listen)
 			return
 		}
-		wizardH.SetCurrentTaskCompletedTitle(fmt.Sprintf("Bound to %s", listen))
-		logger.Info().Msgf("listening: %+v", listener)
+		logger.Warn().Msgf("Bound to %s", listen)
 		if !opts.Background {
 			WritePidFile(opts.Environment.Environment, os.Getpid())
 		}
@@ -67,9 +61,9 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 			logger.Fatal().With(zap.Error(err)).Msg("failed to start background process")
 		}
 		WritePidFile(opts.Environment.Environment, cmd.Process.Pid)
-		wizardH.SetTask("", fmt.Sprintf("Process started for %s in background with PID %d",
-			opts.Environment.Environment, cmd.Process.Pid),
-		)
+		logger.Warn().Msgf("Process started for %s in background with PID %d",
+			opts.Environment.Environment, cmd.Process.Pid)
+
 		return
 	}
 	if IsConnectChild(opts) {
@@ -104,16 +98,15 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 					logger.Warn().Msg("Listener closed, stopping new connections.")
 					err := <-executionFinished
 					if err != nil {
-						wizardH.Abort(err.Error())
 						logger.Fatal().With(zap.Error(err)).Msg("Execution failed")
 					}
-					wizardH.Warn("Tunnel closed")
+					logger.Warn().Msg("Tunnel closed")
 					return
 				}
 				logger.Fatal().With(zap.Error(err)).Msg("failed to accept connection")
 			}
 
-			go handleClient(ctx, wizardH, dialOpts, conn)
+			go handleClient(ctx, dialOpts, conn)
 		}
 	}
 }
@@ -126,13 +119,12 @@ func testConn(ctx context.Context, opts []iap.DialOption) error {
 	return err
 }
 
-func handleClient(ctx context.Context, wizard wizard.Handler, opts []iap.DialOption, conn net.Conn) {
+func handleClient(ctx context.Context, opts []iap.DialOption, conn net.Conn) {
 	logger.Debug().Msgf("connected: client %s", conn.RemoteAddr())
 
 	tun, err := iap.Dial(ctx, opts...)
 	if err != nil {
-		wizard.Error(fmt.Sprintf("Failed to connect to IAP for client: %s", conn.RemoteAddr()))
-		logger.Error().With(zap.Error(err)).Msgf("failed to dial IAP")
+		logger.Error().With(zap.Error(err)).Msgf("Failed to connect to IAP for client: %s", conn.RemoteAddr())
 		return
 	}
 	defer tun.Close()
