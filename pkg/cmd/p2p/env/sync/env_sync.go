@@ -7,12 +7,12 @@ import (
 
 	"github.com/coreeng/core-platform/pkg/environment"
 
+	corep2p "github.com/coreeng/core-platform/pkg/p2p"
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
-	corep2p "github.com/coreeng/core-platform/pkg/p2p"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/google/go-github/v59/github"
 	"github.com/spf13/cobra"
 )

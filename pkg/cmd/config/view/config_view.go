@@ -38,7 +38,7 @@ func NewConfigViewCmd(cfg *config.Config) *cobra.Command {
 
 func run(opts *ConfigViewOpts, cfg *config.Config) error {
 	if !cfg.IsPersisted() {
-		opts.Streams.Info(
+		opts.Streams.Warn(
 			"No config found\n" +
 				"Consider running initializing corectl first:\n" +
 				"  corectl config init",

@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 
@@ -169,8 +168,8 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	} else {
 		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
 	}
-	wizard := opts.Streams.Wizard(msg, "")
-	defer wizard.Done()
+
+	logger.Info().Msg(msg)
 
 	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
 	if err != nil {
@@ -179,9 +178,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	templateInput := opts.createTemplateInput(existingTemplates)
 	fromTemplate, err := templateInput.GetValue(opts.Streams)
 	if fromTemplate != nil {
-		opts.Streams.CurrentHandler.Info(fmt.Sprintf("template selected: %s", fromTemplate.Name))
+		logger.Info().Msgf("template selected: %s", fromTemplate.Name)
 	} else {
-		opts.Streams.CurrentHandler.Info("no template selected")
+		logger.Info().Msg("no template selected")
 	}
 
 	if err != nil {
@@ -192,7 +191,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("tenant selected: %s", appTenant.Name))
+	logger.Info().Msgf("tenant selected: %s", appTenant.Name)
 
 	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
 	if err != nil {
@@ -218,9 +217,9 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	if createdAppResult.MonorepoMode {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl()))
+		logger.Warn().Msgf("added %s to repository: %s", opts.Name, createdAppResult.RepositoryFullname.HttpUrl())
 	} else {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl()))
+		logger.Warn().Msgf("created repository: %s", createdAppResult.RepositoryFullname.HttpUrl())
 	}
 
 	var nextStepsMessage string
@@ -254,7 +253,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 			)
 		}
 	}
-	opts.Streams.CurrentHandler.Warn(strings.TrimSpace(nextStepsMessage))
+	logger.Warn().Msg(strings.TrimSpace(nextStepsMessage))
 
 	return nil
 }
@@ -353,26 +352,18 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (*tenant.CreateOrUpdateResult, error) {
-	opts.Streams.CurrentHandler.SetTask(fmt.Sprintf(
-		"Creating PR with new application %s for tenant %s in platform repo %s",
-		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value,
-	), "")
+	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo %s",
+		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			"Application is already registered for tenant. Skipping.",
-			wizard.TaskStatusSkipped,
-		)
+		logger.Warn().Msgf("Application is already registered for tenant. Skipping.")
 		return nil, nil
 	} else if err != nil {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			fmt.Sprintf("Failed to add application to tenant: %s", err),
-			wizard.TaskStatusError,
-		)
+		logger.Error().Msgf("Failed to add application to tenant: %s", err)
 		return nil, err
 	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name()))
+	logger.Warn().Msgf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name())
 
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
@@ -388,16 +379,13 @@ func createPRWithUpdatedReposListForTenant(
 		githubClient,
 	)
 	if err != nil {
-		opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitleWithStatus(
-			fmt.Sprintf("Failed to create PR for tenant to add a new application repository: %s", err),
-			wizard.TaskStatusError,
-		)
+		logger.Error().Msgf("Failed to create PR for tenant to add a new application repository: %s", err)
+
 		return nil, err
 	}
-	opts.Streams.CurrentHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf(
-		"Created PR with new application %s for tenant %s: %s",
-		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl,
-	))
+	logger.Warn().Msgf("Created PR with new application %s for tenant %s: %s",
+		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl)
+
 	return &tenantUpdateResult, nil
 }
 

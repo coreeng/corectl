@@ -139,4 +139,5 @@ func (handler asyncHandler) SetTask(title string, completedTitle string) {
 		logs:           []logMsg{},
 		completed:      false,
 	})
+
 }

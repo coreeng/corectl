@@ -307,7 +307,8 @@ func update(opts UpdateOpts) error {
 	}
 	tmpPath := tmpFile.Name()
 
-	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path), fmt.Sprintf("Release %s installed", asset.Version))
+	opts.streams.CurrentHandler.SetTask(fmt.Sprintf("Installing release %s to path: %s", asset.Version, path),
+		fmt.Sprintf("Release %s installed", asset.Version))
 	err = writeCorectlAssetToPath(decompressed, tmpPath, tmpFile)
 	if err != nil {
 		return fmt.Errorf("could not write release %s to path %s: %+v", asset.Version, path, err)

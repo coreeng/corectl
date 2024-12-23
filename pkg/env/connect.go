@@ -9,7 +9,6 @@ import (
 	"github.com/cedws/iapc/iap"
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	. "github.com/coreeng/corectl/pkg/command"
 	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/coreeng/corectl/pkg/logger"
@@ -44,7 +43,6 @@ type EnvConnectOpts struct {
 // Connect establishes a connection with a gke cluster via a bastion host
 func Connect(opts EnvConnectOpts) error {
 	s := opts.Streams
-	var wizard wizard.Handler
 
 	if opts.Port == 0 {
 		opts.Port = GenerateConnectPort(opts.Environment.Environment)
@@ -61,11 +59,8 @@ func Connect(opts EnvConnectOpts) error {
 			}
 		}
 
-		wizard = s.Wizard(
-			"Checking platform is supported",
-			"Platform is supported",
-		)
-		defer wizard.Done()
+		logger.Info().Msg("Checking platform is supported")
+		defer logger.Info().Msg("Platform is supported")
 
 		if err := checkPlatformSupported(opts.Environment); err != nil {
 			return err
@@ -155,40 +150,37 @@ func startIAPTunnel(
 
 func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander, env *environment.Environment, port int) (string, error) {
 	e := env.Platform.(*environment.GCPVendor)
-	wizard := streams.CurrentHandler
-
 	// TODO: We need to make proxy URL more dynamic
 	proxyUrl := fmt.Sprintf("localhost:%d", port)
 	if !IsConnectStartup(opts) {
 		return proxyUrl, nil
 	}
-	wizard.SetTask(
-		fmt.Sprintf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
-		fmt.Sprintf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment),
-	)
+
+	logger.Warn().Msgf("Retrieving cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
+
 	if err := setCredentials(c, env.Environment, e.ProjectId, e.Region); err != nil {
-		wizard.Abort(err.Error())
+		logger.Error().Msg(err.Error())
 		return "", err
 	}
+	logger.Warn().Msgf("Configured cluster credentials: project=%s zone=%s cluster=%s", e.ProjectId, e.Region, env.Environment)
 
 	context := fmt.Sprintf("gke_%s_%s_%s", e.ProjectId, e.Region, env.Environment)
-	wizard.SetTask(
-		fmt.Sprintf("Setting Kubernetes config context to: %s", context),
-		fmt.Sprintf("Kubernetes config context set to: %s", context),
-	)
+	logger.Warn().Msgf("Setting Kubernetes config context to: %s", context)
+	
+	
 	if err := setKubeContext(c, context); err != nil {
-		wizard.Abort(err.Error())
+		logger.Error().Msg(err.Error())
+		return "", err
+	}
+	logger.Warn().Msgf("Kubernetes config context set to: %s", context)
+
+	logger.Warn().Msgf("Setting Kubernetes proxy url to: %s", proxyUrl)
+	if err := setKubeProxy(c, context, proxyUrl); err != nil {
+		logger.Error().Msg(err.Error())
 		return "", err
 	}
 
-	wizard.SetTask(
-		fmt.Sprintf("Setting Kubernetes proxy url to: %s", proxyUrl),
-		fmt.Sprintf("Kubernetes proxy url set to: %s", proxyUrl),
-	)
-	if err := setKubeProxy(c, context, proxyUrl); err != nil {
-		wizard.Abort(err.Error())
-		return "", err
-	}
+	logger.Warn().Msgf("Kubernetes proxy url set to: %s", proxyUrl)
 	return proxyUrl, nil
 }
 

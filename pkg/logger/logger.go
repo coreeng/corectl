@@ -22,8 +22,9 @@ const (
 
 	DefaultTailLines = 20
 
-	TimeFieldKey    = "ts"
-	MessageFieldKey = "status"
+	TimeFieldKey           = "ts"
+	MessageFieldKey        = "status"
+	DefaultConsoleLogLevel = zapcore.WarnLevel
 )
 
 type CECGLogger struct {
@@ -35,22 +36,25 @@ type CECGLoggerEntry struct {
 }
 
 var (
-	cecgLogger *CECGLogger
-	logPath    string
+	cecgLogger                *CECGLogger
+	fileOnlyLogger            *CECGLogger
+	configuredConsoleLogLevel = DefaultConsoleLogLevel
+	logPath                   string
 )
 
-func defaultInit() *CECGLogger {
-	return Init(zapcore.WarnLevel.String())
+func defaultInit() {
+	Init(DefaultConsoleLogLevel.String())
 }
-func Init(logLevelFlag string) *CECGLogger {
+func Init(logLevelFlag string) {
 	if cecgLogger != nil {
-		return cecgLogger
+		return
 	}
 
 	consoleLogLevel, err := zapcore.ParseLevel(logLevelFlag)
 	if err != nil {
 		consoleLogLevel = zapcore.WarnLevel
 	}
+	configuredConsoleLogLevel = consoleLogLevel
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -75,23 +79,23 @@ func Init(logLevelFlag string) *CECGLogger {
 
 	consoleWriter := zapcore.Lock(zapcore.AddSync(os.Stdout))
 
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.TimeKey = TimeFieldKey
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.MessageKey = MessageFieldKey
+	encoderCfg := zapcore.EncoderConfig{
+		MessageKey: "message", // Only output the message
+	}
 
 	jsonEncoder := zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig())
-	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+	consoleEncoder := zapcore.NewConsoleEncoder(encoderCfg)
 
 	// Combine outputs with configurable log level
+	consoleCore := zapcore.NewCore(jsonEncoder, fileWriter, zapcore.InfoLevel)
 	core := zapcore.NewTee(
-		zapcore.NewCore(jsonEncoder, fileWriter, zapcore.InfoLevel),
-		zapcore.NewCore(consoleEncoder, consoleWriter, consoleLogLevel),
+		consoleCore,
+		zapcore.NewCore(consoleEncoder, consoleWriter, configuredConsoleLogLevel),
 	)
-	cecgLogger = &CECGLogger{logger: zap.New(core)}
 
-	Debug().With(zap.String("value", consoleLogLevel.String())).Msg("log level configured")
-	return cecgLogger
+	cecgLogger = &CECGLogger{logger: zap.New(core)}
+	fileOnlyLogger = &CECGLogger{logger: zap.New(consoleCore)}
+	Debug().With(zap.String("value", configuredConsoleLogLevel.String())).Msg("log level configured")
 }
 
 // Debug logs a message at Debug level
@@ -159,4 +163,13 @@ func Sync() {
 	if err != nil && !errors.Is(err, syscall.ENOTTY) {
 		panic(fmt.Sprintf("failed to sync logger: %v", err))
 	}
+}
+
+func GetFileOnlyLogger() *zap.Logger {
+	defaultInit()
+	return fileOnlyLogger.logger
+}
+
+func LogLevel() zapcore.Level {
+	return configuredConsoleLogLevel
 }

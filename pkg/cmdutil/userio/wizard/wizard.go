@@ -280,7 +280,7 @@ func (m Model) View() string {
 
 func (m Model) generateLog(message string, level zapcore.Level) string {
 	switch level {
-	case zapcore.PanicLevel:
+	case zapcore.InfoLevel:
 		return m.InfoLog(message)
 	case zapcore.WarnLevel:
 		return m.WarnLog(message)

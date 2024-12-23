@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
+	"github.com/coreeng/corectl/pkg/logger"
 )
 
 func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
@@ -22,11 +23,10 @@ func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repo
 
 func updateRepository(repoParam *Parameter[string], gitAuth git.AuthMethod, streams userio.IOStreams, ignoreDirty bool) error {
 	isUpdated, err := func() (bool, error) {
-		streams.Wizard(
-			fmt.Sprintf("Updating %s", repoParam.Name()),
-			fmt.Sprintf("Updated %s", repoParam.Name()),
-		)
-		defer streams.CurrentHandler.Done()
+
+		logger.Info().Msgf("Updating %s", repoParam.Name())
+		defer logger.Info().Msgf("Updated %s", repoParam.Name())
+
 		repo, err := resetConfigRepositoryState(repoParam, ignoreDirty)
 		if err != nil {
 			return false, err
@@ -47,7 +47,7 @@ func updateRepository(repoParam *Parameter[string], gitAuth git.AuthMethod, stre
 	} else {
 		msg = fmt.Sprintf("%s is up to date!", repoParam.Name())
 	}
-	streams.Info(msg)
+	logger.Info().Msg(msg)
 	return nil
 }
 

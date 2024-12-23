@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
+	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap/zapcore"
 )
 
 type nonInteractiveHandler struct {
@@ -29,13 +31,23 @@ func (nonInteractiveHandler) OnQuit(model tea.Model, msg tea.Msg) tea.Msg {
 }
 
 func (nih nonInteractiveHandler) Info(message string) {
-	nih.streams.Info(message)
+	if logger.LogLevel() <= zapcore.InfoLevel {
+		nih.streams.Info(message)
+	}
+	logger.GetFileOnlyLogger().Sugar().Info(message)
+
 }
 func (nih nonInteractiveHandler) Warn(message string) {
-	nih.streams.Warn(message)
+	if logger.LogLevel() <= zapcore.WarnLevel {
+		nih.streams.Warn(message)
+	}
+	logger.GetFileOnlyLogger().Sugar().Warn(message)
 }
 func (nih nonInteractiveHandler) Error(message string) {
-	nih.streams.Error(message)
+	if logger.LogLevel() <= zapcore.ErrorLevel {
+		nih.streams.Error(message)
+	}
+	logger.GetFileOnlyLogger().Sugar().Error(message)
 }
 func (nih nonInteractiveHandler) Print(message string) {
 	nih.streams.Print(message)

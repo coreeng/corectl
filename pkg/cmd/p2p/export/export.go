@@ -145,6 +145,6 @@ func run(opts *exportOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	opts.streams.Info(exportCmd)
+	opts.streams.Warn(exportCmd)
 	return nil
 }

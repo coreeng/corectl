@@ -67,7 +67,9 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 			logger.Fatal().With(zap.Error(err)).Msg("failed to start background process")
 		}
 		WritePidFile(opts.Environment.Environment, cmd.Process.Pid)
-		wizardH.SetTask("", fmt.Sprintf("Process started for %s in background with PID %d", opts.Environment.Environment, cmd.Process.Pid))
+		wizardH.SetTask("", fmt.Sprintf("Process started for %s in background with PID %d",
+			opts.Environment.Environment, cmd.Process.Pid),
+		)
 		return
 	}
 	if IsConnectChild(opts) {
