@@ -3,9 +3,9 @@ package p2p
 import (
 	"bytes"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/git"
 )
 
 const (

@@ -166,8 +166,7 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 
 	context := fmt.Sprintf("gke_%s_%s_%s", e.ProjectId, e.Region, env.Environment)
 	logger.Warn().Msgf("Setting Kubernetes config context to: %s", context)
-	
-	
+
 	if err := setKubeContext(c, context); err != nil {
 		logger.Error().Msg(err.Error())
 		return "", err

@@ -8,12 +8,12 @@ import (
 
 	"time"
 
+	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/google/go-github/v59/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

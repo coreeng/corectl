@@ -1,8 +1,8 @@
 package tenant
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/jedib0t/go-pretty/v6/table"
 )
 
