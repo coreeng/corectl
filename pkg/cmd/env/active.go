@@ -105,7 +105,7 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 
 func active(opts ActiveOpt, environments []environment.Environment) error {
 	// Call getProxyPids to get pids
-	pids, err := corectlenv.GetProxyPIDs(environments)
+	pids, err := corectlenv.GetProxyPids(environments)
 	_ = err
 
 	table := corectlenv.NewTable(opts.Streams, true)

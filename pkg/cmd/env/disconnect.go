@@ -10,6 +10,8 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
+	"github.com/coreeng/corectl/pkg/logger"
+
 	"github.com/spf13/cobra"
 )
 
@@ -89,14 +91,14 @@ func disconnectCmd(cfg *config.Config) *cobra.Command {
 
 func disconnect(opts corectlenv.EnvConnectOpts, cfg *config.Config, environments []environment.Environment) error {
 	// Call getProxyPids to get pids
-	pids, err := corectlenv.GetProxyPIDs(environments)
+	pids, err := corectlenv.GetProxyPids(environments)
 	_ = err
 	for name, pid := range pids {
 		// Kill the process with the pid
 		if err := corectlenv.KillProcess(name, pid.Pid, false); err != nil {
 			return fmt.Errorf("[%s] failed to kill process: %w", name, err)
 		}
-		opts.Streams.Info(fmt.Sprintf("[%s] killed process %d on port %d", name, pid.Pid, pid.Port))
+		logger.Warn().Msgf("Proxy for %s with pid %d stopped", name, pid.Pid)
 	}
 	return nil
 }
