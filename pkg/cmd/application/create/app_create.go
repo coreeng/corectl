@@ -254,7 +254,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 			)
 		}
 	}
-	logger.Warn().Msgf(strings.TrimSpace(nextStepsMessage))
+	logger.Warn().Msg(strings.TrimSpace(nextStepsMessage))
 
 	return nil
 }
