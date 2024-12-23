@@ -79,13 +79,12 @@ func Init(logLevelFlag string) {
 
 	consoleWriter := zapcore.Lock(zapcore.AddSync(os.Stdout))
 
-	encoderConfig := zap.NewProductionEncoderConfig()
-	encoderConfig.TimeKey = TimeFieldKey
-	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	encoderConfig.MessageKey = MessageFieldKey
+	encoderCfg := zapcore.EncoderConfig{
+		MessageKey: "message", // Only output the message
+	}
 
 	jsonEncoder := zapcore.NewJSONEncoder(zap.NewDevelopmentEncoderConfig())
-	consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+	consoleEncoder := zapcore.NewConsoleEncoder(encoderCfg)
 
 	// Combine outputs with configurable log level
 	consoleCore := zapcore.NewCore(jsonEncoder, fileWriter, zapcore.InfoLevel)

@@ -121,7 +121,6 @@ func (m Model) markLatestTaskComplete() *task {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// TODO change here
 	updateListener := m.ReceiveUpdateMessages
 
 	var newInputModel tea.Model

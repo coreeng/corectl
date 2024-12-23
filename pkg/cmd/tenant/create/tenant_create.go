@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreeng/corectl/pkg/cmdutil/userio/wizard"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 
@@ -231,12 +230,7 @@ func createTenant(
 	parentTenant *coretnt.Tenant,
 	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
-	wizardHandler := streams.Wizard(
-		fmt.Sprintf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value),
-		"", // We don't know the PR URL yet, using SetCurrentTaskCompletedTitle
-	)
-	
-	defer wizardHandler.Done()
+	logger.Warn().Msgf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
 
 	tenantMap := map[string]*coretnt.Tenant{
 		t.Name: t,
@@ -245,11 +239,10 @@ func createTenant(
 		tenantMap[tenant.Name] = &tenant
 	}
 
-	if err := validateTenant(tenantMap, t, wizardHandler); err != nil {
-		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(
-			fmt.Sprintf("Unable to create such a tenant: %s", err),
-			wizard.TaskStatusError,
-		)
+	if err := validateTenant(tenantMap, t); err != nil {
+
+		logger.Warn().Msgf("Unable to create such a tenant: %s", err)
+
 		return tenant.CreateOrUpdateResult{}, err
 	}
 
@@ -270,19 +263,20 @@ func createTenant(
 		}, githubClient,
 	)
 	if err != nil {
-		wizardHandler.SetCurrentTaskCompletedTitleWithStatus(fmt.Sprintf("Failed to create a PR for new tenant: %s", err), wizard.TaskStatusError)
+		logger.Warn().Msgf("Failed to create a PR for new tenant: %s", err)
+
 	} else {
-		wizardHandler.SetCurrentTaskCompletedTitle(fmt.Sprintf("Created PR for new tenant %s: %s", t.Name, result.PRUrl))
+		logger.Warn().Msgf("Created PR for new tenant %s: %s", t.Name, result.PRUrl)
 	}
 	return result, err
 }
 
-func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant, wizardHandler wizard.Handler) error {
+func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant) error {
 	validationResult := coretnt.ValidateTenants(tenantMap)
 	for _, warn := range validationResult.Warnings {
 		var tenantRelatedWarn coretnt.TenantRelatedError
 		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(t) {
-			wizardHandler.Warn(warn.Error())
+			logger.Error().Msg(warn.Error())
 		}
 	}
 	var tenantRelatedErr coretnt.TenantRelatedError
