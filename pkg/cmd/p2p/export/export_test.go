@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -82,6 +83,28 @@ func TestRunExportNonExistingTenant(t *testing.T) {
 	}, &cfg)
 
 	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepoPath, tenantName, tenantName))
+}
+
+func TestFailureWithRootTenant(t *testing.T) {
+	tenantName := tenant.DefaultRootName
+	cPlatRepoPath := testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()
+
+	cfg := config.Config{
+		Repositories: config.RepositoriesConfig{
+			CPlatform: config.Parameter[string]{
+				Value: cPlatRepoPath,
+			},
+		},
+	}
+
+	err := run(&exportOpts{
+		tenant:          tenantName,
+		environmentName: testdata.DevEnvironment(),
+		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
+		streams:         streams,
+	}, &cfg)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("Cannot connect to '%s' as that's the default tenant and cannot be use", tenant.DefaultRootName))
 }
 
 func TestRunExportNonExistingEnvironment(t *testing.T) {

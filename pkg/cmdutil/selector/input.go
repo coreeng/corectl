@@ -96,8 +96,9 @@ func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *
 		return &existingTenants[tenantIndex], nil
 	}
 
-	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
-	rootNode, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.DefaultRootName})
+	rootNode, err := tenant.GetTenantTree(existingTenants, coretnt.DefaultRootName)
+
 	if err != nil {
 		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}

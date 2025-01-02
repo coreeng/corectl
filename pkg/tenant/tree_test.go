@@ -9,7 +9,7 @@ import (
 
 func TestGenerateTenantTreeWithNoRootShouldFail(t *testing.T) {
 	tenants := []coretnt.Tenant{
-		{Name: coretnt.RootName},
+		{Name: coretnt.DefaultRootName},
 	}
 
 	_, err := GetTenantTree(tenants, "")
@@ -18,20 +18,20 @@ func TestGenerateTenantTreeWithNoRootShouldFail(t *testing.T) {
 
 func TestGenerateTenantTreeWithOnlyTheRootTenantShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
-		{Name: coretnt.RootName},
+		{Name: coretnt.DefaultRootName},
 	}
 
-	node, err := GetTenantTree(tenants, coretnt.RootName)
+	node, err := GetTenantTree(tenants, coretnt.DefaultRootName)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, node, nil)
 
 	items, lines := RenderTenantTree(node)
 
 	assert.Equal(t, len(items), 1)
-	assert.Equal(t, items[0], coretnt.RootName)
+	assert.Equal(t, items[0], coretnt.DefaultRootName)
 
 	assert.Equal(t, len(lines), 1)
-	assert.Equal(t, lines[0], coretnt.RootName)
+	assert.Equal(t, lines[0], coretnt.DefaultRootName)
 }
 
 func TestGenerateTenantTreeFromManyTenantsShouldSucceed(t *testing.T) {
@@ -89,9 +89,9 @@ func TestGenerateTenantTreeFromManyTenantsShouldSucceed(t *testing.T) {
 
 func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
-		{Name: coretnt.RootName},
+		{Name: coretnt.DefaultRootName},
 
-		{Name: "top", Parent: coretnt.RootName},
+		{Name: "top", Parent: coretnt.DefaultRootName},
 		{Name: "child1", Parent: "top"},
 		{Name: "child11", Parent: "child1"},
 		{Name: "child12", Parent: "child1"},
@@ -99,7 +99,7 @@ func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
 		{Name: "child21", Parent: "child2"},
 		{Name: "child22", Parent: "child2"},
 
-		{Name: "bottom", Parent: coretnt.RootName},
+		{Name: "bottom", Parent: coretnt.DefaultRootName},
 		{Name: "childA", Parent: "bottom"},
 		{Name: "childAA", Parent: "childA"},
 		{Name: "childB", Parent: "bottom"},

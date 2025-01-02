@@ -145,7 +145,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	rootTenant := coretnt.RootTenant(tenantsPath)
+	rootTenant := coretnt.DefaultRootTenant(tenantsPath)
 
 	envsDir := environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value)
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
@@ -215,7 +215,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.Streams, opt.DryRun, cfg, &t, &parent, existingTenants)
+	_, err = createTenant(opt.DryRun, cfg, &t, &parent, existingTenants)
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 }
 
 func createTenant(
-	streams userio.IOStreams,
 	dryRun bool,
 	cfg *config.Config,
 	t *coretnt.Tenant,
@@ -301,7 +300,7 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 		existingTenantI := slices.IndexFunc(existingTenants, func(tnt coretnt.Tenant) bool {
 			return tnt.Name == inp
 		})
-		if existingTenantI >= 0 || inp == coretnt.RootName {
+		if existingTenantI >= 0 || inp == coretnt.DefaultRootName {
 			return "", errors.New("tenant already exists")
 		}
 		return inp, nil
@@ -324,8 +323,8 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 }
 
 func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
-	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
-	node, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
+	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.DefaultRootName})
+	node, err := tenant.GetTenantTree(existingTenants, coretnt.DefaultRootName)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
 	}
