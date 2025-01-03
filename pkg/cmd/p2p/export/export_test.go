@@ -86,7 +86,7 @@ func TestRunExportNonExistingTenant(t *testing.T) {
 }
 
 func TestFailureWithRootTenant(t *testing.T) {
-	tenantName := tenant.DefaultRootName
+	tenantName := tenant.RootName
 	cPlatRepoPath := testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()
 
 	cfg := config.Config{
@@ -104,7 +104,7 @@ func TestFailureWithRootTenant(t *testing.T) {
 		streams:         streams,
 	}, &cfg)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("Cannot connect to '%s' as that's the default tenant and cannot be use", tenant.DefaultRootName))
+	assert.ErrorContains(t, err, fmt.Sprintf("Cannot connect to '%s' as that's the default tenant and cannot be use", tenant.RootName))
 }
 
 func TestRunExportNonExistingEnvironment(t *testing.T) {

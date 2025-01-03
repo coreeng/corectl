@@ -59,11 +59,11 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
 
-	from := coretnt.DefaultRootName
+	from := coretnt.RootName
 	if opts.From != "" {
 		from = opts.From
 	}
-	tenants = append(tenants, coretnt.Tenant{Name: coretnt.DefaultRootName})
+	tenants = append(tenants, coretnt.Tenant{Name: coretnt.RootName})
 	rootNode, err := corectltnt.GetTenantTree(tenants, from)
 
 	if err != nil {

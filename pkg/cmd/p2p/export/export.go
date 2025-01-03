@@ -26,8 +26,8 @@ func (eo *exportOpts) processFlags(cPlatRepoPath string, dryRun bool) (*p2p.EnvV
 	if err != nil {
 		return nil, err
 	}
-	if argTenant.Name == tenant.DefaultRootName {
-		return nil, fmt.Errorf("Cannot connect to '%s' as that's the default tenant and cannot be used", tenant.DefaultRootName)
+	if argTenant.Name == tenant.RootName {
+		return nil, fmt.Errorf("Cannot connect to '%s' as that's the default tenant and cannot be used", tenant.RootName)
 	}
 
 	argEnv, err := selector.Environment(cPlatRepoPath, eo.environmentName, argTenant.Environments, eo.streams)
