@@ -4,14 +4,15 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/shirou/gopsutil/v3/process"
-	"log"
 	"math/rand"
 	"os"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/corectl/pkg/logger"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 type ProcessDetails struct {
@@ -42,12 +43,12 @@ func SetBackgroundEnv() string {
 
 func WritePidFile(name string, pid int) {
 	if err := os.MkdirAll(PidFileDir, 0755); err != nil {
-		fmt.Printf("Unable to create directory: %v\n", err)
+		logger.Error().Msgf("Unable to create directory: %v\n", err)
 		return
 	}
 	pidFile := fmt.Sprintf("%s/%s.pid", PidFileDir, name)
 	if err := os.WriteFile(pidFile, []byte(strconv.Itoa(pid)), 0644); err != nil {
-		fmt.Printf("Unable to write file: %v\n", err)
+		logger.Error().Msgf("Unable to write file: %v\n", err)
 		return
 	}
 }
@@ -61,13 +62,13 @@ func ExistingPidForConnection(name string) int {
 
 	pid, err := strconv.Atoi(strings.TrimSpace(string(content)))
 	if err != nil {
-		log.Printf("failed to parse pid from file %s: %v", filename, err)
+		logger.Error().Msgf("failed to parse pid from file %s: %v", filename, err)
 		return 0
 	}
 	// This is a pain but os.FindProcess always returns a process even if it doesn't exist
 	processes, err := process.Processes()
 	if err != nil {
-		fmt.Println("Error retrieving processes:", err)
+		logger.Error().Msgf("Error retrieving processes: %v", err)
 		return 0
 	}
 	for _, proc := range processes {
@@ -96,7 +97,7 @@ func KillProcess(name string, pid int32, force bool) error {
 	filename := fmt.Sprintf("%s/%s.pid", PidFileDir, name)
 	if _, err := os.Stat(filename); err == nil {
 		if err := os.Remove(filename); err != nil {
-			log.Printf("failed to remove pid file %s: %v", filename, err)
+			logger.Error().Msgf("failed to remove pid file %s: %v", filename, err)
 		}
 	}
 	return nil
@@ -133,7 +134,7 @@ func GetProxyPids(availableEnvironments []environment.Environment) (map[string]P
 	pidMap := make(map[string]ProcessDetails)
 	processes, err := process.Processes()
 	if err != nil {
-		log.Printf("unable to read processes: %v", err)
+		logger.Error().Msgf("unable to read processes: %v", err)
 		return pidMap, err
 	}
 	for _, file := range files {
@@ -150,13 +151,13 @@ func GetProxyPids(availableEnvironments []environment.Environment) (map[string]P
 
 		content, err := os.ReadFile(fmt.Sprintf("%s/%s", PidFileDir, file.Name()))
 		if err != nil {
-			log.Printf("failed to read file %s: %v", file.Name(), err)
+			logger.Error().Msgf("failed to read file %s: %v", file.Name(), err)
 			continue
 		}
 
 		pid, err := strconv.Atoi(strings.TrimSpace(string(content)))
 		if err != nil {
-			log.Printf("failed to parse pid from file %s: %v", file.Name(), err)
+			logger.Error().Msgf("failed to parse pid from file %s: %v", file.Name(), err)
 			continue
 		}
 		exists := false
@@ -167,11 +168,11 @@ func GetProxyPids(availableEnvironments []environment.Environment) (map[string]P
 				connections, err := proc.Connections()
 				_ = connections
 				if err != nil {
-					log.Printf("failed to get connections for pid %d: %v", pid, err)
+					logger.Error().Msgf("failed to get connections for pid %d: %v", pid, err)
 					continue
 				}
 				if len(connections) == 0 {
-					log.Printf("no connections found for pid %d", pid)
+					logger.Error().Msgf("no connections found for pid %d", pid)
 					continue
 				}
 				pidMap[filename] = ProcessDetails{
@@ -183,9 +184,9 @@ func GetProxyPids(availableEnvironments []environment.Environment) (map[string]P
 		}
 		// If the pid does not exist, remove the file
 		if !exists {
-			log.Printf("removing pid file %s for pid %d", file.Name(), pid)
+			logger.Error().Msgf("removing pid file %s for pid %d", file.Name(), pid)
 			if err := os.Remove(fmt.Sprintf("%s/%s", PidFileDir, file.Name())); err != nil {
-				log.Printf("failed to remove pid file %s: %v", file.Name(), err)
+				logger.Error().Msgf("failed to remove pid file %s: %v", file.Name(), err)
 			}
 			continue
 		}

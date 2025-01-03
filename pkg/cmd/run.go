@@ -1,17 +1,15 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/coreeng/corectl/pkg/cmd/root"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/logger"
 )
 
 func Run() int {
 	cfg, err := config.DiscoverConfig()
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		logger.Error().Msgf("Error: %v", err)
 		return 10
 	}
 
@@ -20,7 +18,7 @@ func Run() int {
 	err = rootCmd.Execute()
 
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		logger.Error().Msgf("Error: %v", err)
 		return 1
 	}
 	return 0
