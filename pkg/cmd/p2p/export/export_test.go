@@ -104,7 +104,7 @@ func TestFailureWithRootTenant(t *testing.T) {
 		streams:         streams,
 	}, &cfg)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("cannot connect to '%s' as that's the root tenant and cannot be use", tenant.RootName))
+	assert.ErrorContains(t, err, fmt.Sprintf("cannot connect to '%s' as that's the root tenant and cannot be used", tenant.RootName))
 }
 
 func TestRunExportNonExistingEnvironment(t *testing.T) {
