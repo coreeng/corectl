@@ -47,7 +47,7 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 	return tenantTreeCmd
 }
 
-func run(opts *TenantTreeOpts, cfg *config.Config) error { 
+func run(opts *TenantTreeOpts, cfg *config.Config) error {
 	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
 	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
