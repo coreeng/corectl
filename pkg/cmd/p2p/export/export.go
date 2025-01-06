@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -25,6 +26,10 @@ func (eo *exportOpts) processFlags(cPlatRepoPath string, dryRun bool) (*p2p.EnvV
 	if err != nil {
 		return nil, err
 	}
+	if argTenant.Name == tenant.RootName {
+		return nil, fmt.Errorf("cannot connect to '%s' as that's the root tenant and cannot be used", tenant.RootName)
+	}
+
 	argEnv, err := selector.Environment(cPlatRepoPath, eo.environmentName, argTenant.Environments, eo.streams)
 	if err != nil {
 		return nil, err

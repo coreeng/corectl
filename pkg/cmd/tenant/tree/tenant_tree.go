@@ -65,6 +65,7 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 	}
 	tenants = append(tenants, coretnt.Tenant{Name: coretnt.RootName})
 	rootNode, err := corectltnt.GetTenantTree(tenants, from)
+
 	if err != nil {
 		return fmt.Errorf("failed to build tenant tree: %w", err)
 	}

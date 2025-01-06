@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmd/env"
 	"github.com/coreeng/corectl/pkg/logger"
+	"go.uber.org/zap"
 
 	"github.com/coreeng/corectl/pkg/cmd/application"
 	configcmd "github.com/coreeng/corectl/pkg/cmd/config"
@@ -98,16 +99,16 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	// --non-interactive is the standard used by other clis
 	err := rootCmd.PersistentFlags().MarkDeprecated("nonint", "please use --non-interactive instead.")
 	if err != nil {
-		logger.Panic().Msg("unable to set --nonint as deprecated")
+		logger.Panic().With(zap.Error(err)).Msg("unable to set --nonint as deprecated")
 	}
 
 	appCmd, err := application.NewAppCmd(cfg)
 	if err != nil {
-		logger.Panic().Msg("Unable to execute app command")
+		logger.Panic().With(zap.Error(err)).Msg("Unable to execute app command")
 	}
 	p2pCmd, err := p2p.NewP2PCmd(cfg)
 	if err != nil {
-		logger.Panic().Msg("Unable to execute p2p command")
+		logger.Panic().With(zap.Error(err)).Msg("Unable to execute p2p command")
 	}
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(p2pCmd)
