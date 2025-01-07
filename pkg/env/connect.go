@@ -173,18 +173,21 @@ func setupConnection(streams userio.IOStreams, opts EnvConnectOpts, c Commander,
 	}
 	logger.Warn().Msgf("Kubernetes config context set to: %s", context)
 
-	logger.Info().Msgf("Setting Kubernetes proxy url to: %s", proxyUrl)
-	if err := setKubeProxy(c, context, proxyUrl); err != nil {
-		logger.Error().Msg(err.Error())
-		return "", err
+	if !opts.SkipTunnel {
+		logger.Info().Msgf("Setting Kubernetes proxy url to: %s", proxyUrl)
+		if err := setKubeProxy(c, context, proxyUrl); err != nil {
+			logger.Error().Msg(err.Error())
+			return "", err
+		}
+
+		logger.Info().Msgf("Kubernetes proxy url set to: %s", proxyUrl)
 	}
 
-	logger.Info().Msgf("Kubernetes proxy url set to: %s", proxyUrl)
 	return proxyUrl, nil
 }
 
 func setCredentials(c Commander, cluster, projectID, region string) error {
-	if _, err := c.Execute("gcloud", WithArgs("container", "clusters", "get-credentials", "--project", projectID, "--zone", region, "--internal-ip", cluster)); err != nil {
+	if _, err := c.Execute("gcloud", WithArgs("container", "clusters", "get-credentials", "--project", projectID, "--zone", region, "--dns-endpoint", cluster)); err != nil {
 		return fmt.Errorf("get gcp cluster credentials: %w", err)
 	}
 	return nil
