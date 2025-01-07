@@ -22,8 +22,9 @@ import (
 
 type ConfigInitOpt struct {
 	EnvironmentsRepo   string
+	ConfigDir          string
 	File               string
-	RepositoriesDir    string
+	// RepositoriesDir    string // this shouldn't be configurable any more, we should use `config-dir/repositories` always
 	GitHubToken        string
 	GitHubOrganisation string
 	NonInteractive     bool
@@ -71,23 +72,18 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"The GitHub repository to fetch the config file from, in the form `https://github.com/ORG/REPO`. This is mutually exclusive with the '--file' option.",
 	)
 	newInitCmd.Flags().StringVarP(
+		&opt.ConfigDir,
+		"config-dir",
+		"d",
+		cfg.RepositoriesDir(),
+		"Directory to store config yaml file, repositories, and more",
+	)
+	newInitCmd.Flags().StringVarP(
 		&opt.File,
 		"file",
 		"f",
 		"",
 		"Initialization file. This is mutually exclusive with the '--environments-repo' option.",
-	)
-	defaultRepositoriesPath, err := repositoriesPath()
-	if err != nil {
-		// We couldn't calculate the default value. That's fine, because the user could override it, it will be checked later.
-		defaultRepositoriesPath = ""
-	}
-	newInitCmd.Flags().StringVarP(
-		&opt.RepositoriesDir,
-		"repositories",
-		"r",
-		defaultRepositoriesPath,
-		"Directory to store platform local repositories. Default is near config file.",
 	)
 	newInitCmd.Flags().StringVarP(
 		&opt.GitHubToken,
@@ -114,9 +110,13 @@ type initConfig struct {
 		Organization string `yaml:"organization"`
 	} `yaml:"github"`
 	Repositories struct {
-		Cplatform string `yaml:"cplatform"`
-		Templates string `yaml:"templates"`
+		Cplatform string `yaml:"cplatform"` // URL, not path
+		Templates string `yaml:"templates"` // URL, not path
 	} `yaml:"repositories"`
+	ConfigDirectory struct {
+		Directory string `yaml:"directory"` // the directory used for the config file
+		File 	  string `yaml:"file"` // the filename of the config file
+	} `yaml:"config-directory"`
 	P2P struct {
 		FastFeedback p2pStageConfig `yaml:"fast-feedback"`
 		ExtendedTest p2pStageConfig `yaml:"extended-test"`
@@ -157,7 +157,7 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 			return err
 		}
 	} else {
-		repoFile := "corectl.yaml"
+		repoFile := cfg.ConfigPaths.Filename.Value
 
 		// Prompt user if `--environments-repo` wasn't set on the command line
 		environmentsRepoInput := opt.createEnvironmentsRepoInputSwitch()
@@ -180,9 +180,9 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	}
 	githubOrgInInitFile := initC.Github.Organization
 
-	repositoriesDir := opt.RepositoriesDir
+	repositoriesDir := opt.ConfigDir
 	if repositoriesDir == "" {
-		repositoriesDir, err = repositoriesPath()
+		repositoriesDir, err = RepositoriesPath(cfg)
 		if err != nil {
 			return err
 		}
@@ -223,8 +223,8 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	cfg.Repositories.CPlatform.Value = clonedRepositories.cplatform.Path()
-	cfg.Repositories.Templates.Value = clonedRepositories.templates.Path()
+	cfg.Repositories.CPlatform.Value = cplatformRepoFullName.HttpUrl()
+	cfg.Repositories.Templates.Value = templateRepoFullname.HttpUrl()
 	cfg.GitHub.Token.Value = githubToken
 	cfg.GitHub.Organization.Value = githubOrg
 	cfg.P2P.FastFeedback.DefaultEnvs.Value = initC.P2P.FastFeedback.DefaultEnvs
@@ -282,8 +282,8 @@ func fetchInitConfigFromGitHub(githubClient *github.Client, repoUrl string, repo
 	return content, nil
 }
 
-func repositoriesPath() (string, error) {
-	configPath, err := config.Path()
+func RepositoriesPath(c *config.Config) (string, error) {
+	configPath, err := config.Path(c)
 	if err != nil {
 		return "", err
 	}

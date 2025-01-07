@@ -1,4 +1,4 @@
-package update
+package update_cli
 
 import (
 	"archive/tar"

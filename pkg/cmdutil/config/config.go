@@ -12,10 +12,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	CORECTL_DIR    = ".config"
-	CORECTL_CONFIG = "corectl.yaml"
-)
+const DEFAULT_CORECTL_CONFIG = "corectl.yaml" // I don't think this should be a variable, always keep it as corectl.yaml
+var DEFAULT_CORECTL_DIRS = []string{".config", "corectl"} // this should be variable, the folder used can be changed if so desired
+// can't seem to make this constant, since it's a slice
 
 type Parameter[V interface{}] struct {
 	name      string
@@ -103,7 +102,8 @@ type Config struct {
 	GitHub       GitHubConfig       `yaml:"github"`
 	Repositories RepositoriesConfig `yaml:"repositories"`
 	P2P          P2PConfig          `yaml:"p2p"`
-	path         string
+	path         string				`yaml:"path"`		
+	ConfigPaths  ConfigPaths 		`yaml:"configPaths"`
 }
 
 type GitHubConfig struct {
@@ -121,6 +121,11 @@ type P2PConfig struct {
 	FastFeedback P2PStageConfig `yaml:"fast-feedback"`
 	ExtendedTest P2PStageConfig `yaml:"extended-test"`
 	Prod         P2PStageConfig `yaml:"prod"`
+}
+
+type ConfigPaths struct {
+	Directory Parameter[string] `yaml:"directory"`
+	Filename  Parameter[string] `yaml:"filename"`
 }
 
 type P2PStageConfig struct {
@@ -157,6 +162,18 @@ func NewConfig() *Config {
 			},
 		},
 		path: "",
+		ConfigPaths: ConfigPaths{
+			Directory: Parameter[string]{
+				name: "corectl config directory",
+				flag: "config-dir",
+				help: "allow specifying the folder for configuration",
+			},
+			Filename: Parameter[string]{
+				name: "corectl config file name",
+				flag: "config-file",
+				help: "allow specifying the filename of the corectl.yaml configuration file. Must be held in the config-dir.",
+			},
+		},
 	}
 }
 
@@ -171,7 +188,7 @@ func (c *Config) IsPersisted() bool {
 }
 
 func DiscoverConfig() (*Config, error) {
-	configPath, err := Path()
+	configPath, err := Path(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +216,7 @@ func (c *Config) Save() error {
 	path := c.path
 	if path == "" {
 		var err error
-		path, err = Path()
+		path, err = Path(c)
 		if err != nil {
 			return err
 		}
@@ -227,21 +244,36 @@ func (c *Config) Path() string {
 }
 
 func (c *Config) BaseDir() (string, error) {
-	path, err := Path()
+	path, err := Path(c)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Dir(path), nil
 }
 
-func Path() (string, error) {
-	homeDir, err := os.UserHomeDir()
+func (c *Config) RepositoriesDir() string {
+	dir, err := c.BaseDir()
 	if err != nil {
-		return "", err
+		return ""
 	}
+	return filepath.Join(dir, "repositories")
+}
 
-	path := filepath.Join(homeDir, CORECTL_DIR, "corectl", CORECTL_CONFIG)
-
+func Path(c *Config) (string, error) {
+	// first half of this should be in BaseDir()
+	var corectlDir, corectlFile string
+	if c == nil {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		corectlDir = filepath.Join(homeDir, filepath.Join(DEFAULT_CORECTL_DIRS...))
+		corectlFile = DEFAULT_CORECTL_CONFIG
+	} else {
+		corectlDir = c.ConfigPaths.Directory.Value
+		corectlFile = c.ConfigPaths.Filename.Value
+	}
+	path := filepath.Join(corectlDir, corectlFile)
 	return path, nil
 }
 

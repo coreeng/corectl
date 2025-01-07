@@ -57,7 +57,7 @@ func (c *CorectlClient) ConfigPath() string {
 		Expect(os.Setenv("HOME", originalHome)).To(Succeed())
 	}()
 	Expect(os.Setenv("HOME", c.homeDir)).To(Succeed())
-	configPath, err := config.Path()
+	configPath, err := config.Path(config.NewConfig())
 	Expect(err).NotTo(HaveOccurred())
 	return configPath
 }

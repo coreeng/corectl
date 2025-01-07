@@ -13,7 +13,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmd/p2p"
 	"github.com/coreeng/corectl/pkg/cmd/template"
 	"github.com/coreeng/corectl/pkg/cmd/tenant"
-	"github.com/coreeng/corectl/pkg/cmd/update"
+	update "github.com/coreeng/corectl/pkg/cmd/update-cli"
 	"github.com/coreeng/corectl/pkg/cmd/version"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
