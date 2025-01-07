@@ -38,6 +38,7 @@ func findEnvironmentByName(name string, environments []environment.Environment) 
 
 func connectCmd(cfg *config.Config) *cobra.Command {
 	opts := corectlenv.EnvConnectOpts{
+		SkipTunnel: true,
 		SilentExec: command.NewCommander(
 			command.WithStdout(&bytes.Buffer{}),
 			command.WithStderr(&bytes.Buffer{}),
