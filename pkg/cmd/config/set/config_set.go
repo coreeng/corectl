@@ -51,8 +51,9 @@ func run(opts *ConfigSetOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	if err := updatedCfg.Save(); err != nil {
-		return fmt.Errorf("failed to save updated config: %w", err)
+	path, err := updatedCfg.Save()
+	if err != nil {
+		return fmt.Errorf("failed to save updated config to %v: %w", path, err)
 	}
 	return nil
 }

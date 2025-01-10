@@ -208,72 +208,92 @@ func ReadConfig(path string) (*Config, error) {
 	if err = yaml.Unmarshal(fileContent, &config); err != nil {
 		return nil, err
 	}
-	config.path = path
 	return config, nil
 }
 
-func (c *Config) Save() error {
-	path := c.path
-	if path == "" {
-		var err error
-		path, err = Path(c)
-		if err != nil {
-			return err
-		}
-	}
-
-	dir := filepath.Dir(path)
-	err := os.MkdirAll(dir, 0o755)
+func (c *Config) Save() (string, error) {
+	fmt.Println("Saving config")
+	path, err := c.Path()
+	fmt.Println("got the path: ", path)
 	if err != nil {
-		return err
+		fmt.Println("Error getting path for Save, so just returning an empty string")
+		return "", err
 	}
-
+	fmt.Println("marshalling yaml")
 	configBytes, err := yaml.Marshal(c)
-	if err != nil {
-		return err
-	}
-	if err = os.WriteFile(path, configBytes, 0o600); err != nil {
-		return err
-	}
-	c.path = path
-	return nil
-}
-
-func (c *Config) Path() string {
-	return c.path
-}
-
-func (c *Config) BaseDir() (string, error) {
-	path, err := Path(c)
+	fmt.Println("yaml marshalled")
 	if err != nil {
 		return "", err
 	}
-	return filepath.Dir(path), nil
-}
-
-func (c *Config) RepositoriesDir() string {
-	dir, err := c.BaseDir()
-	if err != nil {
-		return ""
+	fmt.Println("writing file to path: ", path)
+	if err = os.WriteFile(path, configBytes, 0o600); err != nil {
+		fmt.Println("Error writing file for Save, so just returning an empty string and error")
+		return "", err
 	}
-	return filepath.Join(dir, "repositories")
+	fmt.Println("returning path: ", path)
+	c.path = path
+	return path, nil
 }
 
+func (c *Config) BaseDir() (string, error) {
+	return BaseDir(c)
+}
+
+// BaseDir returns the path to the base directory, usually <user-home>/.config/corectl unless otherwise specified, for holding logs, repositories, config files, etc.
+func BaseDir(c *Config) (string, error) {
+	if c != nil && c.ConfigPaths.Directory.Value != "" {
+		return c.ConfigPaths.Directory.Value, nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Println("Error getting user home directory for BaseDir, so just returning an empty string")
+		return "", err
+	}
+	return filepath.Join(homeDir, filepath.Join(DEFAULT_CORECTL_DIRS...)), nil
+}
+
+func (c *Config) RepositoriesDir() (string, error) {
+	return RepositoriesDir(c)
+}
+
+// RepositoriesDir returns the path to the repositories directory, always <base-dir>/repositories, for holding config repos
+func RepositoriesDir(c *Config) (string, error) {
+	if c != nil {
+		baseDir, err := c.BaseDir()
+		if err != nil {
+			fmt.Println("Error getting base directory for RepositoriesDir, so just returning an empty string")
+			return "", err
+		}
+		return filepath.Join(baseDir, "repositories"), nil
+	}
+	baseDir, err := BaseDir(nil)
+	if err != nil {
+		fmt.Println("Error getting base directory for RepositoriesDir, so just returning an empty string")
+		return "", err
+	}
+	return filepath.Join(baseDir, "repositories"), nil
+}
+
+func (c *Config) Path() (string, error) {
+	return Path(c)
+}
+
+// Path returns the path to the configuration file, usually <config-dir>/corectl.yaml
 func Path(c *Config) (string, error) {
 	// first half of this should be in BaseDir()
 	var corectlDir, corectlFile string
-	if c == nil {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		corectlDir = filepath.Join(homeDir, filepath.Join(DEFAULT_CORECTL_DIRS...))
-		corectlFile = DEFAULT_CORECTL_CONFIG
-	} else {
-		corectlDir = c.ConfigPaths.Directory.Value
+	corectlDir, err := BaseDir(c)
+	if err != nil {
+		fmt.Println("Error getting base directory for Path, so just returning an empty string")
+		return "", err
+	}
+	if c != nil && c.ConfigPaths.Filename.Value != "" {
 		corectlFile = c.ConfigPaths.Filename.Value
+	} else {
+		corectlFile = DEFAULT_CORECTL_CONFIG
 	}
 	path := filepath.Join(corectlDir, corectlFile)
+	fmt.Println("Returning path: ", path)
 	return path, nil
 }
 
