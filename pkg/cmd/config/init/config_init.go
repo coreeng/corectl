@@ -22,8 +22,10 @@ import (
 
 type ConfigInitOpt struct {
 	EnvironmentsRepo   string
-	File               string
-	RepositoriesDir    string
+	ConfigDir          string
+	ConfigFile 	       string
+	InitFile           string
+	// RepositoriesDir    string // this shouldn't be configurable any more, we should use `config-dir/repositories` always
 	GitHubToken        string
 	GitHubOrganisation string
 	NonInteractive     bool
@@ -34,6 +36,29 @@ type ConfigInitOpt struct {
 type ConfigErr struct {
 	path, key string
 	err       error
+}
+
+type p2pStageConfig struct {
+	DefaultEnvs []string `yaml:"default-envs"`
+}
+
+type initConfig struct {
+	Github struct {
+		Organization string `yaml:"organization"`
+	} `yaml:"github"`
+	Repositories struct {
+		Cplatform string `yaml:"cplatform"` // URL, not path
+		Templates string `yaml:"templates"` // URL, not path
+	} `yaml:"repositories"`
+	ConfigDirectory struct {
+		Directory string `yaml:"directory"` // the directory used for the config file
+		File 	  string `yaml:"file"` // the filename of the config file
+	} `yaml:"config-directory"`
+	P2P struct {
+		FastFeedback p2pStageConfig `yaml:"fast-feedback"`
+		ExtendedTest p2pStageConfig `yaml:"extended-test"`
+		Prod         p2pStageConfig `yaml:"prod"`
+	} `yaml:"p2p"`
 }
 
 func (c ConfigErr) Error() string {
@@ -70,24 +95,31 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"",
 		"The GitHub repository to fetch the config file from, in the form `https://github.com/ORG/REPO`. This is mutually exclusive with the '--file' option.",
 	)
-	newInitCmd.Flags().StringVarP(
-		&opt.File,
-		"file",
-		"f",
-		"",
-		"Initialization file. This is mutually exclusive with the '--environments-repo' option.",
-	)
-	defaultRepositoriesPath, err := repositoriesPath()
+	defaultConfigDir, err := config.BaseDir(cfg)
 	if err != nil {
-		// We couldn't calculate the default value. That's fine, because the user could override it, it will be checked later.
-		defaultRepositoriesPath = ""
+		fmt.Println("MARK: Error getting RepositoriesPath, using no default value")
+		defaultConfigDir = ""
 	}
 	newInitCmd.Flags().StringVarP(
-		&opt.RepositoriesDir,
-		"repositories",
-		"r",
-		defaultRepositoriesPath,
-		"Directory to store platform local repositories. Default is near config file.",
+		&opt.ConfigDir,
+		"config-dir",
+		"d",
+		defaultConfigDir,
+		"Directory to store config yaml file, repositories, and more",
+	)
+	newInitCmd.Flags().StringVarP(
+		&opt.ConfigFile,
+		"config-file",
+		"",
+		"",
+		"Filename to store the config yaml file, which will be stored in the config-dir",
+	)
+	newInitCmd.Flags().StringVarP(
+		&opt.ConfigFile,
+		"init-file",
+		"f",
+		"",
+		"Config Initialization file. This is mutually exclusive with the '--environments-repo' option.", // not related to where the new corectl.yaml file should be stored
 	)
 	newInitCmd.Flags().StringVarP(
 		&opt.GitHubToken,
@@ -106,35 +138,38 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 	return newInitCmd
 }
 
-type p2pStageConfig struct {
-	DefaultEnvs []string `yaml:"default-envs"`
-}
-type initConfig struct {
-	Github struct {
-		Organization string `yaml:"organization"`
-	} `yaml:"github"`
-	Repositories struct {
-		Cplatform string `yaml:"cplatform"`
-		Templates string `yaml:"templates"`
-	} `yaml:"repositories"`
-	P2P struct {
-		FastFeedback p2pStageConfig `yaml:"fast-feedback"`
-		ExtendedTest p2pStageConfig `yaml:"extended-test"`
-		Prod         p2pStageConfig `yaml:"prod"`
-	} `yaml:"p2p"`
+func getConfigDirectory(cmd *cobra.Command, cfg *config.Config) string {
+	var directory string
+	initConfigDir, err := cmd.Flags().GetString("config-dir")
+	if err != nil {
+		logger.Panic().With(zap.Error(err)).Msg("could not get `--config-dir` flag")
+	}
+	// get environment variable for config dir
+	envConfigDir := os.Getenv("CORECTL_CONFIG_DIR")
+	if envConfigDir != "" && initConfigDir != "" {
+		logger.Panic().Msg("both --config-dir option and CORECTL_CONFIG_DIR environment variable are set, please use only one");
+	}
+	if initConfigDir != "" {
+		cfg.ConfigPaths.Directory.Value = initConfigDir
+		opt.ConfigDir = initConfigDir
+		fmt.Println("MARK: ConfigDir set to: ", initConfigDir)
+	}
+	return directory
 }
 
 func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
+	
+
 	// We don't allow the user to pass both the `--environments-repo` and the `--file` arguments
 	environmentsRepoFlagValue, err := cmd.Flags().GetString("environments-repo")
 	if err != nil {
 		logger.Panic().With(zap.Error(err)).Msg("could not get `--environments-repo` flag")
 	}
-	fileFlagValue, err := cmd.Flags().GetString("file")
+	initFileFlagValue, err := cmd.Flags().GetString("init-file")
 	if err != nil {
 		logger.Panic().With(zap.Error(err)).Msg("could not get `--environments-repo` flag")
 	}
-	if environmentsRepoFlagValue != "" && fileFlagValue != "" {
+	if environmentsRepoFlagValue != "" && initFileFlagValue != "" {
 		return fmt.Errorf("`--environments-repo` and `--file` are mutually exclusive")
 	}
 
@@ -150,9 +185,9 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	// Otherwise, fetch the init config from the `corectl.yaml` file in the environments repo.
 	var configBytes []byte
 	var initFile string // This variable is just used for error messages
-	if fileFlagValue != "" {
-		initFile = fileFlagValue
-		configBytes, err = os.ReadFile(fileFlagValue)
+	if initFileFlagValue != "" {
+		initFile = initFileFlagValue
+		configBytes, err = os.ReadFile(initFileFlagValue)
 		if err != nil {
 			return err
 		}
@@ -180,13 +215,14 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	}
 	githubOrgInInitFile := initC.Github.Organization
 
-	repositoriesDir := opt.RepositoriesDir
-	if repositoriesDir == "" {
-		repositoriesDir, err = repositoriesPath()
-		if err != nil {
-			return err
-		}
+	fmt.Println("opt.ConfigDir: ", opt.ConfigDir)
+	repositoriesDir, err := cfg.RepositoriesDir()
+	if err != nil {
+		fmt.Println("MARK: Error getting RepositoriesPath, using no default value")
+		return err
 	}
+	fmt.Println("repositoriesDir: ", repositoriesDir)
+
 	if err = os.MkdirAll(repositoriesDir, 0o755); err != nil {
 		return err
 	}
@@ -203,11 +239,18 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to construct corectl config directory path: %w", err)
 	}
+
 	gitAuth := git.UrlTokenAuthMethod(githubToken)
 	clonedRepositories, err := cloneRepositories(opt.Streams, gitAuth, githubClient, repositoriesDir, cplatformRepoFullname, templateRepoFullname)
+
+	opt.Streams.Info("MARK: Cloned repositories into " + repositoriesDir)
+	fmt.Println("MARK: Cloned repositories into " + repositoriesDir)
+
 	if err != nil {
 		return tryAppendHint(err, configBaseDir)
 	}
+
+	opt.Streams.Info("MARK: Cloned repositories, YAY!")
 
 	cplatformRepoFullName, err := git.DeriveRepositoryFullname(clonedRepositories.cplatform)
 	if err != nil {
@@ -223,23 +266,27 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	cfg.Repositories.CPlatform.Value = clonedRepositories.cplatform.Path()
-	cfg.Repositories.Templates.Value = clonedRepositories.templates.Path()
+	opt.Streams.Info("MARK: GITHUB ORG Switched")
+
+	cfg.Repositories.CPlatform.Value = cplatformRepoFullName.HttpUrl()
+	cfg.Repositories.Templates.Value = templateRepoFullname.HttpUrl()
 	cfg.GitHub.Token.Value = githubToken
 	cfg.GitHub.Organization.Value = githubOrg
 	cfg.P2P.FastFeedback.DefaultEnvs.Value = initC.P2P.FastFeedback.DefaultEnvs
 	cfg.P2P.ExtendedTest.DefaultEnvs.Value = initC.P2P.ExtendedTest.DefaultEnvs
 	cfg.P2P.Prod.DefaultEnvs.Value = initC.P2P.Prod.DefaultEnvs
 
-	if err = cfg.Save(); err != nil {
+	opt.Streams.Info("MARK: Ready to save")
+
+	path, err := cfg.Save()
+	if err != nil {
+		fmt.Println("MARK: Error saving config. Returning error")
 		return err
 	}
 
-	opt.Streams.Info("Configuration is saved to: " + cfg.Path())
-	opt.Streams.Info(`
-To keep configuration up to date, periodically run:
-corectl config update`,
-	)
+	opt.Streams.Info("MARK: Saved")
+	
+	opt.Streams.Info("Configuration is saved to: " + path)
 	return nil
 }
 
@@ -282,12 +329,11 @@ func fetchInitConfigFromGitHub(githubClient *github.Client, repoUrl string, repo
 	return content, nil
 }
 
-func repositoriesPath() (string, error) {
-	configPath, err := config.Path()
+func RepositoriesPath(c *config.Config) (string, error) {
+	configPath, err := config.BaseDir(c)
 	if err != nil {
 		return "", err
 	}
-	configPath = filepath.Dir(configPath)
 	return filepath.Join(configPath, "repositories"), nil
 }
 

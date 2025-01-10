@@ -23,7 +23,6 @@ func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repo
 
 func updateRepository(repoParam *Parameter[string], gitAuth git.AuthMethod, streams userio.IOStreams, ignoreDirty bool) error {
 	isUpdated, err := func() (bool, error) {
-
 		logger.Info().Msgf("Updating %s", repoParam.Name())
 		defer logger.Info().Msgf("Updated %s", repoParam.Name())
 

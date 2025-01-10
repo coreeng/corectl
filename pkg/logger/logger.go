@@ -13,8 +13,9 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+var LogFile = "$HOME/.config/corectl/corectl.log"
+
 const (
-	LogFile       = "$HOME/.config/corectl/corectl.log"
 	LogMaxSize    = 10
 	LogMaxBackups = 5
 	LogMaxAge     = 30
