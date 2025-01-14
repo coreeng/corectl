@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -38,13 +39,14 @@ var _ = Describe("application", Ordered, func() {
 		var err error
 		testRunId = testconfig.GetTestRunId()
 		homeDir = t.TempDir()
+		configpath.SetCorectlHome(homeDir)
 		corectl = testconfig.NewCorectlClient(homeDir)
 		cfg, cfgDetails, err = testsetup.InitCorectl(corectl)
 		Expect(err).ToNot(HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 
-		envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+		envs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(envs, func(e environment.Environment) bool {
 			return e.Environment == testdata.DevEnvironment()

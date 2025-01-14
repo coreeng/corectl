@@ -2,6 +2,7 @@ package describe
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -33,7 +34,7 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 					return fmt.Errorf("failed to update config repos: %w", err)
 				}
 			}
-			t, err := template.FindByName(cfg.Repositories.Templates.Value, templateName)
+			t, err := template.FindByName(configpath.GetCorectlTemplatesDir(), templateName)
 			if err != nil {
 				return err
 			}

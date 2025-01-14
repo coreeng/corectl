@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,17 +18,16 @@ import (
 
 var _ = Describe("config", Ordered, func() {
 	var (
-		homeDir, baseDirPath, repositoriesPath, configPath, initConfigPath string
-		corectl                                                            *testconfig.CorectlClient
+		homeDir, configPath, initConfigPath string
+		corectl                             *testconfig.CorectlClient
 	)
 
 	t := GinkgoT()
 
 	BeforeAll(func() {
 		homeDir = t.TempDir()
-		baseDirPath = filepath.Join(homeDir, ".config", "corectl")
-		repositoriesPath = filepath.Join(baseDirPath, "repositories")
-		configPath = filepath.Join(baseDirPath, "corectl.yaml")
+		configpath.SetCorectlHome(homeDir)
+		configPath = filepath.Join(homeDir, "corectl.yaml")
 		corectl = testconfig.NewCorectlClient(homeDir)
 		initConfigPath = filepath.Join(homeDir, "corectl-init.yaml")
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
@@ -35,27 +35,26 @@ var _ = Describe("config", Ordered, func() {
 
 	Context("init", Ordered, func() {
 		var (
-			cfg        *config.Config
-			cfgDetails *testsetup.CorectlConfigDetails
+			cfg *config.Config
 		)
 
 		Context("errors", func() {
 			AfterEach(func() {
-				Expect(os.RemoveAll(baseDirPath)).ToNot(HaveOccurred())
+				Expect(os.RemoveAll(filepath.Join(homeDir, "repositories"))).ToNot(HaveOccurred())
 			})
 			It("returns meaningful error when cplatform repository already exist", func() {
-				cloneOpt := cloneGit(testconfig.Cfg.CPlatformRepoFullId, repositoriesPath)
+				cloneOpt := cloneGit(testconfig.Cfg.CPlatformRepoFullId, configpath.GetCorectlCPlatformDir())
 
 				_, _, err := testsetup.InitCorectl(corectl)
 
 				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories", cloneOpt.URL, cloneOpt.TargetPath))
 			})
 			It("returns meaningful error when templates repository already exist", func() {
-				cloneOpt := cloneGit(testconfig.Cfg.TemplatesRepoFullId, repositoriesPath)
+				cloneOpt := cloneGit(testconfig.Cfg.TemplatesRepoFullId, configpath.GetCorectlTemplatesDir())
 
 				_, _, err := testsetup.InitCorectl(corectl)
 
-				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories, alternatively to initialise again delete corectl config dir at \"%s\" and run `corectl config init`", cloneOpt.URL, cloneOpt.TargetPath, baseDirPath))
+				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories, alternatively to initialise again delete corectl config dir at \"%s\" and run `corectl config init`", cloneOpt.URL, cloneOpt.TargetPath, homeDir))
 			})
 			It("returns meaningful error when invalid templates remote repository configuration", func() {
 				err := testdata.RenderInitFile(
@@ -85,7 +84,7 @@ var _ = Describe("config", Ordered, func() {
 		Context("successfully initialise", func() {
 			BeforeAll(func() {
 				var err error
-				cfg, cfgDetails, err = testsetup.InitCorectl(corectl)
+				cfg, _, err = testsetup.InitCorectl(corectl)
 				Expect(err).ToNot(HaveOccurred())
 			})
 
@@ -93,10 +92,6 @@ var _ = Describe("config", Ordered, func() {
 				Expect(cfg.Path()).To(Equal(configPath))
 				Expect(cfg).NotTo(BeNil())
 				Expect(cfg.IsPersisted()).To(BeTrue())
-				Expect(cfg.Repositories.CPlatform.Value).To(
-					Equal(filepath.Join(repositoriesPath, cfgDetails.CPlatformRepoName.Name())))
-				Expect(cfg.Repositories.Templates.Value).To(
-					Equal(filepath.Join(repositoriesPath, cfgDetails.TemplatesRepoName.Name())))
 				Expect(cfg.GitHub.Organization.Value).To(Equal(testconfig.Cfg.GitHubOrg))
 				Expect(cfg.GitHub.Token.Value).To(Equal(testconfig.Cfg.GitHubToken))
 				Expect(cfg.P2P.FastFeedback.DefaultEnvs.Value).To(ConsistOf(testdata.DevEnvironment()))
@@ -104,12 +99,12 @@ var _ = Describe("config", Ordered, func() {
 				Expect(cfg.P2P.Prod.DefaultEnvs.Value).To(ConsistOf(testdata.ProdEnvironment()))
 			})
 			It("cloned cplatform repository", func() {
-				repo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value, false)
+				repo, err := git.OpenLocalRepository(configpath.GetCorectlCPlatformDir(), false)
 				Expect(repo).NotTo(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 			})
 			It("cloned templates repository", func() {
-				repo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value, false)
+				repo, err := git.OpenLocalRepository(configpath.GetCorectlTemplatesDir(), false)
 				Expect(repo).NotTo(BeNil())
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -119,19 +114,16 @@ var _ = Describe("config", Ordered, func() {
 
 	Context("update", Ordered, func() {
 		var (
-			cfg                            *config.Config
 			originalCPlatformPullTimestamp time.Time
 			originalTemplatesPullTimestamp time.Time
 		)
 		BeforeAll(func() {
 			var err error
-			cfg, err = config.ReadConfig(corectl.ConfigPath())
+
+			originalCPlatformPullTimestamp, err = getLastPullTime(configpath.GetCorectlCPlatformDir())
 			Expect(err).NotTo(HaveOccurred())
 
-			originalCPlatformPullTimestamp, err = getLastPullTime(cfg.Repositories.CPlatform.Value)
-			Expect(err).NotTo(HaveOccurred())
-
-			originalTemplatesPullTimestamp, err = getLastPullTime(cfg.Repositories.Templates.Value)
+			originalTemplatesPullTimestamp, err = getLastPullTime(configpath.GetCorectlTemplatesDir())
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = corectl.Run("config", "update", "--non-interactive")
@@ -139,11 +131,11 @@ var _ = Describe("config", Ordered, func() {
 		})
 
 		It("pulls configuration changes from remote configuration repositories", func() {
-			updateCPlatformPullTimestamp, err := getLastPullTime(cfg.Repositories.CPlatform.Value)
+			updateCPlatformPullTimestamp, err := getLastPullTime(configpath.GetCorectlCPlatformDir())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(originalCPlatformPullTimestamp.Before(updateCPlatformPullTimestamp)).To(BeTrue())
 
-			updatedTemplatesPullTimestamp, err := getLastPullTime(cfg.Repositories.Templates.Value)
+			updatedTemplatesPullTimestamp, err := getLastPullTime(configpath.GetCorectlTemplatesDir())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(originalTemplatesPullTimestamp.Before(updatedTemplatesPullTimestamp)).To(BeTrue())
 		})
@@ -162,7 +154,7 @@ func getLastPullTime(repoPath string) (time.Time, error) {
 func cloneGit(repoId git.GithubRepoFullId, dstPath string) git.CloneOp {
 	cloneOpt := git.CloneOp{
 		URL:        repoId.HttpUrl(),
-		TargetPath: filepath.Join(dstPath, repoId.RepositoryFullname.Name()),
+		TargetPath: filepath.Join(dstPath),
 		Auth:       git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken),
 	}
 	_, err := git.CloneToLocalRepository(cloneOpt)

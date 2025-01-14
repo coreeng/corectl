@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"slices"
 	"time"
 
@@ -30,12 +31,13 @@ var _ = Describe("p2p", Ordered, func() {
 	BeforeAll(func(ctx SpecContext) {
 		var err error
 		homeDir = t.TempDir()
+		configpath.SetCorectlHome(homeDir)
 		corectl = testconfig.NewCorectlClient(homeDir)
 		cfg, _, err = testsetup.InitCorectl(corectl)
 		Expect(err).ToNot(HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
-		envs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+		envs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(envs, func(e environment.Environment) bool {
 			return e.Environment == testdata.DevEnvironment()

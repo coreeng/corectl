@@ -3,6 +3,7 @@ package create
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
@@ -128,14 +129,6 @@ NOTE:
 		&cfg.GitHub.Organization,
 		appCreateCmd.Flags(),
 	)
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		appCreateCmd.Flags(),
-	)
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.Templates,
-		appCreateCmd.Flags(),
-	)
 
 	return appCreateCmd, nil
 }
@@ -171,7 +164,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	logger.Info().Msg(msg)
 
-	existingTemplates, err := template.List(cfg.Repositories.Templates.Value)
+	existingTemplates, err := template.List(configpath.GetCorectlTemplatesDir())
 	if err != nil {
 		return err
 	}
@@ -187,13 +180,13 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	appTenant, err := selector.Tenant(cfg.Repositories.CPlatform.Value, opts.Tenant, opts.Streams)
+	appTenant, err := selector.Tenant(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant, opts.Streams)
 	if err != nil {
 		return err
 	}
 	logger.Info().Msgf("tenant selected: %s", appTenant.Name)
 
-	existingEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+	existingEnvs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
 		return err
 	}
@@ -352,8 +345,8 @@ func createPRWithUpdatedReposListForTenant(
 	appTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (*tenant.CreateOrUpdateResult, error) {
-	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo %s",
-		opts.Name, opts.Tenant, cfg.Repositories.CPlatform.Value)
+	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo",
+		opts.Name, opts.Tenant)
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
 		logger.Warn().Msgf("Application is already registered for tenant. Skipping.")
@@ -368,7 +361,7 @@ func createPRWithUpdatedReposListForTenant(
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
-			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
+			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("%s-add-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name()),
 			CommitMessage:     fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
 			PRName:            fmt.Sprintf("Add new repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),

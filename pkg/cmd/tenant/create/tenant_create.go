@@ -3,6 +3,7 @@ package create
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
@@ -118,10 +119,6 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	)
 
 	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		tenantCreateCmd.Flags(),
-	)
-	config.RegisterStringParameterAsFlag(
 		&cfg.GitHub.Token,
 		tenantCreateCmd.Flags(),
 	)
@@ -140,14 +137,14 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	tenantsPath := coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value)
+	tenantsPath := configpath.GetCorectlCPlatformDir("tenants")
 	existingTenants, err := coretnt.List(tenantsPath)
 	if err != nil {
 		return err
 	}
 	rootTenant := coretnt.RootTenant(tenantsPath)
 
-	envsDir := environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value)
+	envsDir := configpath.GetCorectlCPlatformDir("environments")
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
 	envs, err := listEnabledEnvironments(envFilePath)
 	if err != nil {
@@ -252,7 +249,7 @@ func createTenant(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
 			ParentTenant:      parentTenant,
-			CplatformRepoPath: cfg.Repositories.CPlatform.Value,
+			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("new-tenant-%s", t.Name),
 			CommitMessage:     fmt.Sprintf("Add new tenant: %s", t.Name),
 			PRName:            fmt.Sprintf("New tenant: %s", t.Name),

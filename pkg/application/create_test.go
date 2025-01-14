@@ -2,14 +2,15 @@ package application
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"slices"
 
-	"github.com/coreeng/corectl/pkg/cmd/template/render"
-
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
@@ -26,9 +27,7 @@ var _ = Describe("Create new application", func() {
 
 	var (
 		cplatformServerRepo *gittest.BareRepository
-		cplatformLocalRepo  *git.LocalRepository
 		templatesServerRepo *gittest.BareRepository
-		templatesLocalRepo  *git.LocalRepository
 		newAppServerRepo    *gittest.BareRepository
 
 		newRepoId  int64
@@ -53,27 +52,29 @@ var _ = Describe("Create new application", func() {
 		githubOrg = "github-org-name"
 
 		var err error
-		cplatformServerRepo, cplatformLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+		_, err = gittest.CreateTestCorectlConfig(t.TempDir())
+		assert.NoError(t, err)
+		cplatformServerRepo, _, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),
-			TargetLocalRepoDir: t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlCPlatformDir(),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		templatesServerRepo, templatesLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+		templatesServerRepo, _, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 			SourceDir:          testdata.TemplatesPath(),
 			TargetBareRepoDir:  t.TempDir(),
-			TargetLocalRepoDir: t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlTemplatesDir(),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
 		newAppServerRepo, err = gittest.InitBareRepository(t.TempDir())
 		Expect(err).NotTo(HaveOccurred())
 
-		defaultTenant, err = coretnt.FindByName(coretnt.DirFromCPlatformPath(cplatformLocalRepo.Path()), testdata.DefaultTenant())
+		defaultTenant, err = coretnt.FindByName(configpath.GetCorectlCPlatformDir("tenants"), testdata.DefaultTenant())
 		Expect(err).NotTo(HaveOccurred())
 
-		allEnvs, err := environment.List(environment.DirFromCPlatformRepoPath(cplatformLocalRepo.Path()))
+		allEnvs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 		Expect(err).NotTo(HaveOccurred())
 		devEnvIdx := slices.IndexFunc(allEnvs, func(e environment.Environment) bool {
 			return e.Environment == testdata.DevEnvironment()
@@ -133,7 +134,7 @@ var _ = Describe("Create new application", func() {
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
 			service = NewService(renderer, githubClient, false)
-			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
 			localAppRepoDir = t.TempDir()
@@ -348,7 +349,7 @@ var _ = Describe("Create new application", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			templateToUse, err := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(templateToUse).NotTo(BeNil())
 
@@ -507,7 +508,7 @@ var _ = Describe("Create new application", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			templateToUse, _ := template.FindByName(templatesLocalRepo.Path(), testdata.BlankTemplate())
+			templateToUse, _ := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
 
 			monorepoLocalPath = monorepoLocalRepo.Path()
 			newAppLocalPath = filepath.Join(monorepoLocalRepo.Path(), "app-with-error")

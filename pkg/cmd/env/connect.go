@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"strings"
 
@@ -80,7 +81,7 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 			}
 
 			if len(args) > 0 {
-				availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
+				availableEnvironments, err = environment.List(configpath.GetCorectlCPlatformDir("environments"))
 				if err == nil {
 					env, err := findEnvironmentByName(args[0], availableEnvironments)
 					if err != nil {
@@ -120,16 +121,10 @@ func connectCmd(cfg *config.Config) *cobra.Command {
 		"Force replacement of existing connection",
 	)
 
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		connectCmd.Flags(),
-	)
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
 		connectCmd.Flags(),
 	)
-	opts.RepositoryLocation = cfg.Repositories.CPlatform.Value
-
 	return connectCmd
 }
 

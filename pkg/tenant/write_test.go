@@ -1,6 +1,8 @@
 package tenant
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 
@@ -47,14 +49,17 @@ repos: []
 	)
 	BeforeEach(OncePerOrdered, func() {
 		var err error
+		_, err = gittest.CreateTestCorectlConfig(t.TempDir())
+		assert.NoError(t, err)
+
 		cplatformServerRepo, cplatformLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 			SourceDir:          testdata.CPlatformEnvsPath(),
 			TargetBareRepoDir:  t.TempDir(),
-			TargetLocalRepoDir: t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlCPlatformDir(),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		parentTenant, err = tenant.FindByName(tenant.DirFromCPlatformPath(cplatformLocalRepo.Path()), "parent")
+		parentTenant, err = tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants"), "parent")
 		Expect(parentTenant).NotTo(BeNil())
 		Expect(err).NotTo(HaveOccurred())
 		defaultTenant = tenant.Tenant{

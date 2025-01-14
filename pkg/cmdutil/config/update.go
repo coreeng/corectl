@@ -3,16 +3,18 @@ package config
 import (
 	"errors"
 	"fmt"
-
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/logger"
+	"path/filepath"
 )
 
 func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
 	gitAuth := git.UrlTokenAuthMethod(githubToken)
 
 	for _, repoParam := range repoParams {
+		repoParam.Value = filepath.Join(configpath.GetCorectlCacheDir(), repoParam.flag)
 		err := updateRepository(&repoParam, gitAuth, streams, ignoreDirty)
 		if err != nil {
 			return err

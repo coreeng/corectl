@@ -2,6 +2,7 @@ package list
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -30,7 +31,6 @@ func NewTenantListCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantListCmd.Flags())
 	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantListCmd.Flags())
 
 	return tenantListCmd
@@ -43,7 +43,7 @@ func run(opts *TenantListOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	tenants, err := tenant.List(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
+	tenants, err := tenant.List(configpath.GetCorectlCPlatformDir("tenants"))
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}
