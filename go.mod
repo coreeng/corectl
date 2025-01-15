@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/glamour v0.8.0
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/coreeng/core-platform/pkg v0.30.1
-	github.com/go-git/go-billy/v5 v5.6.1
+	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/go-git/go-git/v5 v5.13.1
 	github.com/google/go-github/v59 v59.0.0
 	github.com/jedib0t/go-pretty/v6 v6.6.5
@@ -31,8 +31,8 @@ require (
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.25.0
-	google.golang.org/api v0.215.0
-	google.golang.org/grpc v1.69.2
+	google.golang.org/api v0.216.0
+	google.golang.org/grpc v1.69.4
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -47,8 +47,8 @@ require (
 )
 
 require (
-	cloud.google.com/go/auth v0.13.0 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.6 // indirect
+	cloud.google.com/go/auth v0.14.0 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
@@ -58,11 +58,11 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/charmbracelet/x/ansi v0.6.0 // indirect
+	github.com/charmbracelet/x/ansi v0.7.0 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cloudflare/circl v1.5.0 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
-	github.com/cyphar/filepath-securejoin v0.3.6 // indirect
+	github.com/cyphar/filepath-securejoin v0.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/dprotaso/go-yit v0.0.0-20240618133044-5a0af90af097 // indirect
@@ -76,7 +76,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.23.0 // indirect
+	github.com/go-playground/validator/v10 v10.24.0 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
