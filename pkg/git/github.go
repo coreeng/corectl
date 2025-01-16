@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v60/github"
 	"go.uber.org/zap"
 )
 

@@ -1,6 +1,6 @@
 package testconfig
 
-import "github.com/google/go-github/v59/github"
+import "github.com/google/go-github/v60/github"
 
 func NewGitHubClient() *github.Client {
 	return github.NewClient(nil).
