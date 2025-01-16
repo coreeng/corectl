@@ -20,7 +20,7 @@ import (
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/undo"
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v60/github"
 	"go.uber.org/zap"
 )
 

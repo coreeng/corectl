@@ -2,7 +2,7 @@ package httpmock
 
 import (
 	"encoding/json"
-	"github.com/google/go-github/v59/github"
+	"github.com/google/go-github/v60/github"
 	. "github.com/onsi/gomega"
 	"io"
 	"net/http"
