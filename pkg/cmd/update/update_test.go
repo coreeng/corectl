@@ -24,25 +24,39 @@ func TestUpdate(t *testing.T) {
 
 var _ = Describe("corectl update", func() {
 	var (
-		latestRelease             *github.RepositoryRelease
-		specificRelease           *github.RepositoryRelease
-		latestReleaseTag          string
+		latestReleaseTag        string
+		latestRelease           *github.RepositoryRelease
+		getLatestReleaseCapture *httpmock.HttpCaptureHandler[github.RepositoryRelease]
+
 		specificReleaseTag        string
-		githubClient              *github.Client
-		githubErrorClient         *github.Client
-		getLatestReleaseCapture   *httpmock.HttpCaptureHandler[github.RepositoryRelease]
+		specificRelease           *github.RepositoryRelease
 		getSpecificReleaseCapture *httpmock.HttpCaptureHandler[github.RepositoryRelease]
-		githubErrorString         string
+
+		recentReleases         []*github.RepositoryRelease
+		getListReleasesCapture *httpmock.HttpCaptureHandler[[]github.RepositoryRelease]
+
+		githubClient      *github.Client
+		githubErrorClient *github.Client
+		githubErrorString string
 	)
 
 	BeforeEach(OncePerOrdered, func() {
 		githubErrorString = "api error"
+
 		latestReleaseTag = "v100.0.0"
-		specificReleaseTag = "v0.0.1"
 		latestRelease = &github.RepositoryRelease{TagName: github.String(latestReleaseTag)}
-		specificRelease = &github.RepositoryRelease{TagName: github.String(specificReleaseTag)}
 		getLatestReleaseCapture = httpmock.NewCaptureHandler[github.RepositoryRelease](latestRelease)
+
+		specificReleaseTag = "v0.0.1"
+		specificRelease = &github.RepositoryRelease{TagName: github.String(specificReleaseTag)}
 		getSpecificReleaseCapture = httpmock.NewCaptureHandler[github.RepositoryRelease](specificRelease)
+
+		recentReleases = []*github.RepositoryRelease{
+			&github.RepositoryRelease{TagName: github.String("v0.0.2")},
+			&github.RepositoryRelease{TagName: github.String("v0.0.3")},
+			latestRelease,
+		}
+		getListReleasesCapture = httpmock.NewCaptureHandler[[]github.RepositoryRelease](recentReleases)
 
 		githubClient = github.NewClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
@@ -52,6 +66,10 @@ var _ = Describe("corectl update", func() {
 			mock.WithRequestMatchHandler(
 				mock.GetReposReleasesTagsByOwnerByRepoByTag,
 				getSpecificReleaseCapture.Func(),
+			),
+			mock.WithRequestMatchHandler(
+				mock.GetReposReleasesByOwnerByRepo,
+				getListReleasesCapture.Func(),
 			),
 		))
 
@@ -70,6 +88,10 @@ var _ = Describe("corectl update", func() {
 			),
 			mock.WithRequestMatchHandler(
 				mock.GetReposReleasesTagsByOwnerByRepoByTag,
+				errorResponse,
+			),
+			mock.WithRequestMatchHandler(
+				mock.GetReposReleasesByOwnerByRepo,
 				errorResponse,
 			),
 		))
@@ -172,6 +194,22 @@ var _ = Describe("corectl update", func() {
 
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("no such file or directory"))
+		})
+	})
+
+	Context("git.ListOutstandingReleases", func() {
+		It("returns the list of releases", func() {
+			releases, err := listOutstandingReleases(githubClient, latestReleaseTag, nil)
+			Expect(len(releases)).Should(Equal(2))
+			Expect(releases[0].TagName).Should(Equal(recentReleases[0].TagName))
+			Expect(releases[1].TagName).Should(Equal(recentReleases[1].TagName))
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		It("returns an error when the API call fails", func() {
+			_, err := listOutstandingReleases(githubErrorClient, latestReleaseTag, nil)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring(githubErrorString))
 		})
 	})
 })

@@ -275,7 +275,7 @@ func update(opts UpdateOpts) error {
 
 	// fetch and render the changelogs for each missed release (max 10 most recent)
 	if isAhead {
-		outstandingReleases, err := listOutstandingReleasesSince(githubClient, version.Version, nil)
+		outstandingReleases, err := listOutstandingReleases(githubClient, version.Version, nil)
 		if err != nil {
 			logger.Error().Msg(err.Error())
 			return err
@@ -416,7 +416,7 @@ type ListOutstandingReleasesOpts struct {
 	PageSize int
 }
 
-func listOutstandingReleasesSince(client *github.Client, version string, opts *ListOutstandingReleasesOpts) ([]*github.RepositoryRelease, error) {
+func listOutstandingReleases(client *github.Client, version string, opts *ListOutstandingReleasesOpts) ([]*github.RepositoryRelease, error) {
 	defaultOpts := ListOutstandingReleasesOpts{Pages: 1, PageSize: 10}
 	if opts == nil {
 		opts = &defaultOpts
