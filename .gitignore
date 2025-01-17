@@ -3,3 +3,4 @@ corectl
 corectl*.log
 dist/
 .vscode
+.idea
