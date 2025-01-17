@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"strings"
 
 	"github.com/coreeng/core-platform/pkg/environment"
@@ -37,10 +38,6 @@ func openResource(cfg *config.Config) *cobra.Command {
 			return run(cfg, &opts)
 		},
 	}
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		cmd.Flags(),
-	)
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
 		cmd.Flags(),
@@ -55,10 +52,7 @@ func run(cfg *config.Config, opts *EnvOpenResourceOpt) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	env, err := environment.FindByName(
-		environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value),
-		opts.Environment,
-	)
+	env, err := environment.FindByName(configpath.GetCorectlCPlatformDir("environments"), opts.Environment)
 	if err != nil {
 		return err
 	}

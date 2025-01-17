@@ -1,6 +1,7 @@
 package gittest
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,6 +23,20 @@ type CreateBareAndLocalRepoOp struct {
 	SourceDir          string
 	TargetBareRepoDir  string
 	TargetLocalRepoDir string
+}
+
+type CreateTestCorectlConfigOp struct {
+	Path      string
+	CPlatform CreateBareAndLocalRepoOp
+	Templates CreateBareAndLocalRepoOp
+}
+
+func CreateTestCorectlConfig(path string) (*CreateTestCorectlConfigOp, error) {
+	op := &CreateTestCorectlConfigOp{
+		Path: path,
+	}
+	configpath.SetCorectlHome(path)
+	return op, nil
 }
 
 func CreateBareAndLocalRepoFromDir(op *CreateBareAndLocalRepoOp) (*BareRepository, *git.LocalRepository, error) {

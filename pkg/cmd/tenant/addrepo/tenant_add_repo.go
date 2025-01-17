@@ -2,6 +2,7 @@ package addrepo
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -40,7 +41,6 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantAddRepoCmd.Flags())
 	config.RegisterStringParameterAsFlag(&cfg.GitHub.Token, tenantAddRepoCmd.Flags())
 	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantAddRepoCmd.Flags())
 
@@ -60,7 +60,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	)
 	defer opts.Streams.CurrentHandler.Done()
 
-	tenantsDir := tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value)
+	tenantsDir := configpath.GetCorectlCPlatformDir("tenants")
 	t, err := tenant.FindByName(tenantsDir, opts.TenantName)
 	if err != nil {
 		return fmt.Errorf("failed to find the tenant: %w", err)
@@ -88,7 +88,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	opts.Streams.CurrentHandler.Info("creating GitHub PR")
 	result, err := corectltnt.CreateOrUpdate(&corectltnt.CreateOrUpdateOp{
 		Tenant:            t,
-		CplatformRepoPath: cfg.Repositories.CPlatform.Value,
+		CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 		BranchName:        fmt.Sprintf("%s-add-repo-%s", t.Name, repoName.Name()),
 		CommitMessage:     fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
 		PRName:            fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),

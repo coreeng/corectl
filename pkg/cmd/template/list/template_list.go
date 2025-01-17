@@ -2,6 +2,7 @@ package list
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -29,7 +30,7 @@ func NewTemplateListCmd(cfg *config.Config) *cobra.Command {
 					return fmt.Errorf("failed to update config repos: %w", err)
 				}
 			}
-			ts, err := template.List(cfg.Repositories.Templates.Value)
+			ts, err := template.List(configpath.GetCorectlTemplatesDir())
 			if err != nil {
 				return err
 			}
@@ -47,11 +48,6 @@ func NewTemplateListCmd(cfg *config.Config) *cobra.Command {
 		"ignore-checks",
 		false,
 		"Ignore checks for uncommitted changes and branch status",
-	)
-
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.Templates,
-		templateListCmd.Flags(),
 	)
 
 	return templateListCmd

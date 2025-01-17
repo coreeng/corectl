@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 
@@ -235,13 +236,7 @@ func (c *Config) BaseDir() (string, error) {
 }
 
 func Path() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	path := filepath.Join(homeDir, CORECTL_DIR, "corectl", CORECTL_CONFIG)
-
+	path := filepath.Join(configpath.GetCorectlHomeDir(), CORECTL_CONFIG)
 	return path, nil
 }
 

@@ -2,10 +2,10 @@ package selector
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"testing"
 
-	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -35,16 +35,17 @@ func TestTenantSelectorNonExistingTenant(t *testing.T) {
 
 	tenant, err := Tenant(cPlatRepo.Path(), fmt.Sprintf("%s-tenant", t.Name()), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepo.Path(), tenantName, tenantName))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepo.Path(), tenantName, tenantName))
 	assert.Nil(t, tenant)
 }
 
 func TestTenantSelectorInvalidCPlatRepo(t *testing.T) {
 	cPlatRepoPath := t.TempDir()
+	configpath.SetCorectlHome(cPlatRepoPath)
 
 	tenant, err := Tenant(cPlatRepoPath, testdata.DefaultTenant(), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load tenant configuration in path %s/tenants/tenants: stat .: no such file or directory", cPlatRepoPath))
+	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load tenant configuration in path %s/repositories/cplatform/tenants: stat .: no such file or directory", cPlatRepoPath))
 	assert.Nil(t, tenant)
 }
 
@@ -72,24 +73,27 @@ func TestEnvironmentSelectorNonExistingEnvironment(t *testing.T) {
 
 	tenant, err := Environment(cPlatRepo.Path(), env, testdata.TenantEnvs(), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: environment %s invalid: cannot find %s environment, available envs: [dev prod]", environment.DirFromCPlatformRepoPath(cPlatRepo.Path()), env, env))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: environment %s invalid: cannot find %s environment, available envs: [dev prod]", configpath.GetCorectlCPlatformDir("environments"), env, env))
 	assert.Nil(t, tenant)
 }
 
 func TestEnvironmentSelectorInvalidCPlatRepo(t *testing.T) {
 	cPlatRepoPath := t.TempDir()
+	_, err := gittest.CreateTestCorectlConfig(cPlatRepoPath)
+	assert.NoError(t, err)
 
 	tenant, err := Environment(cPlatRepoPath, testdata.DevEnvironment(), testdata.TenantEnvs(), streams)
-
-	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load environment configuration: open %s/environments: no such file or directory", cPlatRepoPath))
+	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load environment configuration: open %s/repositories/cplatform/environments: no such file or directory", cPlatRepoPath))
 	assert.Nil(t, tenant)
 }
 
 func testLocalRepo(t *testing.T, path string) *git.LocalRepository {
+	_, err := gittest.CreateTestCorectlConfig(t.TempDir())
+	assert.NoError(t, err)
 	_, repo, err := gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 		SourceDir:          path,
 		TargetBareRepoDir:  t.TempDir(),
-		TargetLocalRepoDir: t.TempDir(),
+		TargetLocalRepoDir: configpath.GetCorectlCPlatformDir(),
 	})
 	assert.NoError(t, err)
 	return repo

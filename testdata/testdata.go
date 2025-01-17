@@ -23,11 +23,11 @@ func Path(rel string) string {
 }
 
 func CPlatformEnvsPath() string {
-	return Path("./cplatform-environments")
+	return Path("./repositories/cplatform")
 }
 
 func TemplatesPath() string {
-	return Path("./software-templates")
+	return Path("./repositories/templates")
 }
 
 func RenderInitFile(

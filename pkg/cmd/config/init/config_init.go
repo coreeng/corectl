@@ -5,10 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"regexp"
-
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
-	"path/filepath"
+	"regexp"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -23,7 +22,6 @@ import (
 type ConfigInitOpt struct {
 	EnvironmentsRepo   string
 	File               string
-	RepositoriesDir    string
 	GitHubToken        string
 	GitHubOrganisation string
 	NonInteractive     bool
@@ -76,18 +74,6 @@ func NewConfigInitCmd(cfg *config.Config) *cobra.Command {
 		"f",
 		"",
 		"Initialization file. This is mutually exclusive with the '--environments-repo' option.",
-	)
-	defaultRepositoriesPath, err := repositoriesPath()
-	if err != nil {
-		// We couldn't calculate the default value. That's fine, because the user could override it, it will be checked later.
-		defaultRepositoriesPath = ""
-	}
-	newInitCmd.Flags().StringVarP(
-		&opt.RepositoriesDir,
-		"repositories",
-		"r",
-		defaultRepositoriesPath,
-		"Directory to store platform local repositories. Default is near config file.",
 	)
 	newInitCmd.Flags().StringVarP(
 		&opt.GitHubToken,
@@ -180,14 +166,7 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	}
 	githubOrgInInitFile := initC.Github.Organization
 
-	repositoriesDir := opt.RepositoriesDir
-	if repositoriesDir == "" {
-		repositoriesDir, err = repositoriesPath()
-		if err != nil {
-			return err
-		}
-	}
-	if err = os.MkdirAll(repositoriesDir, 0o755); err != nil {
+	if err = os.MkdirAll(configpath.GetCorectlCacheDir(), 0o755); err != nil {
 		return err
 	}
 
@@ -204,7 +183,7 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		return fmt.Errorf("failed to construct corectl config directory path: %w", err)
 	}
 	gitAuth := git.UrlTokenAuthMethod(githubToken)
-	clonedRepositories, err := cloneRepositories(opt.Streams, gitAuth, githubClient, repositoriesDir, cplatformRepoFullname, templateRepoFullname)
+	clonedRepositories, err := cloneRepositories(opt.Streams, gitAuth, githubClient, cplatformRepoFullname, templateRepoFullname)
 	if err != nil {
 		return tryAppendHint(err, configBaseDir)
 	}
@@ -223,8 +202,8 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 		return err
 	}
 
-	cfg.Repositories.CPlatform.Value = clonedRepositories.cplatform.Path()
-	cfg.Repositories.Templates.Value = clonedRepositories.templates.Path()
+	cfg.Repositories.CPlatform.Value = initC.Repositories.Cplatform
+	cfg.Repositories.Templates.Value = initC.Repositories.Templates
 	cfg.GitHub.Token.Value = githubToken
 	cfg.GitHub.Organization.Value = githubOrg
 	cfg.P2P.FastFeedback.DefaultEnvs.Value = initC.P2P.FastFeedback.DefaultEnvs
@@ -282,15 +261,6 @@ func fetchInitConfigFromGitHub(githubClient *github.Client, repoUrl string, repo
 	return content, nil
 }
 
-func repositoriesPath() (string, error) {
-	configPath, err := config.Path()
-	if err != nil {
-		return "", err
-	}
-	configPath = filepath.Dir(configPath)
-	return filepath.Join(configPath, "repositories"), nil
-}
-
 type cloneRepositoriesResult struct {
 	cplatform *git.LocalRepository
 	templates *git.LocalRepository
@@ -300,7 +270,6 @@ func cloneRepositories(
 	streams userio.IOStreams,
 	gitAuth git.AuthMethod,
 	githubClient *github.Client,
-	repositoriesDir string,
 	cplatformRepoFullname git.RepositoryFullname,
 	templatesRepoFullname git.RepositoryFullname,
 ) (cloneRepositoriesResult, error) {
@@ -316,7 +285,7 @@ func cloneRepositories(
 	}
 	cloneOpt := git.CloneOp{
 		URL:        cplatformGitHubRepo.GetCloneURL(),
-		TargetPath: filepath.Join(repositoriesDir, cplatformRepoFullname.Name()),
+		TargetPath: configpath.GetCorectlCPlatformDir(),
 		Auth:       gitAuth,
 	}
 	streams.CurrentHandler.Info(fmt.Sprintf("cloning platform repo: %s", cloneOpt.URL))
@@ -335,7 +304,7 @@ func cloneRepositories(
 	}
 	cloneOpt = git.CloneOp{
 		URL:        templatesGitHubRepo.GetCloneURL(),
-		TargetPath: filepath.Join(repositoriesDir, templatesRepoFullname.Name()),
+		TargetPath: configpath.GetCorectlTemplatesDir(),
 		Auth:       gitAuth,
 	}
 	streams.CurrentHandler.Info(fmt.Sprintf("cloning templates: %s", cloneOpt.URL))

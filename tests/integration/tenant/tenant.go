@@ -1,6 +1,7 @@
 package tenant
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"time"
 
 	"github.com/coreeng/corectl/pkg/git"
@@ -24,6 +25,7 @@ var _ = Describe("tenant", Ordered, func() {
 	BeforeAll(func() {
 		var err error
 		homeDir = t.TempDir()
+		configpath.SetCorectlHome(homeDir)
 		corectl = testconfig.NewCorectlClient(homeDir)
 		_, cfgDetails, err = testsetup.InitCorectl(corectl)
 		Expect(err).ToNot(HaveOccurred())

@@ -3,9 +3,9 @@ package logger
 import (
 	"errors"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	"go.uber.org/zap"
@@ -56,13 +56,7 @@ func Init(logLevelFlag string) {
 	}
 	configuredConsoleLogLevel = consoleLogLevel
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("Failed to get home directory: %v\n", err)
-		os.Exit(1)
-	}
-	logPath = strings.Replace(LogFile, "$HOME", homeDir, 1)
-
+	logPath = filepath.Join(configpath.GetCorectlHomeDir(), "corectl.log")
 	logDir := filepath.Dir(logPath)
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		fmt.Printf("fail to create folder path: %v\n", err)
