@@ -12,7 +12,7 @@ var (
 type ReleaseVersion struct{ current *semver.Version }
 
 func (v ReleaseVersion) String() string {
-	return v.current.String()
+	return "v" + v.current.String()
 }
 
 func (v ReleaseVersion) IsTargetVersionAhead(target *semver.Version) bool {

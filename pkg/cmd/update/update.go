@@ -219,7 +219,7 @@ func update(opts UpdateOpts) error {
 
 	currentVersion, parseCurrentErr := version.BuildReleaseVersion(version.Version)
 	if parseCurrentErr != nil {
-		logger.Warn().Msgf("could not parse current version: %v, defaulting to 0.0.0", parseCurrentErr)
+		logger.Warn().Msgf("could not parse current version %s: %v, defaulting to 0.0.0", version.Version, parseCurrentErr)
 		if currentVersion, parseCurrentErr = version.BuildReleaseVersion("0.0.0"); parseCurrentErr != nil {
 			return parseCurrentErr
 		}
@@ -270,7 +270,7 @@ func update(opts UpdateOpts) error {
 		logger.Warn().Msgf("Target version %s is behind the current version %s", targetVersion.String(), currentVersion.String())
 	} else if currentVersion.IsTargetVersionAhead(targetVersion) {
 		isAhead = true
-		logger.Warn().Msgf("Update available: %s", targetVersion.String())
+		logger.Warn().Msgf("Update available: v%s", targetVersion.String())
 	}
 
 	// fetch and render the changelogs for each missed release (max 10 most recent)
@@ -279,6 +279,11 @@ func update(opts UpdateOpts) error {
 		if err != nil {
 			logger.Error().Msg(err.Error())
 			return err
+		}
+		if len(outstandingReleases) == 10 {
+			logger.Warn().Msg("Showing Changelogs for the 10 most recent releases:")
+		} else {
+			logger.Warn().Msgf("Showing Changelogs for %d new releases:", len(outstandingReleases))
 		}
 		for _, release := range outstandingReleases {
 			var changelog = fmt.Sprintf("# Changelog for %s:\n%s", *release.TagName, *release.Body)
