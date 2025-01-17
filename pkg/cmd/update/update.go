@@ -42,6 +42,23 @@ type CoreCtlAsset struct {
 	Changelog string
 }
 
+func updateAvailable(githubClient *github.Client) (bool, string, error) {
+	release, err := getLatestCorectlRelease(githubClient)
+	if err != nil {
+		return false, "", err
+	}
+	asset, err := getReleaseCorectlAsset(release)
+	if err != nil {
+		return false, "", err
+	}
+
+	if version.Version == asset.Version {
+		return false, "", nil
+	} else {
+		return true, asset.Version, nil
+	}
+}
+
 // Any failures we recieve will log a warning, we don't want this to cause any command to fail, this is an optional
 // check which shouldn't prevent or interrupt any command from running (especially in ci)
 func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
@@ -195,86 +212,15 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 	return updateCmd
 }
 
-func updateAvailable(githubClient *github.Client) (bool, string, error) {
-	release, err := getLatestCorectlRelease(githubClient)
-	if err != nil {
-		return false, "", err
-	}
-	asset, err := getReleaseCorectlAsset(release)
-	if err != nil {
-		return false, "", err
-	}
-
-	if version.Version == asset.Version {
-		return false, "", nil
-	} else {
-		return true, asset.Version, nil
-	}
-}
-
-type ReleaseVersion struct{ current *semver.Version }
-
-func (v ReleaseVersion) String() string {
-	return v.current.String()
-}
-
-func (v ReleaseVersion) isTargetVersionAhead(target *semver.Version) bool {
-	return v.current.LessThan(target)
-}
-
-func (v ReleaseVersion) isTargetVersionStringAhead(target string) (bool, error) {
-	parsedTarget, parseTargetErr := semver.NewVersion(target)
-	if parseTargetErr != nil {
-		return false, parseTargetErr
-	}
-
-	return v.isTargetVersionAhead(parsedTarget), nil
-}
-
-func (v ReleaseVersion) isTargetVersionBehind(target *semver.Version) bool {
-	return v.current.GreaterThan(target)
-}
-
-func (v ReleaseVersion) isTargetVersionStringBehind(target string) (bool, error) {
-	parsedTarget, parseTargetErr := semver.NewVersion(target)
-	if parseTargetErr != nil {
-		return false, parseTargetErr
-	}
-
-	return v.isTargetVersionBehind(parsedTarget), nil
-}
-
-func (v ReleaseVersion) isTargetVersionCurrent(target *semver.Version) bool {
-	return v.current.Equal(target)
-}
-
-func (v ReleaseVersion) isTargetVersionStringCurrent(target string) (bool, error) {
-	parsedTarget, parseTargetErr := semver.NewVersion(target)
-	if parseTargetErr != nil {
-		return false, parseTargetErr
-	}
-
-	return v.isTargetVersionCurrent(parsedTarget), nil
-}
-
-func BuildReleaseVersion(version string) (ReleaseVersion, error) {
-	parsedVersion, parseErr := semver.NewVersion(version)
-	if parseErr != nil {
-		return ReleaseVersion{}, parseErr
-	}
-
-	return ReleaseVersion{parsedVersion}, nil
-}
-
 func update(opts UpdateOpts) error {
 	if opts.targetVersion != "" {
 		logger.Debug().Msgf("target version set to %s", opts.targetVersion)
 	}
 
-	currentVersion, parseCurrentErr := BuildReleaseVersion(version.Version)
+	currentVersion, parseCurrentErr := version.BuildReleaseVersion(version.Version)
 	if parseCurrentErr != nil {
 		logger.Warn().Msgf("could not parse current version: %v, defaulting to 0.0.0", parseCurrentErr)
-		if currentVersion, parseCurrentErr = BuildReleaseVersion("0.0.0"); parseCurrentErr != nil {
+		if currentVersion, parseCurrentErr = version.BuildReleaseVersion("0.0.0"); parseCurrentErr != nil {
 			return parseCurrentErr
 		}
 	}
@@ -315,14 +261,14 @@ func update(opts UpdateOpts) error {
 		Debug().
 		With(zap.String("current_version", currentVersion.String()), zap.String("remote_version", targetVersion.String())).
 		Msg("comparing versions")
-	if currentVersion.isTargetVersionCurrent(targetVersion) {
+	if currentVersion.IsTargetVersionCurrent(targetVersion) {
 		logger.Warn().Msgf("Already running version %s", targetVersion.String())
 		return nil
 	}
 	isAhead := false
-	if currentVersion.isTargetVersionBehind(targetVersion) {
+	if currentVersion.IsTargetVersionBehind(targetVersion) {
 		logger.Warn().Msgf("Target version %s is behind the current version %s", targetVersion.String(), currentVersion.String())
-	} else if currentVersion.isTargetVersionAhead(targetVersion) {
+	} else if currentVersion.IsTargetVersionAhead(targetVersion) {
 		isAhead = true
 		logger.Warn().Msgf("Update available: %s", targetVersion.String())
 	}
