@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -50,7 +51,7 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("failed to update config repos: %w", err)
 			}
 
-			availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
+			availableEnvironments, err = environment.List(configpath.GetCorectlCPlatformDir("environments"))
 			if err != nil {
 				return fmt.Errorf("unable to load environments")
 			}
@@ -90,16 +91,10 @@ func activeCmd(cfg *config.Config) *cobra.Command {
 		"Don't print output just set the exitcode",
 	)
 
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		activeCmd.Flags(),
-	)
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
 		activeCmd.Flags(),
 	)
-	opts.RepositoryLocation = cfg.Repositories.CPlatform.Value
-
 	return activeCmd
 }
 

@@ -1,6 +1,7 @@
 package testsetup
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -16,7 +17,7 @@ type CorectlConfigDetails struct {
 }
 
 func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlConfigDetails, error) {
-	initFilePath := filepath.Join(corectl.HomeDir(), "corectl-init.yaml")
+	initFilePath := filepath.Join(configpath.GetCorectlHomeDir(), "corectl-init.yaml")
 	err := testdata.RenderInitFile(
 		initFilePath,
 		testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
@@ -39,7 +40,7 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 	}
 
 	cfg := corectl.Config()
-	cplatformRepo, err := git.OpenLocalRepository(cfg.Repositories.CPlatform.Value, false)
+	cplatformRepo, err := git.OpenLocalRepository(configpath.GetCorectlCPlatformDir(), false)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,7 +48,7 @@ func InitCorectlWithFile(corectl *testconfig.CorectlClient, initFilePath string)
 	if err != nil {
 		return nil, nil, err
 	}
-	templatesRepo, err := git.OpenLocalRepository(cfg.Repositories.Templates.Value, false)
+	templatesRepo, err := git.OpenLocalRepository(configpath.GetCorectlTemplatesDir(), false)
 	if err != nil {
 		return nil, nil, err
 	}

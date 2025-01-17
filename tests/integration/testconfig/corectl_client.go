@@ -18,7 +18,6 @@ type CorectlClient struct {
 
 func NewCorectlClient(homeDir string) *CorectlClient {
 	env := os.Environ()
-	env = append(env, "HOME="+homeDir)
 	return &CorectlClient{
 		binaryPath: Cfg.CoreCTLBinary,
 		homeDir:    homeDir,
@@ -52,11 +51,6 @@ func (c *CorectlClient) HomeDir() string {
 }
 
 func (c *CorectlClient) ConfigPath() string {
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		Expect(os.Setenv("HOME", originalHome)).To(Succeed())
-	}()
-	Expect(os.Setenv("HOME", c.homeDir)).To(Succeed())
 	configPath, err := config.Path()
 	Expect(err).NotTo(HaveOccurred())
 	return configPath

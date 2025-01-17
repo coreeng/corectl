@@ -1,6 +1,8 @@
 package render
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 
@@ -30,10 +32,11 @@ var _ = Describe("Template Render", Ordered, func() {
 	)
 
 	BeforeAll(func() {
+		_, err = gittest.CreateTestCorectlConfig(t.TempDir())
 		_, templatesLocalRepo, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
 			SourceDir:          testdata.TemplatesPath(),
 			TargetBareRepoDir:  t.TempDir(),
-			TargetLocalRepoDir: t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlTemplatesDir(),
 		})
 		Expect(err).NotTo(HaveOccurred())
 
@@ -58,16 +61,10 @@ var _ = Describe("Template Render", Ordered, func() {
 			TemplatesPath: templatesLocalRepo.Path(),
 			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
+		cfg, err := config.DiscoverConfig()
+		assert.NoError(t, err)
 
-		cfg := config.Config{
-			Repositories: config.RepositoriesConfig{
-				Templates: config.Parameter[string]{
-					Value: templatesLocalRepo.Path(),
-				},
-			},
-		}
-
-		err := run(opts, &cfg)
+		err = run(opts, cfg)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, ".github", "workflows", "extended-test.yaml"))
@@ -85,15 +82,10 @@ var _ = Describe("Template Render", Ordered, func() {
 			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
 
-		cfg := config.Config{
-			Repositories: config.RepositoriesConfig{
-				Templates: config.Parameter[string]{
-					Value: templatesLocalRepo.Path(),
-				},
-			},
-		}
+		cfg, err := config.DiscoverConfig()
+		assert.NoError(t, err)
 
-		err := run(opts, &cfg)
+		err = run(opts, cfg)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("required argument name is missing"))
 	})
@@ -113,16 +105,10 @@ var _ = Describe("Template Render", Ordered, func() {
 			TemplatesPath: templatesLocalRepo.Path(),
 			Streams:       userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr),
 		}
+		cfg, err := config.DiscoverConfig()
+		assert.NoError(t, err)
 
-		cfg := config.Config{
-			Repositories: config.RepositoriesConfig{
-				Templates: config.Parameter[string]{
-					Value: templatesLocalRepo.Path(),
-				},
-			},
-		}
-
-		err := run(opts, &cfg)
+		err = run(opts, cfg)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, "args.txt"))

@@ -3,6 +3,7 @@ package env
 import (
 	"bytes"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 
 	"github.com/coreeng/core-platform/pkg/environment"
@@ -56,7 +57,7 @@ func disconnectCmd(cfg *config.Config) *cobra.Command {
 				return fmt.Errorf("failed to update config repos: %w", err)
 			}
 
-			availableEnvironments, err = environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
+			availableEnvironments, err = environment.List(configpath.GetCorectlCPlatformDir("environments"))
 			if err != nil {
 				return fmt.Errorf("unable to load environments")
 			}
@@ -76,16 +77,10 @@ func disconnectCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		disconnectCmd.Flags(),
-	)
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
 		disconnectCmd.Flags(),
 	)
-	opts.RepositoryLocation = cfg.Repositories.CPlatform.Value
-
 	return disconnectCmd
 }
 

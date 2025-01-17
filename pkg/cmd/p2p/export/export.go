@@ -2,6 +2,7 @@ package export
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"strings"
 
@@ -138,7 +139,7 @@ func run(opts *exportOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	context, err := opts.processFlags(cfg.Repositories.CPlatform.Value, false)
+	context, err := opts.processFlags(configpath.GetCorectlCPlatformDir(), false)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package env
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 
 	"github.com/coreeng/corectl/testdata"
@@ -18,6 +19,7 @@ var _ = Describe("env", Ordered, func() {
 
 	BeforeAll(func() {
 		homeDir := t.TempDir()
+		configpath.SetCorectlHome(homeDir)
 		corectl = testconfig.NewCorectlClient(homeDir)
 		_, _, err := testsetup.InitCorectl(corectl)
 		Expect(err).ToNot(HaveOccurred())

@@ -2,11 +2,12 @@ package env
 
 import (
 	"fmt"
-
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectlenv "github.com/coreeng/corectl/pkg/env"
+	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/spf13/cobra"
 )
 
@@ -21,6 +22,7 @@ func listCmd(cfg *config.Config) *cobra.Command {
 		Use:   "list",
 		Short: "List all environments",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.Info().Msgf("Invoked with args: %+v", opts)
 			opts.Streams = userio.NewIOStreams(
 				cmd.InOrStdin(),
 				cmd.OutOrStdout(),
@@ -31,18 +33,6 @@ func listCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	listCmd.Flags().StringVarP(
-		&opts.RepositoryLocation,
-		"repository",
-		"r",
-		cfg.Repositories.CPlatform.Value,
-		"Repository to source environments from",
-	)
-
-	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		listCmd.Flags(),
-	)
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
 		listCmd.Flags(),
@@ -58,9 +48,9 @@ func list(opts ListOpt, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	existing, err := environment.List(environment.DirFromCPlatformRepoPath(opts.RepositoryLocation))
+	existing, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
-		return fmt.Errorf("could not find repository location %q: %w", opts.RepositoryLocation, err)
+		return fmt.Errorf("could not find repository location: %w", err)
 	}
 
 	table := corectlenv.NewTable(opts.Streams, false)

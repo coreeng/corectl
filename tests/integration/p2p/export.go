@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 
 	"github.com/coreeng/core-platform/pkg/environment"
@@ -25,6 +26,7 @@ var _ = Describe("export", Ordered, func() {
 	BeforeAll(func() {
 		var cfg *config.Config
 		homeDir := tmpDir(t)
+		configpath.SetCorectlHome(homeDir)
 		corectl, cfg = initCorectl(homeDir)
 		appDir = onboardTestApp(homeDir, corectl)
 		env = defaultEnv(cfg.Repositories.CPlatform.Value)
@@ -103,7 +105,7 @@ func tmpDir(t GinkgoTInterface) string {
 }
 
 func defaultEnv(cPlatRepoPath string) *environment.Environment {
-	e, err := environment.FindByName(environment.DirFromCPlatformRepoPath(cPlatRepoPath), testdata.DevEnvironment())
+	e, err := environment.FindByName(configpath.GetCorectlCPlatformDir("environments"), testdata.DevEnvironment())
 	Expect(err).ToNot(HaveOccurred())
 	return e
 }

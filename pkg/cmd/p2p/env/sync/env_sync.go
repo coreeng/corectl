@@ -3,6 +3,7 @@ package sync
 import (
 	"context"
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"slices"
 
 	"github.com/coreeng/core-platform/pkg/environment"
@@ -50,10 +51,6 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 		"Clean existing environments",
 	)
 	config.RegisterStringParameterAsFlag(
-		&cfg.Repositories.CPlatform,
-		syncEnvironmentsCmd.Flags())
-
-	config.RegisterStringParameterAsFlag(
 		&cfg.GitHub.Organization,
 		syncEnvironmentsCmd.Flags())
 
@@ -79,14 +76,14 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
 	defer spinnerHandler.Done()
 
-	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.Tenant)
+	t, err := tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant)
 	if err != nil {
 		return err
 	}
 	if t == nil {
 		return fmt.Errorf("tenant not found: %s", opts.Tenant)
 	}
-	environments, err := environment.List(environment.DirFromCPlatformRepoPath(cfg.Repositories.CPlatform.Value))
+	environments, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
 		return err
 	}

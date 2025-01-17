@@ -2,6 +2,7 @@ package describe
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -32,7 +33,6 @@ func NewTenantDescribeCmd(cfg *config.Config) *cobra.Command {
 			return run(&opts, cfg)
 		},
 	}
-	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantDescribeCmd.Flags())
 	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantDescribeCmd.Flags())
 	return tenantDescribeCmd
 }
@@ -44,7 +44,7 @@ func run(opts *TenantDescribeOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	t, err := tenant.FindByName(tenant.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value), opts.TenantName)
+	t, err := tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants"), opts.TenantName)
 	if err != nil {
 		return fmt.Errorf("failed to find the tenant: %w", err)
 	}

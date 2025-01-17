@@ -2,6 +2,7 @@ package tree
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -33,7 +34,6 @@ func NewTenantTreeCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(&cfg.Repositories.CPlatform, tenantTreeCmd.Flags())
 	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantTreeCmd.Flags())
 
 	tenantTreeCmd.Flags().StringVarP(
@@ -54,7 +54,7 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	tenants, err := coretnt.List(coretnt.DirFromCPlatformPath(cfg.Repositories.CPlatform.Value))
+	tenants, err := coretnt.List(configpath.GetCorectlCPlatformDir("tenants"))
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}

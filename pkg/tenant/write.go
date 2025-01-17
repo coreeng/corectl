@@ -2,6 +2,7 @@ package tenant
 
 import (
 	"fmt"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
@@ -65,7 +66,7 @@ func CreateOrUpdate(
 		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
 			Tenant:       op.Tenant,
 			ParentTenant: op.ParentTenant,
-			TenantsDir:   tenant.DirFromCPlatformPath(op.CplatformRepoPath),
+			TenantsDir:   configpath.GetCorectlCPlatformDir("tenants"),
 		}); err != nil {
 			return result, err
 		}
