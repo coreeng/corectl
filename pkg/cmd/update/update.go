@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"io"
 	"net/http"
 	"os"
@@ -39,6 +40,23 @@ type CoreCtlAsset struct {
 	Version   string
 	Url       string
 	Changelog string
+}
+
+func updateAvailable(githubClient *github.Client) (bool, string, error) {
+	release, err := getLatestCorectlRelease(githubClient)
+	if err != nil {
+		return false, "", err
+	}
+	asset, err := getReleaseCorectlAsset(release)
+	if err != nil {
+		return false, "", err
+	}
+
+	if version.Version == asset.Version {
+		return false, "", nil
+	} else {
+		return true, asset.Version, nil
+	}
 }
 
 // Any failures we recieve will log a warning, we don't want this to cause any command to fail, this is an optional
@@ -194,26 +212,17 @@ func UpdateCmd(cfg *config.Config) *cobra.Command {
 	return updateCmd
 }
 
-func updateAvailable(githubClient *github.Client) (bool, string, error) {
-	release, err := getLatestCorectlRelease(githubClient)
-	if err != nil {
-		return false, "", err
-	}
-	asset, err := getLatestCorectlAsset(release)
-	if err != nil {
-		return false, "", err
-	}
-
-	if version.Version == asset.Version {
-		return false, "", nil
-	} else {
-		return true, asset.Version, nil
-	}
-}
-
 func update(opts UpdateOpts) error {
 	if opts.targetVersion != "" {
 		logger.Debug().Msgf("target version set to %s", opts.targetVersion)
+	}
+
+	currentVersion, parseCurrentErr := version.BuildReleaseVersion(version.Version)
+	if parseCurrentErr != nil {
+		logger.Warn().Msgf("could not parse current version %s: %v, defaulting to 0.0.0", version.Version, parseCurrentErr)
+		if currentVersion, parseCurrentErr = version.BuildReleaseVersion("0.0.0"); parseCurrentErr != nil {
+			return parseCurrentErr
+		}
 	}
 
 	logger.Warn().Msg("Checking for updates")
@@ -222,37 +231,70 @@ func update(opts UpdateOpts) error {
 		githubClient = githubClient.WithAuthToken(opts.githubToken)
 	}
 
-	var release *github.RepositoryRelease
-	var err error
+	// fetch the target release metadata
+	var targetRelease *github.RepositoryRelease
+	var getTargetReleaseErr error
 	if opts.targetVersion == "" {
-		release, err = getLatestCorectlRelease(githubClient)
+		targetRelease, getTargetReleaseErr = getLatestCorectlRelease(githubClient)
 	} else {
-		release, err = getCorectlReleaseByTag(githubClient, opts.targetVersion)
+		targetRelease, getTargetReleaseErr = getCorectlReleaseByTag(githubClient, opts.targetVersion)
 	}
-	if err != nil {
-		logger.Error().Msg(err.Error())
-		return err
+	if getTargetReleaseErr != nil {
+		logger.Error().Msg(getTargetReleaseErr.Error())
+		return getTargetReleaseErr
 	}
 
-	asset, err := getLatestCorectlAsset(release)
-	if err != nil {
-		logger.Error().Msg(err.Error())
-		return err
+	// build CoreCtlAsset from the release object
+	asset, getTargetAssetErr := getReleaseCorectlAsset(targetRelease)
+	if getTargetAssetErr != nil {
+		logger.Error().Msg(getTargetAssetErr.Error())
+		return getTargetAssetErr
 	}
-	logger.Debug().With(zap.String("current_version", version.Version), zap.String("remote_version", asset.Version)).Msg("comparing versions")
-	if version.Version == asset.Version {
-		logger.Warn().Msgf("Already running %s release (%v)", opts.targetVersion, version.Version)
+
+	// compare current/target versions
+	targetVersion, parseTargetVersionErr := semver.NewVersion(asset.Version)
+	if parseTargetVersionErr != nil {
+		logger.Warn().Msgf("could not parse target version: %v", parseTargetVersionErr)
+		return parseTargetVersionErr
+	}
+	logger.
+		Debug().
+		With(zap.String("current_version", currentVersion.String()), zap.String("remote_version", targetVersion.String())).
+		Msg("comparing versions")
+	if currentVersion.IsTargetVersionCurrent(targetVersion) {
+		logger.Warn().Msgf("Already running version %s", targetVersion.String())
 		return nil
-	} else {
-		logger.Warn().Msgf("Update available: %v", asset.Version)
+	}
+	isAhead := false
+	if currentVersion.IsTargetVersionBehind(targetVersion) {
+		logger.Warn().Msgf("Target version %s is behind the current version %s", targetVersion.String(), currentVersion.String())
+	} else if currentVersion.IsTargetVersionAhead(targetVersion) {
+		isAhead = true
+		logger.Warn().Msgf("Update available: v%s", targetVersion.String())
 	}
 
-	out, err := glamour.Render(asset.Changelog, "dark")
-	if err == nil {
-		_, _ = opts.streams.GetOutput().Write([]byte(out))
-	} else {
-		logger.Warn().With(zap.Error(err)).Msg("could not render changelog markdown, falling back to plaintext")
-		_, _ = opts.streams.GetOutput().Write([]byte(asset.Changelog))
+	// fetch and render the changelogs for each missed release (max 10 most recent)
+	if isAhead {
+		outstandingReleases, err := listOutstandingReleases(githubClient, version.Version, nil)
+		if err != nil {
+			logger.Error().Msg(err.Error())
+			return err
+		}
+		if len(outstandingReleases) == 10 {
+			logger.Warn().Msg("Showing Changelogs for the 10 most recent releases:")
+		} else {
+			logger.Warn().Msgf("Showing Changelogs for %d new releases:", len(outstandingReleases))
+		}
+		for _, release := range outstandingReleases {
+			var changelog = fmt.Sprintf("# Changelog for %s:\n%s", *release.TagName, *release.Body)
+			out, err := glamour.Render(changelog, "dark")
+			if err == nil {
+				_, _ = opts.streams.GetOutput().Write([]byte(out))
+			} else {
+				logger.Warn().With(zap.Error(err)).Msg("could not render changelog markdown, falling back to plaintext")
+				_, _ = opts.streams.GetOutput().Write([]byte(changelog))
+			}
+		}
 	}
 
 	logger.Debug().With(zap.Bool("skipConfirmation", opts.skipConfirmation)).Msg("checking params")
@@ -262,12 +304,12 @@ func update(opts UpdateOpts) error {
 		wizard.Info("--skip-confirmation is set, continuing with update")
 	} else {
 		if opts.streams.IsInteractive() {
-			confirmation, err := confirmation.GetInput(opts.streams, fmt.Sprintf("Update to %s now?", asset.Version))
+			confirmInput, err := confirmation.GetInput(opts.streams, fmt.Sprintf("Update to %s now?", asset.Version))
 			if err != nil {
 				return fmt.Errorf("could not get confirmation from user: %+v", err)
 			}
 
-			if confirmation {
+			if confirmInput {
 				wizard.Info("Update accepted")
 			} else {
 				err = fmt.Errorf("update cancelled by user")
@@ -275,12 +317,13 @@ func update(opts UpdateOpts) error {
 				return err
 			}
 		} else {
-			err = fmt.Errorf("non interactive terminal, cannot ask for confirmation")
+			err := fmt.Errorf("non interactive terminal, cannot ask for confirmation")
 			wizard.Abort(err.Error())
 			return err
 		}
 	}
 
+	var err error
 	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
 	data, err := downloadCorectlAsset(asset)
 	if err != nil {
@@ -341,7 +384,7 @@ func update(opts UpdateOpts) error {
 	return nil
 }
 
-func getLatestCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, error) {
+func getReleaseCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, error) {
 	if release.Assets == nil {
 		return nil, errors.New("no assets found for the latest release")
 	}
@@ -366,7 +409,37 @@ func getLatestCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, er
 	}
 
 	return nil, errors.New("no asset found for the current architecture and OS")
+}
 
+type ListOutstandingReleasesOpts struct {
+	Pages    int
+	PageSize int
+}
+
+func listOutstandingReleases(client *github.Client, version string, opts *ListOutstandingReleasesOpts) ([]*github.RepositoryRelease, error) {
+	defaultOpts := ListOutstandingReleasesOpts{Pages: 1, PageSize: 10}
+	if opts == nil {
+		opts = &defaultOpts
+	}
+
+	var releasesSince []*github.RepositoryRelease
+	page := 0
+	for page <= opts.Pages {
+		page++
+		releases, _, err := client.Repositories.ListReleases(context.Background(), "coreeng", "corectl", &github.ListOptions{Page: page, PerPage: opts.PageSize})
+		if err != nil {
+			return nil, err
+		}
+		for _, release := range releases {
+			// stop listing once we hit the current version
+			if *release.TagName == version {
+				return releasesSince, nil
+			}
+			releasesSince = append(releasesSince, release)
+		}
+	}
+
+	return releasesSince, nil
 }
 
 func getLatestCorectlRelease(client *github.Client) (*github.RepositoryRelease, error) {
