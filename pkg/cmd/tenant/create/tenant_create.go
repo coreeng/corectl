@@ -148,7 +148,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
 	envs, err := listEnabledEnvironments(envFilePath)
 	if err != nil {
-		logger.Warn().Msgf("Failed to read environments file '%s': %s. Falling back to listing directories in '%s'.", envFilePath, err, envsDir)
+		logger.Info().Msgf("Failed to read environments file '%s': %s. Falling back to listing directories in '%s'.", envFilePath, err, envsDir)
 		envs, err = environment.List(envsDir)
 		if err != nil {
 			return err
