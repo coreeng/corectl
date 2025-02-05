@@ -12,15 +12,15 @@ Releases for Linux and Mac are published in [releases](https://github.com/coreen
 Download and unzip your platform e.g for Mac with Apple chip download `corectl_Darwin_arm64.tar.gz`
 and add to your path.
 
-# Usage 
+# Usage
 
 ## Initialisation
 
 Before usage, you should initialise `corectl`. This will set up your GitHub integration with your developer environments.
 
 But first, you will need:
-  - A [GitHub personal token](#GitHub-Access-Token)
-  - To know which GitHub repository is your "environments repository". Please ask your administrator for this.
+- A [GitHub personal token](#GitHub-Access-Token)
+- To know which GitHub repository is your "environments repository". Please ask your administrator for this.
 
 To initialise `corectl`, run:
 
@@ -38,11 +38,11 @@ corectl config update
 ```
 This command will fetch latest changes for configuration repositories.
 
-After the initialization you can start using `corectl`. 
+After the initialization you can start using `corectl`.
 
 ## Commands
 To check for available operations run:
-```bash 
+```bash
 corectl --help
 ```
 
