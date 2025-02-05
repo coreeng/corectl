@@ -3,12 +3,14 @@ package p2p
 import (
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
+	"time"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
+        "github.com/google/go-github/v60/github"
 	"github.com/go-git/go-git/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,19 +20,31 @@ import (
 var _ = Describe("export", Ordered, func() {
 	t := GinkgoT()
 	var (
-		corectl *testconfig.CorectlClient
-		env     *environment.Environment
-		appDir  string
+		corectl      *testconfig.CorectlClient
+		cfg          *config.Config
+		githubClient *github.Client
+		env          *environment.Environment
+		appName      string
+		appDir       string
 	)
 
-	BeforeAll(func() {
-		var cfg *config.Config
+	BeforeAll(func(ctx SpecContext) {
 		homeDir := tmpDir(t)
 		configpath.SetCorectlHome(homeDir)
 		corectl, cfg = initCorectl(homeDir)
-		appDir = onboardTestApp(homeDir, corectl)
+		githubClient = testconfig.NewGitHubClient()
+		appName = "new-test-app-" + randstr.Hex(6)
+		appDir = onboardTestApp(homeDir, appName, corectl)
 		env = defaultEnv(cfg.Repositories.CPlatform.Value)
 	})
+
+	AfterAll(func(ctx SpecContext) {
+		Expect(githubClient.Repositories.Delete(
+			ctx,
+			cfg.GitHub.Organization.Value,
+			appName,
+		)).Error().NotTo(HaveOccurred())
+	}, NodeTimeout(time.Minute))
 
 	Context("export", func() {
 
@@ -83,12 +97,11 @@ func initCorectl(homeDir string) (*testconfig.CorectlClient, *config.Config) {
 	return corectl, cfg
 }
 
-func onboardTestApp(homeDir string, corectl *testconfig.CorectlClient) string {
+func onboardTestApp(homeDir string, appName string, corectl *testconfig.CorectlClient) string {
 	testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
-	newAppName := "new-test-app-" + randstr.Hex(6)
-	appDir := filepath.Join(homeDir, newAppName)
+	appDir := filepath.Join(homeDir, appName)
 	_, err := corectl.Run(
-		"application", "create", newAppName, appDir,
+		"application", "create", appName, appDir,
 		"-t", testdata.BlankTemplate(),
 		"--tenant", testconfig.Cfg.Tenant,
 		"--non-interactive",
