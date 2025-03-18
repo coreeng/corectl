@@ -12,7 +12,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/glamour v0.9.0
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/coreeng/core-platform/pkg v0.31.1
+	github.com/coreeng/core-platform/pkg v0.31.2
 	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/google/go-github/v60 v60.0.0
