@@ -10,9 +10,9 @@ require (
 	github.com/cedws/iapc v0.1.9
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.3.4
-	github.com/charmbracelet/glamour v0.9.0
+	github.com/charmbracelet/glamour v0.9.1
 	github.com/charmbracelet/lipgloss v1.1.0
-	github.com/coreeng/core-platform/pkg v0.31.2
+	github.com/coreeng/core-platform/pkg v0.31.3
 	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/go-git/go-git/v5 v5.14.0
 	github.com/google/go-github/v60 v60.0.0
@@ -34,7 +34,7 @@ require (
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	golang.org/x/net v0.37.0
 	golang.org/x/oauth2 v0.28.0
-	google.golang.org/api v0.226.0
+	google.golang.org/api v0.228.0
 	google.golang.org/grpc v1.71.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -53,7 +53,7 @@ require (
 
 require (
 	cloud.google.com/go/auth v0.15.0 // indirect
-	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
+	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -136,9 +136,9 @@ require (
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.29.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250313205543-e70fdf4c4cb4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250313205543-e70fdf4c4cb4 // indirect
-	google.golang.org/protobuf v1.36.5 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
+	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
