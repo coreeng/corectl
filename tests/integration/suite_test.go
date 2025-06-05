@@ -117,8 +117,17 @@ func prepareTestRepository(
 	Expect(
 		localRepo.SetRemote(githubRepo.GetCloneURL()),
 	).To(Succeed())
-	Expect(localRepo.Push(git.PushOp{
-		Auth: gitAuth,
-	})).To(Succeed())
+
+	// Use retry logic for push operation to handle repository propagation delays
+	err = git.RetryGitHubOperation(
+		func() error {
+			return localRepo.Push(git.PushOp{
+				Auth: gitAuth,
+			})
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
+	)
+	Expect(err).NotTo(HaveOccurred())
 	return repoFullId
 }

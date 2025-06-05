@@ -28,15 +28,15 @@ func RetryGitHubAPI[T any](operation func() (T, *github.Response, error), maxRet
 			return result, resp, nil
 		}
 
-		// Check if this is a 404 error that might be due to propagation delay
-		if resp != nil && resp.StatusCode == http.StatusNotFound && attempt < maxRetries {
+		// Check if this is a 404 or 403 error that might be due to propagation delay
+		if resp != nil && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden) && attempt < maxRetries {
 			delay := baseDelay * time.Duration(1<<attempt) // Exponential backoff: 2s, 4s, 8s, 16s
 			logger.Warn().With(
 				zap.Int("attempt", attempt+1),
 				zap.Int("max_retries", maxRetries+1),
 				zap.Duration("delay", delay),
 				zap.Int("status_code", resp.StatusCode),
-			).Msg("github: API call failed with 404, retrying due to potential propagation delay")
+			).Msg("github: API call failed with 404/403, retrying due to potential propagation delay")
 
 			time.Sleep(delay)
 			continue
@@ -49,7 +49,7 @@ func RetryGitHubAPI[T any](operation func() (T, *github.Response, error), maxRet
 	return result, resp, err
 }
 
-// IsGitHub404Error checks if an error is likely a GitHub 404 error
+// IsGitHub404Error checks if an error is likely a GitHub 404 error or Git repository not ready error
 func IsGitHub404Error(err error) bool {
 	if err == nil {
 		return false
@@ -58,7 +58,24 @@ func IsGitHub404Error(err error) bool {
 	// Check for common patterns in GitHub 404 errors
 	return strings.Contains(errStr, "404") ||
 		strings.Contains(errStr, "Not Found") ||
-		strings.Contains(errStr, "not found")
+		strings.Contains(errStr, "not found") ||
+		strings.Contains(errStr, "repository not found") ||
+		strings.Contains(errStr, "Repository not found") ||
+		strings.Contains(errStr, "remote: Repository not found")
+}
+
+// IsGitHubPropagationError checks if an error could be due to propagation delays (404 or 403 in repository operations)
+func IsGitHubPropagationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	// Check for patterns that could indicate propagation delays
+	return IsGitHub404Error(err) ||
+		strings.Contains(errStr, "403") ||
+		strings.Contains(errStr, "Forbidden") ||
+		strings.Contains(errStr, "access blocked") ||
+		(strings.Contains(errStr, "Repository access blocked") && strings.Contains(errStr, "403"))
 }
 
 // RetryGitHubOperation retries a GitHub operation that returns only an error with exponential backoff.
@@ -74,15 +91,15 @@ func RetryGitHubOperation(operation func() error, maxRetries int, baseDelay time
 			return nil
 		}
 
-		// Check if this is a 404-related error that might be due to propagation delay
-		if IsGitHub404Error(err) && attempt < maxRetries {
+		// Check if this is a propagation-related error (404 or 403 from repository operations)
+		if IsGitHubPropagationError(err) && attempt < maxRetries {
 			delay := baseDelay * time.Duration(1<<attempt) // Exponential backoff: 2s, 4s, 8s, 16s
 			logger.Warn().With(
 				zap.Int("attempt", attempt+1),
 				zap.Int("max_retries", maxRetries+1),
 				zap.Duration("delay", delay),
 				zap.Error(err),
-			).Msg("github: operation failed with 404-like error, retrying due to potential propagation delay")
+			).Msg("github: operation failed with 404/403-like error, retrying due to potential propagation delay")
 
 			time.Sleep(delay)
 			continue
