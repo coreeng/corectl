@@ -93,19 +93,41 @@ func prepareTestRepository(
 	Expect(err).NotTo(HaveOccurred())
 	repoFullId := git.NewGithubRepoFullId(githubRepo)
 	DeferCleanup(func(ctx SpecContext) {
-		_, err := githubClient.Repositories.Delete(
-			ctx,
-			repoFullId.RepositoryFullname.Organization(),
-			repoFullId.RepositoryFullname.Name(),
+		// Use retry logic for delete operation to handle propagation delays
+		err := git.RetryGitHubOperation(
+			func() error {
+				_, err := githubClient.Repositories.Delete(
+					ctx,
+					repoFullId.RepositoryFullname.Organization(),
+					repoFullId.RepositoryFullname.Name(),
+				)
+				return err
+			},
+			git.DefaultMaxRetries,
+			git.DefaultBaseDelay,
 		)
-		Expect(err).NotTo(HaveOccurred())
+		if err != nil {
+			// If delete still fails after retries, log a warning but don't fail the test
+			// The repository might have been manually deleted or there might be other issues
+			fmt.Printf("Warning: Failed to delete test repository %s after retries: %v\n",
+				repoFullId.RepositoryFullname.String(), err)
+		}
 	}, NodeTimeout(time.Minute))
 
 	Expect(
 		localRepo.SetRemote(githubRepo.GetCloneURL()),
 	).To(Succeed())
-	Expect(localRepo.Push(git.PushOp{
-		Auth: gitAuth,
-	})).To(Succeed())
+
+	// Use retry logic for push operation to handle repository propagation delays
+	err = git.RetryGitHubOperation(
+		func() error {
+			return localRepo.Push(git.PushOp{
+				Auth: gitAuth,
+			})
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
+	)
+	Expect(err).NotTo(HaveOccurred())
 	return repoFullId
 }

@@ -1,17 +1,19 @@
 package p2p
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 	"time"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-        "github.com/google/go-github/v60/github"
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/google/go-github/v60/github"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
@@ -39,17 +41,26 @@ var _ = Describe("export", Ordered, func() {
 	})
 
 	AfterAll(func(ctx SpecContext) {
-		Expect(githubClient.Repositories.Delete(
-			ctx,
-			cfg.GitHub.Organization.Value,
-			appName,
-		)).Error().NotTo(HaveOccurred())
+		// Use retry logic for delete operation to handle propagation delays
+		err := git.RetryGitHubOperation(
+			func() error {
+				_, err := githubClient.Repositories.Delete(
+					ctx,
+					cfg.GitHub.Organization.Value,
+					appName,
+				)
+				return err
+			},
+			git.DefaultMaxRetries,
+			git.DefaultBaseDelay,
+		)
+		Expect(err).NotTo(HaveOccurred())
 	}, NodeTimeout(time.Minute))
 
 	Context("export", func() {
 
 		var commitHash = func(repoPath string) string {
-			r, err := git.PlainOpen(repoPath)
+			r, err := gogit.PlainOpen(repoPath)
 			Expect(err).NotTo(HaveOccurred())
 			ref, err := r.Head()
 			Expect(err).NotTo(HaveOccurred())

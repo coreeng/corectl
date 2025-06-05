@@ -223,13 +223,20 @@ func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalR
 		return nil, err
 	}
 
-	githubRepo, _, err := svc.GithubClient.Repositories.Get(
-		context.Background(),
-		op.OrgName,
-		remoteRepoName,
+	// Use retry logic to handle potential propagation delays
+	githubRepo, _, err := git.RetryGitHubAPI(
+		func() (*github.Repository, *github.Response, error) {
+			return svc.GithubClient.Repositories.Get(
+				context.Background(),
+				op.OrgName,
+				remoteRepoName,
+			)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get repository after retries: %w", err)
 	}
 
 	repo := git.NewGithubRepoFullId(githubRepo)
@@ -391,15 +398,26 @@ func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepo
 		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: setting repository variables")
 	if !svc.DryRun {
-		return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
-			RepositoryId:     &repoFullId,
-			Tenant:           op.Tenant,
-			FastFeedbackEnvs: op.FastFeedbackEnvs,
-			ExtendedTestEnvs: op.ExtendedTestEnvs,
-			ProdEnvs:         op.ProdEnvs,
-		}, svc.GithubClient)
+		return svc.synchronizeRepositoryWithRetry(op, repoFullId)
 	}
 	return nil
+}
+
+// synchronizeRepositoryWithRetry wraps the p2p.SynchronizeRepository call with retry logic
+func (svc *Service) synchronizeRepositoryWithRetry(op CreateOp, repoFullId git.GithubRepoFullId) error {
+	return git.RetryGitHubOperation(
+		func() error {
+			return p2p.SynchronizeRepository(&p2p.SynchronizeOp{
+				RepositoryId:     &repoFullId,
+				Tenant:           op.Tenant,
+				FastFeedbackEnvs: op.FastFeedbackEnvs,
+				ExtendedTestEnvs: op.ExtendedTestEnvs,
+				ProdEnvs:         op.ProdEnvs,
+			}, svc.GithubClient)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
+	)
 }
 
 func (svc *Service) moveGithubWorkflowsToRoot(path string, filePrefix string) error {

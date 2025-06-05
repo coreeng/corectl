@@ -5,9 +5,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"regexp"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -275,13 +276,20 @@ func cloneRepositories(
 ) (cloneRepositoriesResult, error) {
 	streams.Wizard("Cloning repositories", "Cloned repositories")
 	defer streams.CurrentHandler.Done()
-	cplatformGitHubRepo, _, err := githubClient.Repositories.Get(
-		context.Background(),
-		cplatformRepoFullname.Organization(),
-		cplatformRepoFullname.Name(),
+	// Use retry logic to handle potential propagation delays
+	cplatformGitHubRepo, _, err := git.RetryGitHubAPI(
+		func() (*github.Repository, *github.Response, error) {
+			return githubClient.Repositories.Get(
+				context.Background(),
+				cplatformRepoFullname.Organization(),
+				cplatformRepoFullname.Name(),
+			)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
 	)
 	if err != nil {
-		return cloneRepositoriesResult{}, err
+		return cloneRepositoriesResult{}, fmt.Errorf("failed to get cplatform repository after retries: %w", err)
 	}
 	cloneOpt := git.CloneOp{
 		URL:        cplatformGitHubRepo.GetCloneURL(),
@@ -294,13 +302,20 @@ func cloneRepositories(
 		return cloneRepositoriesResult{}, err
 	}
 
-	templatesGitHubRepo, _, err := githubClient.Repositories.Get(
-		context.Background(),
-		templatesRepoFullname.Organization(),
-		templatesRepoFullname.Name(),
+	// Use retry logic to handle potential propagation delays
+	templatesGitHubRepo, _, err := git.RetryGitHubAPI(
+		func() (*github.Repository, *github.Response, error) {
+			return githubClient.Repositories.Get(
+				context.Background(),
+				templatesRepoFullname.Organization(),
+				templatesRepoFullname.Name(),
+			)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
 	)
 	if err != nil {
-		return cloneRepositoriesResult{}, err
+		return cloneRepositoriesResult{}, fmt.Errorf("failed to get templates repository after retries: %w", err)
 	}
 	cloneOpt = git.CloneOp{
 		URL:        templatesGitHubRepo.GetCloneURL(),
