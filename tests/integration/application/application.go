@@ -79,18 +79,34 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		AfterAll(func(ctx SpecContext) {
-			Expect(githubClient.Repositories.Delete(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				newAppName,
-			)).Error().NotTo(HaveOccurred())
+			// Use retry logic for delete operation to handle propagation delays
+			err := git.RetryGitHubOperation(
+				func() error {
+					_, err := githubClient.Repositories.Delete(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						newAppName,
+					)
+					return err
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
 		It("created a new repository for the new app", func(ctx SpecContext) {
-			newAppRepo, _, err := githubClient.Repositories.Get(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				newAppName,
+			// Use retry logic to handle potential propagation delays
+			newAppRepo, _, err := git.RetryGitHubAPI(
+				func() (*github.Repository, *github.Response, error) {
+					return githubClient.Repositories.Get(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						newAppName,
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			newAppRepoId = newAppRepo.GetID()
@@ -249,11 +265,20 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(2*time.Minute))
 
 		AfterAll(func(ctx SpecContext) {
-			Expect(githubClient.Repositories.Delete(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				monorepoName,
-			)).Error().NotTo(HaveOccurred())
+			// Use retry logic for delete operation to handle propagation delays
+			err := git.RetryGitHubOperation(
+				func() error {
+					_, err := githubClient.Repositories.Delete(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						monorepoName,
+					)
+					return err
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
 		It("created a PR for the new app in the monorepo", func(ctx SpecContext) {
@@ -332,15 +357,23 @@ func createMonorepoRepositoryRemoteAndLocal(githubClient *github.Client, ctx con
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	_, _, err = githubClient.Repositories.CreateFile(
-		ctx,
-		cfg.GitHub.Organization.Value,
-		monorepoName,
-		"README.md",
-		&github.RepositoryContentFileOptions{
-			Message: github.String("Initial commit"),
-			Content: []byte("# Monorepo\n\nThis is a test monorepo."),
+	// Use retry logic for CreateFile operation to handle propagation delays
+	err = git.RetryGitHubOperation(
+		func() error {
+			_, _, err := githubClient.Repositories.CreateFile(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				monorepoName,
+				"README.md",
+				&github.RepositoryContentFileOptions{
+					Message: github.String("Initial commit"),
+					Content: []byte("# Monorepo\n\nThis is a test monorepo."),
+				},
+			)
+			return err
 		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
 	)
 	Expect(err).NotTo(HaveOccurred())
 

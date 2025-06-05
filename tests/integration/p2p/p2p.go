@@ -1,9 +1,11 @@
 package p2p
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"slices"
 	"time"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/coreeng/corectl/pkg/git"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -76,11 +78,20 @@ var _ = Describe("p2p", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		AfterAll(func(ctx SpecContext) {
-			Expect(githubClient.Repositories.Delete(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				appRepo,
-			)).Error().NotTo(HaveOccurred())
+			// Use retry logic for delete operation to handle propagation delays
+			err := git.RetryGitHubOperation(
+				func() error {
+					_, err := githubClient.Repositories.Delete(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						appRepo,
+					)
+					return err
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
 		It("checks repository variables", func(ctx SpecContext) {
