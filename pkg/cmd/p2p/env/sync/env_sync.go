@@ -3,8 +3,9 @@ package sync
 import (
 	"context"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"slices"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 
@@ -65,12 +66,19 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 
-	repository, _, err := githubClient.Repositories.Get(
-		context.Background(),
-		cfg.GitHub.Organization.Value,
-		opts.AppRepo)
+	// Use retry logic to handle potential propagation delays
+	repository, _, err := git.RetryGitHubAPI(
+		func() (*github.Repository, *github.Response, error) {
+			return githubClient.Repositories.Get(
+				context.Background(),
+				cfg.GitHub.Organization.Value,
+				opts.AppRepo)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get repository after retries: %w", err)
 	}
 
 	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
@@ -110,11 +118,16 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
 	}
-	if err = corep2p.SynchronizeRepository(
-		&op,
-		githubClient,
-	); err != nil {
-		return err
+	// Use retry logic for repository synchronization to handle propagation delays
+	err = git.RetryGitHubOperation(
+		func() error {
+			return corep2p.SynchronizeRepository(&op, githubClient)
+		},
+		git.DefaultMaxRetries,
+		git.DefaultBaseDelay,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to synchronize repository after retries: %w", err)
 	}
 	return nil
 }
