@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/template"
@@ -37,7 +36,11 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 			opts.TemplateName = args[0]
 			opts.TargetPath = args[1]
 			opts.TemplatesPath = cfg.Repositories.Templates.Value
-			return run(opts, cfg)
+
+			// Check if --templates flag was explicitly provided
+			templatesProvidedByFlag := cmd.Flags().Changed("templates")
+
+			return run(opts, cfg, templatesProvidedByFlag)
 		},
 	}
 
@@ -67,13 +70,10 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 	return templateRenderCmd
 }
 
-func run(opts TemplateRenderOpts, cfg *config.Config) error {
-	// Only update repositories if using the default templates path
+func run(opts TemplateRenderOpts, cfg *config.Config, customTemplatesProvided bool) error {
+	// Only update repositories if NOT using a custom templates path
 	// When a custom path is provided via --templates flag, skip the update
-	defaultTemplatesPath := configpath.GetCorectlTemplatesDir()
-	usingCustomTemplatesPath := opts.TemplatesPath != "" && opts.TemplatesPath != defaultTemplatesPath
-
-	if !usingCustomTemplatesPath {
+	if !customTemplatesProvided {
 		repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
 		err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 		if err != nil {

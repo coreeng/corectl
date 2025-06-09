@@ -1,10 +1,11 @@
 package render
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -64,7 +65,7 @@ var _ = Describe("Template Render", Ordered, func() {
 		cfg, err := config.DiscoverConfig()
 		assert.NoError(t, err)
 
-		err = run(opts, cfg)
+		err = run(opts, cfg, true)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, ".github", "workflows", "extended-test.yaml"))
@@ -85,7 +86,7 @@ var _ = Describe("Template Render", Ordered, func() {
 		cfg, err := config.DiscoverConfig()
 		assert.NoError(t, err)
 
-		err = run(opts, cfg)
+		err = run(opts, cfg, true)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("required argument name is missing"))
 	})
@@ -108,7 +109,7 @@ var _ = Describe("Template Render", Ordered, func() {
 		cfg, err := config.DiscoverConfig()
 		assert.NoError(t, err)
 
-		err = run(opts, cfg)
+		err = run(opts, cfg, true)
 		Expect(err).NotTo(HaveOccurred())
 
 		renderedContent, err := os.ReadFile(filepath.Join(targetDir, "args.txt"))
