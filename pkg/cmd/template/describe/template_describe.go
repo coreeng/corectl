@@ -27,17 +27,25 @@ func NewTemplateDescribeCmd(cfg *config.Config) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 			templateName := args[0]
-			if !opts.IgnoreChecks {
-				streams := userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
-				repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
-				err := config.Update(cfg.GitHub.Token.Value, streams, cfg.Repositories.AllowDirty.Value, repoParams)
-				if err != nil {
-					return fmt.Errorf("failed to update config repos: %w", err)
-				}
-			}
 			templatesPath := cfg.Repositories.Templates.Value
 			if templatesPath == "" {
 				templatesPath = configpath.GetCorectlTemplatesDir()
+			}
+			if !opts.IgnoreChecks {
+				// Skip repository update if a custom templates path was provided via --templates flag
+				// We check if the templates path differs from the default GetCorectlTemplatesDir()
+				defaultTemplatesPath := configpath.GetCorectlTemplatesDir()
+				if templatesPath != "" && templatesPath != defaultTemplatesPath {
+					// Using custom templates directory, skip repository update
+				} else {
+					// Using default templates directory, update repository
+					streams := userio.NewIOStreams(os.Stdin, os.Stdout, os.Stderr)
+					repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
+					err := config.Update(cfg.GitHub.Token.Value, streams, cfg.Repositories.AllowDirty.Value, repoParams)
+					if err != nil {
+						return fmt.Errorf("failed to update config repos: %w", err)
+					}
+				}
 			}
 			t, err := template.FindByName(templatesPath, templateName)
 			if err != nil {
