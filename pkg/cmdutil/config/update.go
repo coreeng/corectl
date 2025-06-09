@@ -3,11 +3,12 @@ package config
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/logger"
-	"path/filepath"
 )
 
 func Update(githubToken string, streams userio.IOStreams, ignoreDirty bool, repoParams []Parameter[string]) error {
