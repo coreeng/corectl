@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/template"
@@ -67,10 +68,17 @@ func NewTemplateRenderCmd(cfg *config.Config) *cobra.Command {
 }
 
 func run(opts TemplateRenderOpts, cfg *config.Config) error {
-	repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
-	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
-	if err != nil {
-		return fmt.Errorf("failed to update config repos: %w", err)
+	// Only update repositories if using the default templates path
+	// When a custom path is provided via --templates flag, skip the update
+	defaultTemplatesPath := configpath.GetCorectlTemplatesDir()
+	usingCustomTemplatesPath := opts.TemplatesPath != "" && opts.TemplatesPath != defaultTemplatesPath
+
+	if !usingCustomTemplatesPath {
+		repoParams := []config.Parameter[string]{cfg.Repositories.Templates}
+		err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
+		if err != nil {
+			return fmt.Errorf("failed to update config repos: %w", err)
+		}
 	}
 
 	stat, err := os.Stat(opts.TargetPath)
