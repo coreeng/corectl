@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/environment"
@@ -121,7 +122,7 @@ func active(opts ActiveOpt, environments []environment.Environment) error {
 		table.Render()
 	}
 	if opts.Restricted && !allHaveProxies {
-		return fmt.Errorf("Not all specified environments have active proxies")
+		return fmt.Errorf("not all specified environments have active proxies")
 	}
 
 	return nil

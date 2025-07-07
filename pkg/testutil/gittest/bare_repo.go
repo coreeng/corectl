@@ -1,16 +1,17 @@
 package gittest
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/onsi/gomega"
 
 	"github.com/coreeng/corectl/pkg/git"
 	gitcore "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
 )
 
@@ -108,14 +109,14 @@ func (r *BareRepository) LocalCloneUrl() string {
 
 func (r *BareRepository) AssertInSyncWith(localRepo *git.LocalRepository) {
 	referencesFromBareRepo, err := r.repo.References()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	err = referencesFromBareRepo.ForEach(func(referenceFromBareRepo *plumbing.Reference) error {
 		referenceFromLocalRepo, err := localRepo.Repository().Reference(referenceFromBareRepo.Name(), false)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(referenceFromLocalRepo.Hash()).To(Equal(referenceFromBareRepo.Hash()))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+		gomega.Expect(referenceFromLocalRepo.Hash()).To(gomega.Equal(referenceFromBareRepo.Hash()))
 		return nil
 	})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 }
 
 type ExpectedCommit struct {
@@ -126,18 +127,18 @@ type ExpectedCommit struct {
 func (ec *ExpectedCommit) AssertCommit(
 	c *object.Commit,
 ) {
-	Expect(c.Message).To(Equal(ec.Message))
+	gomega.Expect(c.Message).To(gomega.Equal(ec.Message))
 	var cleanedExpectedFilenames []string
 	for _, cf := range ec.ChangedFiles {
 		cleanedExpectedFilenames = append(cleanedExpectedFilenames, filepath.Clean(cf))
 	}
 	var fileNames []string
 	stats, err := c.Stats()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	for _, fileStat := range stats {
 		fileNames = append(fileNames, filepath.Clean(fileStat.Name))
 	}
-	Expect(fileNames).To(ConsistOf(cleanedExpectedFilenames))
+	gomega.Expect(fileNames).To(gomega.ConsistOf(cleanedExpectedFilenames))
 }
 
 type AssertCommitOp struct {
@@ -154,20 +155,20 @@ func (r *BareRepository) AssertCommits(
 	slices.Reverse(expectedCommits)
 
 	commit, err := r.repo.CommitObject(op.To)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	for _, expectedCommit := range expectedCommits {
-		Expect(commit).NotTo(BeNil())
+		gomega.Expect(commit).NotTo(gomega.BeNil())
 		expectedCommit.AssertCommit(commit)
 		if commit.NumParents() == 0 {
 			commit = nil
 			continue
 		} else {
-			Expect(commit.NumParents()).To(Equal(1))
+			gomega.Expect(commit.NumParents()).To(gomega.Equal(1))
 			commit, err = commit.Parent(0)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 		}
 	}
 	if op.From != nil {
-		Expect(*op.From).To(Equal(commit.Hash))
+		gomega.Expect(*op.From).To(gomega.Equal(commit.Hash))
 	}
 }

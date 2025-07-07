@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/config"
-	. "github.com/onsi/gomega"
 	"os"
 	"os/exec"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/onsi/gomega"
 )
 
 type CorectlClient struct {
@@ -52,12 +53,12 @@ func (c *CorectlClient) HomeDir() string {
 
 func (c *CorectlClient) ConfigPath() string {
 	configPath, err := config.Path()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return configPath
 }
 
 func (c *CorectlClient) Config() *config.Config {
 	cfg, err := config.ReadConfig(c.ConfigPath())
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return cfg
 }

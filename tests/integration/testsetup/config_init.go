@@ -1,14 +1,15 @@
 package testsetup
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 type CorectlConfigDetails struct {
@@ -20,10 +21,10 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlCon
 	initFilePath := filepath.Join(configpath.GetCorectlHomeDir(), "corectl-init.yaml")
 	err := testdata.RenderInitFile(
 		initFilePath,
-		testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
-		testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
+		testconfig.Cfg.CPlatformRepoFullId.HttpUrl(),
+		testconfig.Cfg.TemplatesRepoFullId.HttpUrl(),
 	)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return InitCorectlWithFile(corectl, initFilePath)
 }
 

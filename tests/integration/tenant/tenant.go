@@ -1,44 +1,45 @@
 package tenant
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"time"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
 	"github.com/google/go-github/v60/github"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
 )
 
-var _ = Describe("tenant", Ordered, func() {
+var _ = ginkgo.Describe("tenant", ginkgo.Ordered, func() {
 	var (
 		homeDir      string
 		corectl      *testconfig.CorectlClient
 		cfgDetails   *testsetup.CorectlConfigDetails
 		githubClient *github.Client
 	)
-	t := GinkgoT()
+	t := ginkgo.GinkgoT()
 
-	BeforeAll(func() {
+	ginkgo.BeforeAll(func() {
 		var err error
 		homeDir = t.TempDir()
 		configpath.SetCorectlHome(homeDir)
 		corectl = testconfig.NewCorectlClient(homeDir)
 		_, cfgDetails, err = testsetup.InitCorectl(corectl)
-		Expect(err).ToNot(HaveOccurred())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		githubClient = testconfig.NewGitHubClient()
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
-	Context("create", Ordered, func() {
+	ginkgo.Context("create", ginkgo.Ordered, func() {
 		var (
 			newTenantName string
 		)
 
-		BeforeAll(func() {
+		ginkgo.BeforeAll(func() {
 			newTenantName = "new-tenant-name-" + randstr.Hex(6)
 			_, err := corectl.Run(
 				"tenant", "create",
@@ -51,10 +52,10 @@ var _ = Describe("tenant", Ordered, func() {
 				"--admin-group", "ag",
 				"--readonly-group", "rg",
 				"--non-interactive")
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		It("created a PR in the CPlatform repository", func(ctx SpecContext) {
+		ginkgo.It("created a PR in the CPlatform repository", func(ctx ginkgo.SpecContext) {
 			prList, _, err := githubClient.PullRequests.List(
 				ctx,
 				cfgDetails.CPlatformRepoName.Organization(),
@@ -64,13 +65,13 @@ var _ = Describe("tenant", Ordered, func() {
 					Base: git.MainBranch,
 				},
 			)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prList).To(HaveLen(1))
-			Expect(prList[0]).NotTo(BeNil())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(prList).To(gomega.HaveLen(1))
+			gomega.Expect(prList[0]).NotTo(gomega.BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("New tenant: " + newTenantName))
-			Expect(pr.GetState()).To(Equal("open"))
+			gomega.Expect(pr.GetTitle()).To(gomega.Equal("New tenant: " + newTenantName))
+			gomega.Expect(pr.GetState()).To(gomega.Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
 				ctx,
@@ -79,12 +80,12 @@ var _ = Describe("tenant", Ordered, func() {
 				pr.GetNumber(),
 				&github.ListOptions{},
 			)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prFiles).To(HaveLen(1))
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(prFiles).To(gomega.HaveLen(1))
 			prFile := prFiles[0]
 
-			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".yaml"))
-		}, SpecTimeout(time.Minute))
+			gomega.Expect(prFile.GetStatus()).To(gomega.Equal("added"))
+			gomega.Expect(prFile.GetFilename()).To(gomega.Equal("tenants/tenants/parent/" + newTenantName + ".yaml"))
+		}, ginkgo.SpecTimeout(time.Minute))
 	})
 })

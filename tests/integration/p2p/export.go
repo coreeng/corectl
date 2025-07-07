@@ -14,13 +14,13 @@ import (
 	"github.com/coreeng/corectl/tests/integration/testsetup"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v60/github"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
 )
 
-var _ = Describe("export", Ordered, func() {
-	t := GinkgoT()
+var _ = ginkgo.Describe("export", ginkgo.Ordered, func() {
+	t := ginkgo.GinkgoT()
 	var (
 		corectl      *testconfig.CorectlClient
 		cfg          *config.Config
@@ -30,7 +30,7 @@ var _ = Describe("export", Ordered, func() {
 		appDir       string
 	)
 
-	BeforeAll(func(ctx SpecContext) {
+	ginkgo.BeforeAll(func(ctx ginkgo.SpecContext) {
 		homeDir := tmpDir(t)
 		configpath.SetCorectlHome(homeDir)
 		corectl, cfg = initCorectl(homeDir)
@@ -40,7 +40,7 @@ var _ = Describe("export", Ordered, func() {
 		env = defaultEnv(cfg.Repositories.CPlatform.Value)
 	})
 
-	AfterAll(func(ctx SpecContext) {
+	ginkgo.AfterAll(func(ctx ginkgo.SpecContext) {
 		// Use retry logic for delete operation to handle propagation delays
 		err := git.RetryGitHubOperation(
 			func() error {
@@ -54,47 +54,47 @@ var _ = Describe("export", Ordered, func() {
 			git.DefaultMaxRetries,
 			git.DefaultBaseDelay,
 		)
-		Expect(err).NotTo(HaveOccurred())
-	}, NodeTimeout(time.Minute))
+		gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	}, ginkgo.NodeTimeout(time.Minute))
 
-	Context("export", func() {
+	ginkgo.Context("export", func() {
 
 		var commitHash = func(repoPath string) string {
 			r, err := gogit.PlainOpen(repoPath)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			ref, err := r.Head()
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			return ref.Hash().String()[0:7]
 		}
 
 		var assertExportStatements = func(act string) {
-			Expect(act).To(SatisfyAll(
-				ContainSubstring("export REGION=\"%s\"", env.Platform.(*environment.GCPVendor).Region),
-				ContainSubstring("export REGISTRY=\"%s-docker.pkg.dev/%s/tenant/%s\"", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, testconfig.Cfg.Tenant),
-				ContainSubstring("export BASE_DOMAIN=\"%s\"", env.GetDefaultIngressDomain().Domain),
-				ContainSubstring("export REPO_PATH=\"%s\"", appDir),
-				ContainSubstring("export TENANT_NAME=\"%s\"", testconfig.Cfg.Tenant),
-				ContainSubstring("export VERSION=\"%s\"", commitHash(appDir))))
+			gomega.Expect(act).To(gomega.SatisfyAll(
+				gomega.ContainSubstring("export REGION=\"%s\"", env.Platform.(*environment.GCPVendor).Region),
+				gomega.ContainSubstring("export REGISTRY=\"%s-docker.pkg.dev/%s/tenant/%s\"", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, testconfig.Cfg.Tenant),
+				gomega.ContainSubstring("export BASE_DOMAIN=\"%s\"", env.GetDefaultIngressDomain().Domain),
+				gomega.ContainSubstring("export REPO_PATH=\"%s\"", appDir),
+				gomega.ContainSubstring("export TENANT_NAME=\"%s\"", testconfig.Cfg.Tenant),
+				gomega.ContainSubstring("export VERSION=\"%s\"", commitHash(appDir))))
 		}
 
-		Context("print out env variables", func() {
-			It("as export statements", func() {
+		ginkgo.Context("print out env variables", func() {
+			ginkgo.It("as export statements", func() {
 				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir)
 
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				assertExportStatements(output)
 			})
-			It("with shorthand flags", func() {
+			ginkgo.It("with shorthand flags", func() {
 				output, err := corectl.Run("p2p", "export", "--non-interactive", "-t", testconfig.Cfg.Tenant, "-e", testdata.DevEnvironment(), "-r", appDir)
 
-				Expect(err).NotTo(HaveOccurred())
-				Expect(output).ToNot(BeEmpty())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
+				gomega.Expect(output).ToNot(gomega.BeEmpty())
 			})
 
-			It("defaulting to local dir when no repoPath flag passed", func() {
+			ginkgo.It("defaulting to local dir when no repoPath flag passed", func() {
 				output, err := corectl.RunInDir(appDir, "p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment())
 
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 				assertExportStatements(output)
 			})
 		})
@@ -104,7 +104,7 @@ var _ = Describe("export", Ordered, func() {
 func initCorectl(homeDir string) (*testconfig.CorectlClient, *config.Config) {
 	corectl := testconfig.NewCorectlClient(homeDir)
 	cfg, _, err := testsetup.InitCorectl(corectl)
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	return corectl, cfg
 }
 
@@ -117,19 +117,19 @@ func onboardTestApp(homeDir string, appName string, corectl *testconfig.CorectlC
 		"--tenant", testconfig.Cfg.Tenant,
 		"--non-interactive",
 		"--log-level=panic")
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	return appDir
 }
 
 // macOS has a symlink from /var -> private/var causing a wrong app dir path, ensure we're using actual path
-func tmpDir(t GinkgoTInterface) string {
+func tmpDir(t ginkgo.GinkgoTInterface) string {
 	d, err := filepath.EvalSymlinks(t.TempDir())
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	return d
 }
 
 func defaultEnv(cPlatRepoPath string) *environment.Environment {
 	e, err := environment.FindByName(configpath.GetCorectlCPlatformDir("environments"), testdata.DevEnvironment())
-	Expect(err).ToNot(HaveOccurred())
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	return e
 }

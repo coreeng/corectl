@@ -74,14 +74,18 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 		if err != nil {
 			logger.Fatal().With(zap.Error(err)).Msg("failed to create listener from file descriptor")
 		}
-		fileListener.Close()
+		if err := fileListener.Close(); err != nil {
+			logger.Warn().With(zap.Error(err)).Msg("failed to close file listener")
+		}
 	}
 
 	executionFinished := make(chan error)
 	go func() {
 		if execute != nil {
 			err := execute()
-			listener.Close()
+			if closeErr := listener.Close(); closeErr != nil {
+				logger.Warn().With(zap.Error(closeErr)).Msg("failed to close listener")
+			}
 			executionFinished <- err
 		}
 	}()
@@ -114,7 +118,11 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 func testConn(ctx context.Context, opts []iap.DialOption) error {
 	tun, err := iap.Dial(ctx, opts...)
 	if tun != nil {
-		defer tun.Close()
+		defer func() {
+			if closeErr := tun.Close(); closeErr != nil {
+				logger.Warn().With(zap.Error(closeErr)).Msg("failed to close tunnel in testConn")
+			}
+		}()
 	}
 	return err
 }
@@ -127,7 +135,11 @@ func handleClient(ctx context.Context, opts []iap.DialOption, conn net.Conn) {
 		logger.Error().With(zap.Error(err)).Msgf("Failed to connect to IAP for client: %s", conn.RemoteAddr())
 		return
 	}
-	defer tun.Close()
+	defer func() {
+		if closeErr := tun.Close(); closeErr != nil {
+			logger.Warn().With(zap.Error(closeErr)).Msg("failed to close tunnel in handleClient")
+		}
+	}()
 
 	logger.Debug().Msgf("iap dialed: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr())
 

@@ -2,12 +2,13 @@ package httpmock
 
 import (
 	"encoding/json"
-	"github.com/google/go-github/v60/github"
-	. "github.com/onsi/gomega"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/google/go-github/v60/github"
+	"github.com/onsi/gomega"
 )
 
 type ActionVariableRequest struct {
@@ -20,9 +21,9 @@ func NewCreateActionVariablesCapture() *HttpCaptureHandler[ActionVariableRequest
 	return NewCaptureHandlerWithMappingFns(
 		func(r *http.Request) ActionVariableRequest {
 			body, err := io.ReadAll(r.Body)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			var v github.ActionsVariable
-			Expect(json.Unmarshal(body, &v)).To(Succeed())
+			gomega.Expect(json.Unmarshal(body, &v)).To(gomega.Succeed())
 
 			urlPathParts := strings.Split(r.URL.Path, "/")
 			return ActionVariableRequest{
@@ -48,9 +49,9 @@ func NewCreateUpdateEnvCapture() *HttpCaptureHandler[CreateUpdateEnvRequest] {
 	return NewCaptureHandlerWithMappingFns(
 		func(r *http.Request) CreateUpdateEnvRequest {
 			body, err := io.ReadAll(r.Body)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			var e github.CreateUpdateEnvironment
-			Expect(json.Unmarshal(body, &e)).To(Succeed())
+			gomega.Expect(json.Unmarshal(body, &e)).To(gomega.Succeed())
 
 			urlPathParts := strings.Split(r.URL.Path, "/")
 			return CreateUpdateEnvRequest{
@@ -81,13 +82,13 @@ func NewCreateActionEnvVariablesCapture() *HttpCaptureHandler[ActionEnvVariableR
 	return NewCaptureHandlerWithMappingFns(
 		func(r *http.Request) ActionEnvVariableRequest {
 			body, err := io.ReadAll(r.Body)
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			var v github.ActionsVariable
-			Expect(json.Unmarshal(body, &v)).To(Succeed())
+			gomega.Expect(json.Unmarshal(body, &v)).To(gomega.Succeed())
 
 			urlPathParts := strings.Split(r.URL.Path, "/")
 			id, err := strconv.Atoi(urlPathParts[2])
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			return ActionEnvVariableRequest{
 				RepoID:  int64(id),
 				EnvName: urlPathParts[4],

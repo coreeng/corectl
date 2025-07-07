@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 )
 
 type HttpCaptureHandler[REQ any] struct {
@@ -23,7 +23,7 @@ func NewCaptureHandler[REQ any](
 	nextResponseI := 0
 	return NewCaptureHandlerWithResponseFn(
 		func(_ *REQ) any {
-			Expect(nextResponseI).To(BeNumerically("<", len(responses)), "unexpected amount of requests to http mock: %s", nextResponseI)
+			gomega.Expect(nextResponseI).To(gomega.BeNumerically("<", len(responses)), "unexpected amount of requests to http mock: %s", nextResponseI)
 			defer func() {
 				nextResponseI += 1
 			}()
@@ -40,8 +40,8 @@ func NewCaptureHandlerWithResponseFn[REQ any](
 			var req REQ
 			if r.Body != nil && r.ContentLength > 0 {
 				body, err := io.ReadAll(r.Body)
-				Expect(err).NotTo(HaveOccurred(), "couldn't read request body from http mock")
-				Expect(json.Unmarshal(body, &req)).To(Succeed(), "couldn't unmarshal http mock request body as json")
+				gomega.Expect(err).NotTo(gomega.HaveOccurred(), "couldn't read request body from http mock")
+				gomega.Expect(json.Unmarshal(body, &req)).To(gomega.Succeed(), "couldn't unmarshal http mock request body as json")
 			} else {
 				req = *new(REQ)
 			}
@@ -62,9 +62,9 @@ func NewCaptureHandlerWithMappingFns[REQ any](
 
 		response := provideResponseFn(&req)
 		marshalledResponse, err := json.Marshal(response)
-		Expect(err).NotTo(HaveOccurred(), "couldn't marshal response for http mock")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "couldn't marshal response for http mock")
 		_, err = w.Write(marshalledResponse)
-		Expect(err).NotTo(HaveOccurred(), "couldn't write response for http mock")
+		gomega.Expect(err).NotTo(gomega.HaveOccurred(), "couldn't write response for http mock")
 	}
 	h.handler = f
 	return h

@@ -1,30 +1,30 @@
 package config
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	. "github.com/onsi/ginkgo/v2"
-
-	. "github.com/onsi/gomega"
+	"github.com/onsi/ginkgo/v2"
+	"github.com/onsi/gomega"
 )
 
-var _ = Describe("config", Ordered, func() {
+var _ = ginkgo.Describe("config", ginkgo.Ordered, func() {
 	var (
 		homeDir, configPath, initConfigPath string
 		corectl                             *testconfig.CorectlClient
 	)
 
-	t := GinkgoT()
+	t := ginkgo.GinkgoT()
 
-	BeforeAll(func() {
+	ginkgo.BeforeAll(func() {
 		homeDir = t.TempDir()
 		configpath.SetCorectlHome(homeDir)
 		configPath = filepath.Join(homeDir, "corectl.yaml")
@@ -33,111 +33,111 @@ var _ = Describe("config", Ordered, func() {
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
-	Context("init", Ordered, func() {
+	ginkgo.Context("init", ginkgo.Ordered, func() {
 		var (
 			cfg *config.Config
 		)
 
-		Context("errors", func() {
-			AfterEach(func() {
-				Expect(os.RemoveAll(filepath.Join(homeDir, "repositories"))).ToNot(HaveOccurred())
+		ginkgo.Context("errors", func() {
+			ginkgo.AfterEach(func() {
+				gomega.Expect(os.RemoveAll(filepath.Join(homeDir, "repositories"))).ToNot(gomega.HaveOccurred())
 			})
-			It("returns meaningful error when cplatform repository already exist", func() {
+			ginkgo.It("returns meaningful error when cplatform repository already exist", func() {
 				cloneOpt := cloneGit(testconfig.Cfg.CPlatformRepoFullId, configpath.GetCorectlCPlatformDir())
 
 				_, _, err := testsetup.InitCorectl(corectl)
 
-				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories", cloneOpt.URL, cloneOpt.TargetPath))
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories", cloneOpt.URL, cloneOpt.TargetPath))
 			})
-			It("returns meaningful error when templates repository already exist", func() {
+			ginkgo.It("returns meaningful error when templates repository already exist", func() {
 				cloneOpt := cloneGit(testconfig.Cfg.TemplatesRepoFullId, configpath.GetCorectlTemplatesDir())
 
 				_, _, err := testsetup.InitCorectl(corectl)
 
-				Expect(err.Error()).To(ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories, alternatively to initialise again delete corectl config dir at \"%s\" and run `corectl config init`", cloneOpt.URL, cloneOpt.TargetPath, homeDir))
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("Error: repoUrl \"%s.git\", target dir \"%s\": failed to clone repository: repository already exists: initialised already? run `corectl config update` to update repositories, alternatively to initialise again delete corectl config dir at \"%s\" and run `corectl config init`", cloneOpt.URL, cloneOpt.TargetPath, homeDir))
 			})
-			It("returns meaningful error when invalid templates remote repository configuration", func() {
+			ginkgo.It("returns meaningful error when invalid templates remote repository configuration", func() {
 				err := testdata.RenderInitFile(
 					initConfigPath,
-					testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
+					testconfig.Cfg.CPlatformRepoFullId.HttpUrl(),
 					"",
 				)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _, err = testsetup.InitCorectlWithFile(corectl, initConfigPath)
 
-				Expect(err.Error()).To(ContainSubstring("Error: init config key \"templates\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("Error: init config key \"templates\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
 			})
-			It("returns meaningful error when invalid cplatform remote repository configuration", func() {
+			ginkgo.It("returns meaningful error when invalid cplatform remote repository configuration", func() {
 				err := testdata.RenderInitFile(
 					initConfigPath,
 					"",
-					testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
+					testconfig.Cfg.TemplatesRepoFullId.HttpUrl(),
 				)
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 				_, _, err = testsetup.InitCorectlWithFile(corectl, initConfigPath)
 
-				Expect(err.Error()).To(ContainSubstring("Error: init config key \"cplatform\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("Error: init config key \"cplatform\" invalid, path \"%s\": unexpected url \"\"", initConfigPath))
 			})
 		})
-		Context("successfully initialise", func() {
-			BeforeAll(func() {
+		ginkgo.Context("successfully initialise", func() {
+			ginkgo.BeforeAll(func() {
 				var err error
 				cfg, _, err = testsetup.InitCorectl(corectl)
-				Expect(err).ToNot(HaveOccurred())
+				gomega.Expect(err).ToNot(gomega.HaveOccurred())
 			})
 
-			It("created config file", func() {
-				Expect(cfg.Path()).To(Equal(configPath))
-				Expect(cfg).NotTo(BeNil())
-				Expect(cfg.IsPersisted()).To(BeTrue())
-				Expect(cfg.GitHub.Organization.Value).To(Equal(testconfig.Cfg.GitHubOrg))
-				Expect(cfg.GitHub.Token.Value).To(Equal(testconfig.Cfg.GitHubToken))
-				Expect(cfg.P2P.FastFeedback.DefaultEnvs.Value).To(ConsistOf(testdata.DevEnvironment()))
-				Expect(cfg.P2P.ExtendedTest.DefaultEnvs.Value).To(ConsistOf(testdata.DevEnvironment()))
-				Expect(cfg.P2P.Prod.DefaultEnvs.Value).To(ConsistOf(testdata.ProdEnvironment()))
+			ginkgo.It("created config file", func() {
+				gomega.Expect(cfg.Path()).To(gomega.Equal(configPath))
+				gomega.Expect(cfg).NotTo(gomega.BeNil())
+				gomega.Expect(cfg.IsPersisted()).To(gomega.BeTrue())
+				gomega.Expect(cfg.GitHub.Organization.Value).To(gomega.Equal(testconfig.Cfg.GitHubOrg))
+				gomega.Expect(cfg.GitHub.Token.Value).To(gomega.Equal(testconfig.Cfg.GitHubToken))
+				gomega.Expect(cfg.P2P.FastFeedback.DefaultEnvs.Value).To(gomega.ConsistOf(testdata.DevEnvironment()))
+				gomega.Expect(cfg.P2P.ExtendedTest.DefaultEnvs.Value).To(gomega.ConsistOf(testdata.DevEnvironment()))
+				gomega.Expect(cfg.P2P.Prod.DefaultEnvs.Value).To(gomega.ConsistOf(testdata.ProdEnvironment()))
 			})
-			It("cloned cplatform repository", func() {
+			ginkgo.It("cloned cplatform repository", func() {
 				repo, err := git.OpenLocalRepository(configpath.GetCorectlCPlatformDir(), false)
-				Expect(repo).NotTo(BeNil())
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(repo).NotTo(gomega.BeNil())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
-			It("cloned templates repository", func() {
+			ginkgo.It("cloned templates repository", func() {
 				repo, err := git.OpenLocalRepository(configpath.GetCorectlTemplatesDir(), false)
-				Expect(repo).NotTo(BeNil())
-				Expect(err).NotTo(HaveOccurred())
+				gomega.Expect(repo).NotTo(gomega.BeNil())
+				gomega.Expect(err).NotTo(gomega.HaveOccurred())
 			})
 		})
 	},
 	)
 
-	Context("update", Ordered, func() {
+	ginkgo.Context("update", ginkgo.Ordered, func() {
 		var (
 			originalCPlatformPullTimestamp time.Time
 			originalTemplatesPullTimestamp time.Time
 		)
-		BeforeAll(func() {
+		ginkgo.BeforeAll(func() {
 			var err error
 
 			originalCPlatformPullTimestamp, err = getLastPullTime(configpath.GetCorectlCPlatformDir())
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			originalTemplatesPullTimestamp, err = getLastPullTime(configpath.GetCorectlTemplatesDir())
-			Expect(err).NotTo(HaveOccurred())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 			_, err = corectl.Run("config", "update", "--non-interactive")
-			Expect(err).ToNot(HaveOccurred())
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		})
 
-		It("pulls configuration changes from remote configuration repositories", func() {
+		ginkgo.It("pulls configuration changes from remote configuration repositories", func() {
 			updateCPlatformPullTimestamp, err := getLastPullTime(configpath.GetCorectlCPlatformDir())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(originalCPlatformPullTimestamp.Before(updateCPlatformPullTimestamp)).To(BeTrue())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(originalCPlatformPullTimestamp.Before(updateCPlatformPullTimestamp)).To(gomega.BeTrue())
 
 			updatedTemplatesPullTimestamp, err := getLastPullTime(configpath.GetCorectlTemplatesDir())
-			Expect(err).NotTo(HaveOccurred())
-			Expect(originalTemplatesPullTimestamp.Before(updatedTemplatesPullTimestamp)).To(BeTrue())
+			gomega.Expect(err).NotTo(gomega.HaveOccurred())
+			gomega.Expect(originalTemplatesPullTimestamp.Before(updatedTemplatesPullTimestamp)).To(gomega.BeTrue())
 		})
 	})
 })
@@ -158,6 +158,6 @@ func cloneGit(repoId git.GithubRepoFullId, dstPath string) git.CloneOp {
 		Auth:       git.UrlTokenAuthMethod(testconfig.Cfg.GitHubToken),
 	}
 	_, err := git.CloneToLocalRepository(cloneOpt)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return cloneOpt
 }

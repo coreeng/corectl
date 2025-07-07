@@ -1,11 +1,12 @@
 package testsetup
 
 import (
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	. "github.com/onsi/gomega"
 	"os"
 	"path/filepath"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/onsi/gomega"
 )
 
 func SetupGitGlobalConfigFromCurrentToOtherHomeDir(destHomeDir string) {
@@ -20,7 +21,7 @@ func SetupGitGlobalConfigFromCurrentToOtherHomeDir(destHomeDir string) {
 		}
 	}
 	existingConfig, err := config.LoadConfig(config.GlobalScope)
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	saveAsNewConfig(destHomeDir, existingConfig)
 }
 
@@ -28,25 +29,25 @@ func SetupGitRepoConfigFromOtherRepo(sourceRepoDir string, destRepo *git.Reposit
 	sourceRepo, err := git.PlainOpenWithOptions(sourceRepoDir, &git.PlainOpenOptions{
 		DetectDotGit: true,
 	})
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	sourceCfg, err := sourceRepo.Config()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	destCfg, err := destRepo.Config()
-	Expect(err).NotTo(HaveOccurred())
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	copyConfigData(sourceCfg, destCfg)
-	Expect(destRepo.SetConfig(destCfg)).To(Succeed())
+	gomega.Expect(destRepo.SetConfig(destCfg)).To(gomega.Succeed())
 }
 
 func saveAsNewConfig(destHomeDir string, existingConfig *config.Config) {
 	newConfig := config.NewConfig()
 	copyConfigData(existingConfig, newConfig)
 	marshalledCfg, err := newConfig.Marshal()
-	Expect(err).NotTo(HaveOccurred())
-	Expect(os.WriteFile(
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+	gomega.Expect(os.WriteFile(
 		filepath.Join(destHomeDir, ".gitconfig"),
 		marshalledCfg,
 		0o644,
-	)).To(Succeed())
+	)).To(gomega.Succeed())
 }
 
 func copyConfigData(sourceCfg *config.Config, destCfg *config.Config) {

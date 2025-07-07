@@ -10,7 +10,9 @@ func GetCorectlCacheDir() string {
 }
 
 func SetCorectlHome(path string) {
-	os.Setenv(`CORECTL_HOME`, path)
+	if err := os.Setenv(`CORECTL_HOME`, path); err != nil {
+		panic("Unable to set CORECTL_HOME environment variable: " + err.Error())
+	}
 }
 
 func GetCorectlHomeDir() string {

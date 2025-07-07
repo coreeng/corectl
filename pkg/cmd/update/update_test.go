@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -164,7 +165,12 @@ var _ = Describe("corectl update", func() {
 		})
 
 		It("successfully writes corectl binary to the specified path", func() {
-			defer tmpFile.Close()
+			defer func() {
+				if err := tmpFile.Close(); err != nil {
+					// Test cleanup - log but don't fail
+					fmt.Printf("Warning: could not close tmp file: %v\n", err)
+				}
+			}()
 			mockTarGz := createMockTarGz("corectl", []byte("mock binary content"))
 			gzipReader, err := gzip.NewReader(bytes.NewReader(mockTarGz.Bytes()))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -186,7 +192,11 @@ var _ = Describe("corectl update", func() {
 		})
 
 		It("returns an error when writing fails", func() {
-			defer tmpFile.Close()
+			defer func() {
+				if err := tmpFile.Close(); err != nil {
+					fmt.Printf("Warning: could not close tmp file: %v\n", err)
+				}
+			}()
 			mockReader := strings.NewReader("mock binary content")
 			tmpPath = "/non-existent-dir/corectl"
 
@@ -230,8 +240,10 @@ func createMockTarGz(filename string, content []byte) *bytes.Buffer {
 	_, err = tw.Write(content)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	tw.Close()
-	gzw.Close()
+	err = tw.Close()
+	Expect(err).ShouldNot(HaveOccurred())
+	err = gzw.Close()
+	Expect(err).ShouldNot(HaveOccurred())
 
 	return &buf
 }
