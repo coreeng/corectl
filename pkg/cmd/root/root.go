@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/cmd/auth"
 	"github.com/coreeng/corectl/pkg/cmd/env"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
@@ -113,6 +114,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd.AddCommand(appCmd)
 	rootCmd.AddCommand(p2pCmd)
 
+	rootCmd.AddCommand(auth.NewAuthCmd(cfg))
 	rootCmd.AddCommand(configcmd.NewConfigCmd(cfg))
 	rootCmd.AddCommand(env.NewEnvCmd(cfg))
 	rootCmd.AddCommand(tenant.NewTenantCmd(cfg))

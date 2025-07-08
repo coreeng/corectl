@@ -3,9 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
@@ -104,6 +105,7 @@ type Config struct {
 	GitHub       GitHubConfig       `yaml:"github"`
 	Repositories RepositoriesConfig `yaml:"repositories"`
 	P2P          P2PConfig          `yaml:"p2p"`
+	OAuth2       OAuth2Config       `yaml:"oauth2"`
 	path         string
 }
 
@@ -126,6 +128,13 @@ type P2PConfig struct {
 
 type P2PStageConfig struct {
 	DefaultEnvs Parameter[[]string] `yaml:"default-envs"`
+}
+
+type OAuth2Config struct {
+	IDToken      Parameter[string] `yaml:"id-token"`
+	AccessToken  Parameter[string] `yaml:"access-token"`
+	RefreshToken Parameter[string] `yaml:"refresh-token"`
+	TokenExpiry  Parameter[string] `yaml:"token-expiry"`
 }
 
 func NewConfig() *Config {
@@ -155,6 +164,24 @@ func NewConfig() *Config {
 				name: "Allow dirty config repositories",
 				flag: "allow-dirty-config-repos",
 				help: "Allow local changes in configuration repositories",
+			},
+		},
+		OAuth2: OAuth2Config{
+			IDToken: Parameter[string]{
+				name: "OAuth2 ID token",
+				help: "OAuth2 ID token for IAP authentication",
+			},
+			AccessToken: Parameter[string]{
+				name: "OAuth2 access token",
+				help: "OAuth2 access token for API authentication",
+			},
+			RefreshToken: Parameter[string]{
+				name: "OAuth2 refresh token",
+				help: "OAuth2 refresh token for token renewal",
+			},
+			TokenExpiry: Parameter[string]{
+				name: "OAuth2 token expiry",
+				help: "OAuth2 token expiry time in RFC3339 format",
 			},
 		},
 		path: "",
