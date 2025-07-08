@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -237,6 +239,165 @@ func TestCreateIAPTransport(t *testing.T) {
 				require.True(t, ok)
 				assert.Equal(t, tt.cfg.OAuth2.IDToken.Value, iapTransport.IDToken)
 			}
+		})
+	}
+}
+
+func TestGetOAuthCredentials(t *testing.T) {
+	// Save original environment
+	originalClientID := os.Getenv("OAUTH_CLIENT_ID")
+	originalClientSecret := os.Getenv("OAUTH_CLIENT_SECRET")
+	defer func() {
+		os.Setenv("OAUTH_CLIENT_ID", originalClientID)
+		os.Setenv("OAUTH_CLIENT_SECRET", originalClientSecret)
+	}()
+
+	tests := []struct {
+		name           string
+		setupEnv       func()
+		expectError    bool
+		expectedID     string
+		expectedSecret string
+	}{
+		{
+			name: "env vars set",
+			setupEnv: func() {
+				os.Setenv("OAUTH_CLIENT_ID", "test-client-id")
+				os.Setenv("OAUTH_CLIENT_SECRET", "test-client-secret")
+			},
+			expectError:    false,
+			expectedID:     "test-client-id",
+			expectedSecret: "test-client-secret",
+		},
+		{
+			name: "client ID without secret",
+			setupEnv: func() {
+				os.Setenv("OAUTH_CLIENT_ID", "test-client-id")
+				os.Unsetenv("OAUTH_CLIENT_SECRET")
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupEnv()
+
+			clientID, clientSecret, err := getOAuthCredentials()
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedID, clientID)
+				assert.Equal(t, tt.expectedSecret, clientSecret)
+			}
+		})
+	}
+}
+
+func TestGetIDTokenWithAutomaticRefresh(t *testing.T) {
+	// Save original environment
+	originalClientID := os.Getenv("OAUTH_CLIENT_ID")
+	originalClientSecret := os.Getenv("OAUTH_CLIENT_SECRET")
+	defer func() {
+		os.Setenv("OAUTH_CLIENT_ID", originalClientID)
+		os.Setenv("OAUTH_CLIENT_SECRET", originalClientSecret)
+	}()
+
+	tests := []struct {
+		name        string
+		setupEnv    func()
+		cfg         *config.Config
+		setupServer func() *httptest.Server
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "expired token, credentials available, refresh fails - should fail",
+			setupEnv: func() {
+				os.Setenv("OAUTH_CLIENT_ID", "test-client-id")
+				os.Setenv("OAUTH_CLIENT_SECRET", "test-client-secret")
+			},
+			cfg: &config.Config{
+				OAuth2: config.OAuth2Config{
+					IDToken:      config.Parameter[string]{Value: "expired-token"},
+					TokenExpiry:  config.Parameter[string]{Value: time.Now().Add(-time.Hour).Format(time.RFC3339)},
+					RefreshToken: config.Parameter[string]{Value: "invalid-refresh-token"},
+				},
+			},
+			expectError: true,
+			errorMsg:    "ID token has expired and refresh failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupEnv()
+
+			token, err := GetIDToken(tt.cfg)
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				require.NoError(t, err)
+				assert.NotEmpty(t, token)
+			}
+		})
+	}
+}
+
+func TestIsAuthenticatedWithAutomaticRefresh(t *testing.T) {
+	// Save original environment
+	originalClientID := os.Getenv("OAUTH_CLIENT_ID")
+	originalClientSecret := os.Getenv("OAUTH_CLIENT_SECRET")
+	defer func() {
+		os.Setenv("OAUTH_CLIENT_ID", originalClientID)
+		os.Setenv("OAUTH_CLIENT_SECRET", originalClientSecret)
+	}()
+
+	tests := []struct {
+		name     string
+		setupEnv func()
+		cfg      *config.Config
+		expected bool
+	}{
+		{
+			name: "expired token, credentials available, invalid refresh token - should return false",
+			setupEnv: func() {
+				os.Setenv("OAUTH_CLIENT_ID", "test-client-id")
+				os.Setenv("OAUTH_CLIENT_SECRET", "test-client-secret")
+			},
+			cfg: &config.Config{
+				OAuth2: config.OAuth2Config{
+					IDToken:      config.Parameter[string]{Value: "expired-token"},
+					TokenExpiry:  config.Parameter[string]{Value: time.Now().Add(-time.Hour).Format(time.RFC3339)},
+					RefreshToken: config.Parameter[string]{Value: "invalid-refresh-token"},
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "valid token - should return true",
+			setupEnv: func() {
+				os.Unsetenv("OAUTH_CLIENT_ID")
+				os.Unsetenv("OAUTH_CLIENT_SECRET")
+			},
+			cfg: &config.Config{
+				OAuth2: config.OAuth2Config{
+					IDToken:     config.Parameter[string]{Value: "valid-token"},
+					TokenExpiry: config.Parameter[string]{Value: time.Now().Add(time.Hour).Format(time.RFC3339)},
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupEnv()
+
+			result := IsAuthenticated(tt.cfg)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

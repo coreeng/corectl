@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
@@ -26,28 +27,66 @@ type IDTokenClaims struct {
 	EmailVerified bool   `json:"email_verified"`
 }
 
-// GetIDToken retrieves the stored ID token from config
+// GetIDToken retrieves the stored ID token from config, automatically refreshing if expired
 func GetIDToken(cfg *config.Config) (string, error) {
 	idToken := cfg.OAuth2.IDToken.Value
 	if idToken == "" {
 		return "", fmt.Errorf("no ID token found. Please run 'corectl auth login' to authenticate")
 	}
 
-	// Check if token is expired
+	// Check if token is expired and try to refresh
 	if isTokenExpired(cfg) {
-		return "", fmt.Errorf("ID token has expired. Please run 'corectl auth login' to re-authenticate")
+		// Try to refresh the token automatically
+		clientID, clientSecret, err := getOAuthCredentials()
+		if err != nil {
+			logger.Debug().Msgf("Could not get OAuth credentials for automatic refresh: %v", err)
+			return "", fmt.Errorf("ID token has expired. Please run 'corectl auth login' to re-authenticate")
+		}
+
+		logger.Debug().Msg("ID token expired, attempting automatic refresh")
+		if err := RefreshToken(cfg, clientID, clientSecret); err != nil {
+			logger.Debug().Msgf("Automatic token refresh failed: %v", err)
+			return "", fmt.Errorf("ID token has expired and refresh failed. Please run 'corectl auth login' to re-authenticate")
+		}
+
+		// Get the refreshed token
+		idToken = cfg.OAuth2.IDToken.Value
+		if idToken == "" {
+			return "", fmt.Errorf("token refresh succeeded but no ID token received. Please run 'corectl auth login' to re-authenticate")
+		}
+
+		logger.Debug().Msg("Token automatically refreshed successfully")
 	}
 
 	return idToken, nil
 }
 
-// IsAuthenticated checks if the user is authenticated with a valid token
+// IsAuthenticated checks if the user is authenticated with a valid token, attempting refresh if expired
 func IsAuthenticated(cfg *config.Config) bool {
 	if cfg.OAuth2.IDToken.Value == "" {
 		return false
 	}
 
-	return !isTokenExpired(cfg)
+	// If token is not expired, we're authenticated
+	if !isTokenExpired(cfg) {
+		return true
+	}
+
+	// Try to refresh the token automatically
+	clientID, clientSecret, err := getOAuthCredentials()
+	if err != nil {
+		logger.Debug().Msgf("Could not get OAuth credentials for automatic refresh: %v", err)
+		return false
+	}
+
+	logger.Debug().Msg("ID token expired, attempting automatic refresh for authentication check")
+	if err := RefreshToken(cfg, clientID, clientSecret); err != nil {
+		logger.Debug().Msgf("Automatic token refresh failed: %v", err)
+		return false
+	}
+
+	logger.Debug().Msg("Token automatically refreshed successfully")
+	return true
 }
 
 // isTokenExpired checks if the stored token is expired
@@ -187,4 +226,33 @@ func Logout(cfg *config.Config) error {
 	cfg.OAuth2.TokenExpiry.Value = ""
 
 	return cfg.Save()
+}
+
+// getOAuthCredentials attempts to get OAuth credentials from various sources
+func getOAuthCredentials() (string, string, error) {
+	// Try environment variables first
+	if clientID := os.Getenv("OAUTH_CLIENT_ID"); clientID != "" {
+		clientSecret := os.Getenv("OAUTH_CLIENT_SECRET")
+		if clientSecret == "" {
+			return "", "", fmt.Errorf("OAUTH_CLIENT_SECRET environment variable required when OAUTH_CLIENT_ID is set")
+		}
+		return clientID, clientSecret, nil
+	}
+
+	// Try to get from Google Application Default Credentials
+	if creds, err := google.FindDefaultCredentials(context.Background()); err == nil {
+		if creds.JSON != nil {
+			var credStruct struct {
+				ClientID     string `json:"client_id"`
+				ClientSecret string `json:"client_secret"`
+			}
+			if err := json.Unmarshal(creds.JSON, &credStruct); err == nil {
+				if credStruct.ClientID != "" && credStruct.ClientSecret != "" {
+					return credStruct.ClientID, credStruct.ClientSecret, nil
+				}
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("OAuth 2.0 client credentials not found. Please provide via OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET environment variables, or configure Google Application Default Credentials")
 }
