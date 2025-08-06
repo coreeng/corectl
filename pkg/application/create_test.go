@@ -2,11 +2,12 @@ package application
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
@@ -140,6 +141,7 @@ var _ = Describe("Create new application", func() {
 			localAppRepoDir = t.TempDir()
 			createResult, err = service.Create(CreateOp{
 				Name:             "new-app-name",
+				GitHubRepoName:   "",
 				OrgName:          "github-org-name",
 				LocalPath:        localAppRepoDir,
 				Tenant:           defaultTenant,
@@ -357,6 +359,7 @@ var _ = Describe("Create new application", func() {
 
 			createOp = CreateOp{
 				Name:             appName,
+				GitHubRepoName:   "",
 				OrgName:          "github-org-name",
 				LocalPath:        newAppLocalPath,
 				Tenant:           defaultTenant,
@@ -516,6 +519,7 @@ var _ = Describe("Create new application", func() {
 			executeCreate := func() {
 				createOp := CreateOp{
 					Name:             "app-with-error",
+					GitHubRepoName:   "",
 					OrgName:          "github-org-name",
 					LocalPath:        newAppLocalPath,
 					Tenant:           defaultTenant,

@@ -3,11 +3,12 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
@@ -28,13 +29,14 @@ import (
 )
 
 type AppCreateOpt struct {
-	Name         string
-	LocalPath    string
-	FromTemplate string
-	Tenant       string
-	ArgsFile     string
-	Args         []string
-	DryRun       bool
+	Name           string
+	LocalPath      string
+	FromTemplate   string
+	Tenant         string
+	GitHubRepoName string
+	ArgsFile       string
+	Args           []string
+	DryRun         bool
 
 	Streams userio.IOStreams
 }
@@ -94,6 +96,12 @@ NOTE:
 		"",
 		"",
 		"Tenant to configure for P2P",
+	)
+	appCreateCmd.Flags().StringVar(
+		&opts.GitHubRepoName,
+		"github-repo",
+		"",
+		"GitHub repository name (defaults to app name)",
 	)
 	appCreateCmd.Flags().StringVar(
 		&opts.ArgsFile,
@@ -159,7 +167,11 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	if isMonorepo {
 		msg = fmt.Sprintf("Creating new application %s in existing repo: https://github.com/%s/%s", opts.Name, repoOrg, repoName)
 	} else {
-		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, opts.Name)
+		githubRepoName := opts.GitHubRepoName
+		if githubRepoName == "" {
+			githubRepoName = opts.Name
+		}
+		msg = fmt.Sprintf("Creating new application %s: https://github.com/%s/%s", opts.Name, cfg.GitHub.Organization.Value, githubRepoName)
 	}
 
 	logger.Info().Msg(msg)
@@ -312,6 +324,7 @@ func createNewApp(
 	}
 	createOp := application.CreateOp{
 		Name:             opts.Name,
+		GitHubRepoName:   opts.GitHubRepoName,
 		OrgName:          newAppOrg,
 		LocalPath:        opts.LocalPath,
 		Tenant:           appTenant,
