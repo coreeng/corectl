@@ -34,6 +34,7 @@ type AppCreateOpt struct {
 	FromTemplate   string
 	Tenant         string
 	GitHubRepoName string
+	Description    string
 	ArgsFile       string
 	Args           []string
 	DryRun         bool
@@ -102,6 +103,12 @@ NOTE:
 		"github-repo",
 		"",
 		"GitHub repository name (defaults to app name)",
+	)
+	appCreateCmd.Flags().StringVar(
+		&opts.Description,
+		"description",
+		"",
+		"Description for the GitHub repository",
 	)
 	appCreateCmd.Flags().StringVar(
 		&opts.ArgsFile,
@@ -325,6 +332,7 @@ func createNewApp(
 	createOp := application.CreateOp{
 		Name:             opts.Name,
 		GitHubRepoName:   opts.GitHubRepoName,
+		Description:      opts.Description,
 		OrgName:          newAppOrg,
 		LocalPath:        opts.LocalPath,
 		Tenant:           appTenant,

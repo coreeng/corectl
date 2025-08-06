@@ -41,6 +41,7 @@ func NewService(templateRenderer render.TemplateRenderer, githubClient *github.C
 type CreateOp struct {
 	Name             string
 	GitHubRepoName   string
+	Description      string
 	OrgName          string
 	LocalPath        string
 	Tenant           *coretnt.Tenant
@@ -384,6 +385,9 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		Owner: &github.User{
 			Login: github.String(op.OrgName),
 		},
+	}
+	if op.Description != "" {
+		repo.Description = &op.Description
 	}
 	if !svc.DryRun {
 		githubRepo, _, err := svc.GithubClient.Repositories.Create(
