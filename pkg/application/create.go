@@ -40,6 +40,7 @@ func NewService(templateRenderer render.TemplateRenderer, githubClient *github.C
 
 type CreateOp struct {
 	Name             string
+	GitHubRepoName   string
 	OrgName          string
 	LocalPath        string
 	Tenant           *coretnt.Tenant
@@ -244,10 +245,15 @@ func (svc *Service) getRemoteRepositoryFullId(op CreateOp, localRepo *git.LocalR
 }
 
 func (svc *Service) createRemoteRepository(op CreateOp, localRepo *git.LocalRepository) (git.GithubRepoFullId, error) {
+	repoName := op.GitHubRepoName
+	if repoName == "" {
+		repoName = op.Name
+	}
 	logger.Info().With(zap.String("name", op.Name),
+		zap.String("github_repo_name", repoName),
 		zap.String("org", op.OrgName),
 		zap.Bool("dry_run", svc.DryRun)).
-		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, op.Name)
+		Msgf("creating github repository https://github.com/%s/%s", op.OrgName, repoName)
 
 	githubRepo, err := svc.createGithubRepository(op)
 	if err != nil {
@@ -358,8 +364,13 @@ func commitAllChanges(localRepo *git.LocalRepository, message string, allowEmpty
 }
 
 func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, error) {
+	repoName := op.GitHubRepoName
+	if repoName == "" {
+		repoName = op.Name
+	}
 	logger.Debug().With(
 		zap.String("name", op.Name),
+		zap.String("github_repo_name", repoName),
 		zap.String("org", op.OrgName),
 		zap.Bool("dry_run", svc.DryRun)).
 		Msg("github: create repository")
@@ -367,7 +378,7 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 	visibility := "private"
 	repo := github.Repository{
 		ID:                  github.Int64(1234),
-		Name:                &op.Name,
+		Name:                &repoName,
 		DeleteBranchOnMerge: &deleteBranchOnMerge,
 		Visibility:          &visibility,
 		Owner: &github.User{
@@ -513,20 +524,25 @@ func (svc *Service) ValidateCreate(op CreateOp) error {
 	}
 
 	if !isMonorepo {
+		repoName := op.GitHubRepoName
+		if repoName == "" {
+			repoName = op.Name
+		}
 		logger.Info().With(
 			zap.String("org", op.OrgName),
-			zap.String("name", op.Name)).
-			Msgf("checking github repo availability: https://github.com/%s/%s", op.OrgName, op.Name)
+			zap.String("name", op.Name),
+			zap.String("github_repo_name", repoName)).
+			Msgf("checking github repo availability: https://github.com/%s/%s", op.OrgName, repoName)
 		_, response, err := svc.GithubClient.Repositories.Get(
 			context.Background(),
 			op.OrgName,
-			op.Name,
+			repoName,
 		)
 		if err == nil {
-			return fmt.Errorf("%s/%s repository already exists", op.OrgName, op.Name)
+			return fmt.Errorf("%s/%s repository already exists", op.OrgName, repoName)
 		}
 		if response.StatusCode != http.StatusNotFound {
-			return fmt.Errorf("error while checking if https://github.com/%s/%s repository exists: status code %d, error: %v", op.OrgName, op.Name, response.StatusCode, err)
+			return fmt.Errorf("error while checking if https://github.com/%s/%s repository exists: status code %d, error: %v", op.OrgName, repoName, response.StatusCode, err)
 		}
 	}
 	return nil

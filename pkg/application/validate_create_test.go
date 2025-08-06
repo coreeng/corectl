@@ -62,9 +62,10 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		},
 		Entry("Valid operation",
 			application.CreateOp{
-				Tenant:    validTenant,
-				LocalPath: "/valid/path",
-				Name:      "new-app",
+				Tenant:         validTenant,
+				LocalPath:      "/valid/path",
+				Name:           "new-app",
+				GitHubRepoName: "",
 			},
 			false,
 			"",
@@ -72,7 +73,8 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		),
 		Entry("Missing tenant",
 			application.CreateOp{
-				LocalPath: "/valid/path",
+				LocalPath:      "/valid/path",
+				GitHubRepoName: "",
 			},
 			true,
 			"tenant is missing",
@@ -80,8 +82,9 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		),
 		Entry("Invalid tenant",
 			application.CreateOp{
-				Tenant:    &coretnt.Tenant{},
-				LocalPath: "/valid/path",
+				Tenant:         &coretnt.Tenant{},
+				LocalPath:      "/valid/path",
+				GitHubRepoName: "",
 			},
 			true,
 			"tenant is invalid",
@@ -91,6 +94,7 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 			application.CreateOp{
 				Tenant:           validTenant,
 				LocalPath:        "/valid/path",
+				GitHubRepoName:   "",
 				FastFeedbackEnvs: []environment.Environment{{Environment: "invalid"}},
 			},
 			true,
@@ -99,10 +103,11 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		),
 		Entry("Remote repository already exists",
 			application.CreateOp{
-				Tenant:    validTenant,
-				LocalPath: "/valid/path",
-				Name:      "new-app",
-				OrgName:   "test-org",
+				Tenant:         validTenant,
+				LocalPath:      "/valid/path",
+				Name:           "new-app",
+				GitHubRepoName: "",
+				OrgName:        "test-org",
 			},
 			true,
 			"test-org/new-app repository already exists",
@@ -117,10 +122,11 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		),
 		Entry("Error while checking repository existence",
 			application.CreateOp{
-				Tenant:    validTenant,
-				LocalPath: "/valid/path",
-				Name:      "new-app",
-				OrgName:   "test-org",
+				Tenant:         validTenant,
+				LocalPath:      "/valid/path",
+				Name:           "new-app",
+				GitHubRepoName: "",
+				OrgName:        "test-org",
 			},
 			true,
 			`status code 500.*internal server error`,
@@ -158,10 +164,11 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 		DescribeTable("should validate correctly",
 			func(repoExists bool) {
 				op := application.CreateOp{
-					Tenant:    validTenant,
-					LocalPath: filepath.Join(monorepoPath, "new-repo"),
-					OrgName:   "test-org",
-					Name:      "new-repo",
+					Tenant:         validTenant,
+					LocalPath:      filepath.Join(monorepoPath, "new-repo"),
+					OrgName:        "test-org",
+					Name:           "new-repo",
+					GitHubRepoName: "",
 				}
 
 				clientMock := mock.NewMockedHTTPClient()
@@ -184,5 +191,23 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 			Entry("when repository doesn't exist", false),
 			Entry("when repository exists", true),
 		)
+
+		It("validates with custom GitHub repo name", func() {
+			op := application.CreateOp{
+				Tenant:         validTenant,
+				LocalPath:      filepath.Join(monorepoPath, "new-repo"),
+				OrgName:        "test-org",
+				Name:           "app-name",
+				GitHubRepoName: "custom-repo-name",
+			}
+
+			testSvc := &application.Service{
+				GithubClient: github.NewClient(mock.NewMockedHTTPClient()),
+			}
+
+			// Should pass validation (no repo check for monorepo)
+			err := testSvc.ValidateCreate(op)
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 })
