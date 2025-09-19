@@ -104,7 +104,7 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 	additionalArgs := []template.Argument{
 		{
 			Name:  "working_directory",
-			Value: "./",
+			Value: "",
 		},
 		{
 			Name:  "version_prefix",
