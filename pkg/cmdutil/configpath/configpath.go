@@ -10,7 +10,7 @@ func GetCorectlCacheDir() string {
 }
 
 func SetCorectlHome(path string) {
-	os.Setenv(`CORECTL_HOME`, path)
+	_ = os.Setenv(`CORECTL_HOME`, path)
 }
 
 func GetCorectlHomeDir() string {

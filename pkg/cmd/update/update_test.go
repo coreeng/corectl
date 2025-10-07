@@ -164,7 +164,7 @@ var _ = Describe("corectl update", func() {
 		})
 
 		It("successfully writes corectl binary to the specified path", func() {
-			defer tmpFile.Close()
+			defer func() { _ = tmpFile.Close() }()
 			mockTarGz := createMockTarGz("corectl", []byte("mock binary content"))
 			gzipReader, err := gzip.NewReader(bytes.NewReader(mockTarGz.Bytes()))
 			Expect(err).ShouldNot(HaveOccurred())
@@ -186,7 +186,7 @@ var _ = Describe("corectl update", func() {
 		})
 
 		It("returns an error when writing fails", func() {
-			defer tmpFile.Close()
+			defer func() { _ = tmpFile.Close() }()
 			mockReader := strings.NewReader("mock binary content")
 			tmpPath = "/non-existent-dir/corectl"
 
@@ -230,8 +230,8 @@ func createMockTarGz(filename string, content []byte) *bytes.Buffer {
 	_, err = tw.Write(content)
 	Expect(err).ShouldNot(HaveOccurred())
 
-	tw.Close()
-	gzw.Close()
+	_ = tw.Close()
+	_ = gzw.Close()
 
 	return &buf
 }

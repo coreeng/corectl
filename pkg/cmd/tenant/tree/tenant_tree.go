@@ -2,8 +2,8 @@ package tree
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -72,7 +72,9 @@ func run(opts *TenantTreeOpts, cfg *config.Config) error {
 
 	_, lines := corectltnt.RenderTenantTree(rootNode)
 	for _, line := range lines {
-		fmt.Fprintln(opts.Streams.GetOutput(), line)
+		if _, err := fmt.Fprintln(opts.Streams.GetOutput(), line); err != nil {
+			return fmt.Errorf("failed to write tenant tree line: %w", err)
+		}
 	}
 	return nil
 }
