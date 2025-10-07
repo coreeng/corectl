@@ -18,11 +18,11 @@ jobs:
     name: Test
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: setup-go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: go-private-module-access
@@ -30,7 +30,7 @@ jobs:
           git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
           go mod download
       - name: lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
           args: --timeout=3m
       - name: test
@@ -44,14 +44,14 @@ jobs:
     needs: [test]
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: go-private-module-access
         run: |
           git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
       - name: setup-go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: integration-test
