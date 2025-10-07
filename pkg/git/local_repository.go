@@ -383,7 +383,7 @@ func (localRepo *LocalRepository) Pull(auth AuthMethod) (*PullResult, error) {
 	var (
 		gitAuth         transport.AuthMethod
 		err             error
-		alreadyUpToDate bool = false
+		alreadyUpToDate = false
 	)
 	if auth != nil {
 		gitAuth = auth.toGitAuthMethod()
