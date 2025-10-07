@@ -1,9 +1,9 @@
 package testsetup
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
@@ -20,8 +20,8 @@ func InitCorectl(corectl *testconfig.CorectlClient) (*config.Config, *CorectlCon
 	initFilePath := filepath.Join(configpath.GetCorectlHomeDir(), "corectl-init.yaml")
 	err := testdata.RenderInitFile(
 		initFilePath,
-		testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
-		testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
+		testconfig.Cfg.CPlatformRepoFullId.HttpUrl(),
+		testconfig.Cfg.TemplatesRepoFullId.HttpUrl(),
 	)
 	Expect(err).NotTo(HaveOccurred())
 	return InitCorectlWithFile(corectl, initFilePath)

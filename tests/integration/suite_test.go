@@ -98,8 +98,8 @@ func prepareTestRepository(
 			func() error {
 				_, err := githubClient.Repositories.Delete(
 					ctx,
-					repoFullId.RepositoryFullname.Organization(),
-					repoFullId.RepositoryFullname.Name(),
+					repoFullId.Organization(),
+					repoFullId.Name(),
 				)
 				return err
 			},
@@ -110,7 +110,7 @@ func prepareTestRepository(
 			// If delete still fails after retries, log a warning but don't fail the test
 			// The repository might have been manually deleted or there might be other issues
 			fmt.Printf("Warning: Failed to delete test repository %s after retries: %v\n",
-				repoFullId.RepositoryFullname.String(), err)
+				repoFullId.String(), err)
 		}
 	}, NodeTimeout(time.Minute))
 
