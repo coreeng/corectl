@@ -1,18 +1,20 @@
 package config
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	. "github.com/onsi/ginkgo/v2"
 
+	//nolint:staticcheck
+	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 )
 
@@ -59,7 +61,7 @@ var _ = Describe("config", Ordered, func() {
 			It("returns meaningful error when invalid templates remote repository configuration", func() {
 				err := testdata.RenderInitFile(
 					initConfigPath,
-					testconfig.Cfg.CPlatformRepoFullId.RepositoryFullname.HttpUrl(),
+					testconfig.Cfg.CPlatformRepoFullId.HttpUrl(),
 					"",
 				)
 				Expect(err).NotTo(HaveOccurred())
@@ -72,7 +74,7 @@ var _ = Describe("config", Ordered, func() {
 				err := testdata.RenderInitFile(
 					initConfigPath,
 					"",
-					testconfig.Cfg.TemplatesRepoFullId.RepositoryFullname.HttpUrl(),
+					testconfig.Cfg.TemplatesRepoFullId.HttpUrl(),
 				)
 				Expect(err).NotTo(HaveOccurred())
 

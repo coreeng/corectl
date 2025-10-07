@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver/v3"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/charmbracelet/glamour"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -89,7 +89,11 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 		logger.Warn().With(zap.Error(err)).Msgf("could not open file to set update status %s", tempFilePath)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			logger.Warn().With(zap.Error(closeErr)).Msgf("failed to close update status file: %s", tempFilePath)
+		}
+	}()
 
 	data, err := os.ReadFile(tempFilePath)
 	if err != nil {
@@ -482,7 +486,9 @@ func decompressCorectlAssetInMemory(tarData io.ReadCloser) (*tar.Reader, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gzip reader: %v", err)
 	}
-	defer gzr.Close()
+	defer func() {
+		_ = gzr.Close()
+	}()
 	tarReader := tar.NewReader(gzr)
 
 	for {

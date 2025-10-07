@@ -10,8 +10,10 @@ import (
 	gitcore "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
+
+	//nolint:staticcheck
+	. "github.com/onsi/gomega"
 )
 
 type BareRepository struct {

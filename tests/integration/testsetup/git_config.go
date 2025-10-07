@@ -1,11 +1,14 @@
 package testsetup
 
 import (
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-	. "github.com/onsi/gomega"
 	"os"
 	"path/filepath"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+
+	//nolint:staticcheck
+	. "github.com/onsi/gomega"
 )
 
 func SetupGitGlobalConfigFromCurrentToOtherHomeDir(destHomeDir string) {

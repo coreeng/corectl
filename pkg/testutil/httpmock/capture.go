@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 )
 

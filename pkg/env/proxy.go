@@ -74,14 +74,14 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 		if err != nil {
 			logger.Fatal().With(zap.Error(err)).Msg("failed to create listener from file descriptor")
 		}
-		fileListener.Close()
+		_ = fileListener.Close()
 	}
 
 	executionFinished := make(chan error)
 	go func() {
 		if execute != nil {
 			err := execute()
-			listener.Close()
+			_ = listener.Close()
 			executionFinished <- err
 		}
 	}()
@@ -114,7 +114,7 @@ func Listen(streams userio.IOStreams, opts EnvConnectOpts, ctx context.Context, 
 func testConn(ctx context.Context, opts []iap.DialOption) error {
 	tun, err := iap.Dial(ctx, opts...)
 	if tun != nil {
-		defer tun.Close()
+		defer func() { _ = tun.Close() }()
 	}
 	return err
 }
@@ -127,7 +127,7 @@ func handleClient(ctx context.Context, opts []iap.DialOption, conn net.Conn) {
 		logger.Error().With(zap.Error(err)).Msgf("Failed to connect to IAP for client: %s", conn.RemoteAddr())
 		return
 	}
-	defer tun.Close()
+	defer func() { _ = tun.Close() }()
 
 	logger.Debug().Msgf("iap dialed: client %s | %s -> %s (local)", conn.RemoteAddr(), tun.RemoteAddr(), tun.LocalAddr())
 

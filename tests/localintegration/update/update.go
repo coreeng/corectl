@@ -9,9 +9,12 @@ import (
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/shell"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"github.com/otiai10/copy"
+
+	//nolint:staticcheck
+	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("update", Ordered, func() {
