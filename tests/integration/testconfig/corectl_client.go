@@ -1,13 +1,16 @@
 package testconfig
 
 import (
+	"os"
+	"os/exec"
 	"bufio"
 	"bytes"
 	"fmt"
+
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
-	"os"
-	"os/exec"
 )
 
 type CorectlClient struct {

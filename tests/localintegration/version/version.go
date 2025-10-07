@@ -2,7 +2,10 @@ package version
 
 import (
 	"github.com/coreeng/corectl/tests/integration/testconfig"
+
+	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 )
 

@@ -8,6 +8,8 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
+
+	//nolint:staticcheck
 	. "github.com/onsi/gomega"
 )
 

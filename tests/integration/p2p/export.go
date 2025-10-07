@@ -14,9 +14,12 @@ import (
 	"github.com/coreeng/corectl/tests/integration/testsetup"
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v60/github"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	"github.com/thanhpk/randstr"
+
+	//nolint:staticcheck
+	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("export", Ordered, func() {
