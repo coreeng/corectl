@@ -63,7 +63,9 @@ var _ = Describe("export", Ordered, func() {
 	Context("export", func() {
 
 		var commitHash = func(repoPath string) string {
-			r, err := gogit.PlainOpen(repoPath)
+			r, err := gogit.PlainOpenWithOptions(repoPath, &gogit.PlainOpenOptions{
+				DetectDotGit: true,
+			})
 			Expect(err).NotTo(HaveOccurred())
 			ref, err := r.Head()
 			Expect(err).NotTo(HaveOccurred())
