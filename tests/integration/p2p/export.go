@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -73,13 +74,21 @@ var _ = Describe("export", Ordered, func() {
 		}
 
 		var assertExportStatements = func(act string) {
+			// Check that all required environment variables are present in the export output
+			// Note: shellquote may or may not add quotes depending on the value content
 			Expect(act).To(SatisfyAll(
-				ContainSubstring("export REGION=\"%s\"", env.Platform.(*environment.GCPVendor).Region),
-				ContainSubstring("export REGISTRY=\"%s-docker.pkg.dev/%s/tenant/%s\"", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, testconfig.Cfg.Tenant),
-				ContainSubstring("export BASE_DOMAIN=\"%s\"", env.GetDefaultIngressDomain().Domain),
-				ContainSubstring("export REPO_PATH=\"%s\"", appDir),
-				ContainSubstring("export TENANT_NAME=\"%s\"", testconfig.Cfg.Tenant),
-				ContainSubstring("export VERSION=\"%s\"", commitHash(appDir))))
+				ContainSubstring("export REGION="),
+				ContainSubstring(env.Platform.(*environment.GCPVendor).Region),
+				ContainSubstring("export REGISTRY="),
+				ContainSubstring(fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, testconfig.Cfg.Tenant)),
+				ContainSubstring("export BASE_DOMAIN="),
+				ContainSubstring(env.GetDefaultIngressDomain().Domain),
+				ContainSubstring("export REPO_PATH="),
+				ContainSubstring(appDir),
+				ContainSubstring("export TENANT_NAME="),
+				ContainSubstring(testconfig.Cfg.Tenant),
+				ContainSubstring("export VERSION="),
+				ContainSubstring(commitHash(appDir))))
 		}
 
 		Context("print out env variables", func() {
@@ -101,6 +110,55 @@ var _ = Describe("export", Ordered, func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
+			})
+		})
+
+		Context("shell format support", func() {
+			It("exports for bash shell", func() {
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "bash")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output).To(ContainSubstring("export REGION="))
+				Expect(output).To(ContainSubstring("export TENANT_NAME="))
+			})
+
+			It("exports for zsh shell", func() {
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "zsh")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output).To(ContainSubstring("export REGION="))
+				Expect(output).To(ContainSubstring("export TENANT_NAME="))
+			})
+
+			It("exports for fish shell", func() {
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "fish")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output).To(ContainSubstring("set -gx REGION"))
+				Expect(output).To(ContainSubstring("set -gx TENANT_NAME"))
+			})
+
+			It("exports for powershell", func() {
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "powershell")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output).To(ContainSubstring("$Env:REGION"))
+				Expect(output).To(ContainSubstring("$Env:TENANT_NAME"))
+			})
+
+			It("exports for cmd shell", func() {
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "cmd")
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output).To(ContainSubstring("set REGION="))
+				Expect(output).To(ContainSubstring("set TENANT_NAME="))
+			})
+
+			It("rejects unsupported shell", func() {
+				_, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.Tenant, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "unsupported")
+
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("unsupported shell type"))
 			})
 		})
 	})

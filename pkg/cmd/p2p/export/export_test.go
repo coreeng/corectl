@@ -33,6 +33,7 @@ func TestRunExportPrintsEnvVarsToStdOut(t *testing.T) {
 		tenant:          testdata.DefaultTenant(),
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
+		shell:           "bash",
 		streams:         userio.NewIOStreams(os.Stdin, &output, &stderr),
 	}, cfg)
 
@@ -50,6 +51,7 @@ func TestRunExportNonExistingAppRepo(t *testing.T) {
 		tenant:          testdata.DefaultTenant(),
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        appRepoPath,
+		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
@@ -66,6 +68,7 @@ func TestRunExportNonExistingTenant(t *testing.T) {
 		tenant:          tenantName,
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
+		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
@@ -83,6 +86,7 @@ func TestFailureWithRootTenant(t *testing.T) {
 		tenant:          tenantName,
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
+		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
@@ -99,6 +103,7 @@ func TestRunExportNonExistingEnvironment(t *testing.T) {
 		tenant:          testdata.DefaultTenant(),
 		environmentName: envName,
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
+		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
