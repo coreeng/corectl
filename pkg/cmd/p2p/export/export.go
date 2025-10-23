@@ -19,6 +19,7 @@ type exportOpts struct {
 	tenant          string
 	environmentName string
 	repoPath        string
+	shell           string
 	streams         userio.IOStreams
 }
 
@@ -123,6 +124,13 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 		currDir,
 		"Local repository path to export variables for P2P, defaults to current exec directory",
 	)
+	exportCommand.Flags().StringVarP(
+		&opts.shell,
+		"shell",
+		"s",
+		"bash",
+		"Shell format for export statements (bash, zsh, fish, powershell, cmd)",
+	)
 
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
@@ -133,6 +141,16 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 }
 
 func run(opts *exportOpts, cfg *config.Config) error {
+	// Validate shell type
+	if !p2p.IsValidShell(opts.shell) {
+		supportedShells := p2p.SupportedShells()
+		shellNames := make([]string, len(supportedShells))
+		for i, s := range supportedShells {
+			shellNames[i] = string(s)
+		}
+		return fmt.Errorf("unsupported shell type '%s'. Supported shells: %s", opts.shell, strings.Join(shellNames, ", "))
+	}
+
 	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
 	err := config.Update(cfg.GitHub.Token.Value, opts.streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
@@ -147,7 +165,9 @@ func run(opts *exportOpts, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	exportCmd, err := p2pVars.AsExportCmd()
+
+	shellType := p2p.ShellType(strings.ToLower(opts.shell))
+	exportCmd, err := p2pVars.AsExportCmd(shellType)
 	if err != nil {
 		return err
 	}
