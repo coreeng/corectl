@@ -120,7 +120,9 @@ func getOrgAndNameFromUrl(url string) (string, string, error) {
 }
 
 func GetLocalRepoOrgAndName(localpath string) (string, string, error) {
-	repo, err := git.PlainOpen(localpath)
+	repo, err := git.PlainOpenWithOptions(localpath, &git.PlainOpenOptions{
+		DetectDotGit: true,
+	})
 	if err != nil {
 		return "", "", err
 	}
@@ -157,7 +159,9 @@ func OpenLocalRepository(path string, dryRun bool) (*LocalRepository, error) {
 		zap.Bool("dry_run", dryRun)).
 		Msg("git: opening repository")
 	localRepository := &LocalRepository{DryRun: dryRun}
-	repository, err := git.PlainOpen(path)
+	repository, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
+		DetectDotGit: true,
+	})
 	localRepository.repo = repository
 	if err != nil {
 		return localRepository, fmt.Errorf("repository on path %s not found: %w", path, err)
