@@ -305,9 +305,9 @@ func TestShellFormats(t *testing.T) {
 // TestShellTypeValidation tests the shell type validation functions
 func TestShellTypeValidation(t *testing.T) {
 	testCases := []struct {
-		name     string
-		shell    string
-		isValid  bool
+		name    string
+		shell   string
+		isValid bool
 	}{
 		{"bash lowercase", "bash", true},
 		{"bash uppercase", "BASH", true},

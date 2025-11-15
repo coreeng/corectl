@@ -1,11 +1,11 @@
 package httpmock
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
-	"encoding/json"
 
 	"github.com/google/go-github/v60/github"
 
