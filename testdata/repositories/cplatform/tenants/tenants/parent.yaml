@@ -1,4 +1,5 @@
 name: parent
+kind: team
 parent: root
 description: "Parent tenant"
 contactEmail: parent@prod.domain

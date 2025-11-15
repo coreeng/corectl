@@ -20,6 +20,7 @@ import (
 
 var _ = Describe("Create or Update", func() {
 	const expectedTenantFileContent = `name: new-tenant
+kind: app
 parent: parent
 description: Tenant description
 contactEmail: abc@abc.com
@@ -64,6 +65,7 @@ repos: []
 		Expect(err).NotTo(HaveOccurred())
 		defaultTenant = tenant.Tenant{
 			Name:         "new-tenant",
+			Kind:         "app",
 			Parent:       parentTenant.Name,
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",

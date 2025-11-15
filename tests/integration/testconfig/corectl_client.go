@@ -1,11 +1,11 @@
 package testconfig
 
 import (
-	"os"
-	"os/exec"
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 

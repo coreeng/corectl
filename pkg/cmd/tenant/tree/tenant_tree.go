@@ -3,9 +3,9 @@ package tree
 import (
 	"fmt"
 
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
 	"github.com/spf13/cobra"

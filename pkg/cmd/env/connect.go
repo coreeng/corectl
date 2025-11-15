@@ -2,6 +2,7 @@ package env
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
@@ -15,7 +16,6 @@ import (
 	corectlenv "github.com/coreeng/corectl/pkg/env"
 	"github.com/coreeng/corectl/pkg/gcp"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 // use os args to capture flags in commands (we can't detect -- otherwise)

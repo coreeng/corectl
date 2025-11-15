@@ -1,4 +1,5 @@
 name: default-tenant
+kind: app
 parent: parent
 description: "Default tenant to use in tests"
 contactEmail: parent@prod.domain
