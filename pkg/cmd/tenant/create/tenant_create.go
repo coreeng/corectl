@@ -3,12 +3,12 @@ package create
 import (
 	"errors"
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 
@@ -25,6 +25,7 @@ import (
 
 type TenantCreateOpt struct {
 	Name           string
+	Kind           string
 	Parent         string
 	Description    string
 	ContactEmail   string
@@ -66,6 +67,12 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"name",
 		"",
 		"Tenant name. Should be valid K8S label.",
+	)
+	tenantCreateCmd.Flags().StringVar(
+		&opt.Kind,
+		"kind",
+		"",
+		"Tenant kind: 'team' or 'app'",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Parent,
@@ -159,6 +166,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	}
 
 	nameInput := opt.createNameInputSwitch(existingTenants)
+	kindInput := opt.createKindInputSwitch()
 	parentInput := opt.createParentInputSwitch(rootTenant, existingTenants)
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
@@ -168,6 +176,10 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	readOnlyGroupInput := opt.createReadOnlyGroupInputSwitch()
 
 	name, err := nameInput.GetValue(opt.Streams)
+	if err != nil {
+		return err
+	}
+	kind, err := kindInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
 	}
@@ -202,6 +214,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 
 	t := coretnt.Tenant{
 		Name:          name,
+		Kind:          kind,
 		Parent:        parent.Name,
 		Description:   description,
 		ContactEmail:  contactEmail,
@@ -526,6 +539,41 @@ func (opt *TenantCreateOpt) createReadOnlyGroupInputSwitch() userio.InputSourceS
 		},
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid read only group",
+	}
+}
+
+func (opt *TenantCreateOpt) createKindInputSwitch() userio.InputSourceSwitch[string, string] {
+	validateFn := func(inp string) (string, error) {
+		inp = strings.TrimSpace(inp)
+		inp = strings.ToLower(inp)
+		if inp != "team" && inp != "app" {
+			return "", errors.New("kind must be either 'team' or 'app'")
+		}
+		t := &coretnt.Tenant{
+			Kind: inp,
+		}
+		err := t.ValidateField("Kind")
+		if err != nil {
+			return "", err
+		}
+		return inp, nil
+	}
+
+	defaultKind := opt.Kind
+	if defaultKind == "" {
+		defaultKind = "team"
+	}
+
+	return userio.InputSourceSwitch[string, string]{
+		DefaultValue: userio.AsZeroable(defaultKind),
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.SingleSelect{
+				Prompt: "Tenant kind:",
+				Items:  []string{"team", "app"},
+			}, nil
+		},
+		ValidateAndMap: validateFn,
+		ErrMessage:     "invalid tenant kind",
 	}
 }
 
