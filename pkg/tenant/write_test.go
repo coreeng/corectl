@@ -19,18 +19,19 @@ import (
 )
 
 var _ = Describe("Create or Update", func() {
-	const expectedTenantFileContent = `name: new-tenant
+	const expectedTenantFileContent = `---
+name: new-tenant
 kind: app
 parent: parent
 description: Tenant description
 contactEmail: abc@abc.com
 environments:
-    - dev
-    - prod
+  - dev
+  - prod
+repos: []
 adminGroup: admin-group
 readonlyGroup: readonly-group
 cloudAccess: []
-repos: []
 `
 	t := GinkgoTB()
 
@@ -165,6 +166,20 @@ repos: []
 			newTenantFile, err := os.ReadFile(filepath.Join(*defaultTenant.SavedPath()))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(newTenantFile)).To(MatchYAML(expectedTenantFileContent))
+		})
+		It("creates the file with YAML document separator prefix", func() {
+			Expect(cplatformLocalRepo.CheckoutBranch(&git.CheckoutOp{BranchName: branchName})).To(Succeed())
+			newTenantFile, err := os.ReadFile(filepath.Join(*defaultTenant.SavedPath()))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(newTenantFile)).To(HavePrefix("---\n"))
+		})
+		It("uses canonical format", func() {
+			Expect(cplatformLocalRepo.CheckoutBranch(&git.CheckoutOp{BranchName: branchName})).To(Succeed())
+			newTenantFile, err := os.ReadFile(filepath.Join(*defaultTenant.SavedPath()))
+			Expect(err).NotTo(HaveOccurred())
+			content := string(newTenantFile)
+			// Verify exact string match with expected content
+			Expect(content).To(Equal(expectedTenantFileContent))
 		})
 	})
 })
