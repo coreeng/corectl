@@ -205,6 +205,10 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	logger.Info().Msgf("tenant selected: %s", appTenant.Name)
 
+	if appTenant.Kind == "team" {
+		return fmt.Errorf("cannot create application for team tenant '%s': only app tenants can have applications", appTenant.Name)
+	}
+
 	existingEnvs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
 		return err
@@ -368,6 +372,10 @@ func createPRWithUpdatedReposListForTenant(
 ) (*tenant.CreateOrUpdateResult, error) {
 	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo",
 		opts.Name, opts.Tenant)
+
+	if appTenant.Kind == "team" {
+		return nil, fmt.Errorf("cannot add repository to team tenant '%s': only app tenants can have repositories", appTenant.Name)
+	}
 
 	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
 		logger.Warn().Msgf("Application is already registered for tenant. Skipping.")
