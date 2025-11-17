@@ -210,7 +210,7 @@ var _ = Describe("application", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("modified"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + testconfig.Cfg.Tenant + ".yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + testconfig.Cfg.Tenant + ".app.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 
