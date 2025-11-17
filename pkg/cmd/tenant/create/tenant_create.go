@@ -171,7 +171,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
 	envsInput := opt.createEnvironmentsInputSwitch(envs)
-	repositoriesInput := opt.createRepositoriesInputSwitch()
 	adminGroupInput := opt.createAdminGroupInputSwitch()
 	readOnlyGroupInput := opt.createReadOnlyGroupInputSwitch()
 
@@ -199,10 +198,21 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	repositories, err := repositoriesInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
+
+	var repositories []string
+	if kind == "app" {
+		repositoriesInput := opt.createRepositoriesInputSwitch()
+		repositories, err = repositoriesInput.GetValue(opt.Streams)
+		if err != nil {
+			return err
+		}
+	} else {
+		if len(opt.Repositories) > 0 {
+			return fmt.Errorf("cannot specify --repositories for team tenant: only app tenants can have repositories")
+		}
+		repositories = []string{}
 	}
+
 	adminGroup, err := adminGroupInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
