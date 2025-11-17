@@ -156,7 +156,7 @@ cloudAccess: []
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
 						Message:      commitMsg,
-						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.yaml"},
+						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.app.yaml"},
 					},
 				},
 			})

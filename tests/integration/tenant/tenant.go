@@ -87,7 +87,7 @@ var _ = Describe("tenant", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".team.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })
