@@ -63,7 +63,7 @@ var _ = Describe("tenant", Ordered, func() {
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-tenant-" + newTenantName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-team-tenant-" + newTenantName,
 					Base: git.MainBranch,
 				},
 			)
@@ -72,7 +72,7 @@ var _ = Describe("tenant", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("New tenant: " + newTenantName))
+			Expect(pr.GetTitle()).To(Equal("New team tenant: " + newTenantName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(

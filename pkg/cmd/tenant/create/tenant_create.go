@@ -273,19 +273,19 @@ func createTenant(
 			Tenant:            t,
 			ParentTenant:      parentTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
-			BranchName:        fmt.Sprintf("new-tenant-%s", t.Name),
-			CommitMessage:     fmt.Sprintf("Add new tenant: %s", t.Name),
-			PRName:            fmt.Sprintf("New tenant: %s", t.Name),
-			PRBody:            fmt.Sprintf("Adds new tenant '%s'", t.Name),
+			BranchName:        fmt.Sprintf("new-%s-tenant-%s", t.Kind, t.Name),
+			CommitMessage:     fmt.Sprintf("Add new %s tenant: %s", t.Kind, t.Name),
+			PRName:            fmt.Sprintf("New %s tenant: %s", t.Kind, t.Name),
+			PRBody:            fmt.Sprintf("Adds new %s tenant '%s'", t.Kind, t.Name),
 			GitAuth:           gitAuth,
 			DryRun:            dryRun,
 		}, githubClient,
 	)
 	if err != nil {
-		logger.Warn().Msgf("Failed to create a PR for new tenant: %s", err)
+		logger.Warn().Msgf("Failed to create a PR for new %s tenant: %s", t.Kind, err)
 
 	} else {
-		logger.Warn().Msgf("Created PR for new tenant %s: %s", t.Name, result.PRUrl)
+		logger.Warn().Msgf("Created PR for new %s tenant %s: %s", t.Kind, t.Name, result.PRUrl)
 	}
 	return result, err
 }
