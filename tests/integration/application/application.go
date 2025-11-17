@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"time"
 
@@ -349,6 +350,161 @@ var _ = Describe("application", Ordered, func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(BeEmpty())
+		}, SpecTimeout(time.Minute))
+	})
+
+	Context("create with team tenant", Ordered, func() {
+		var (
+			teamTenantName string
+			newAppName     string
+			newAppRepoId   int64
+			appDir         string
+		)
+
+		BeforeAll(func(ctx SpecContext) {
+			// Use existing "parent" team tenant
+			teamTenantName = "parent"
+
+			// Create an app with this team tenant
+			newAppName = "team-app-" + strings.ToLower(testRunId)
+			appDir = filepath.Join(homeDir, newAppName)
+			_, err := corectl.Run(
+				"application", "create", newAppName, appDir,
+				"-t", testdata.BlankTemplate(),
+				"--tenant", teamTenantName,
+				"--non-interactive")
+			Expect(err).ToNot(HaveOccurred())
+		}, NodeTimeout(2*time.Minute))
+
+		AfterAll(func(ctx SpecContext) {
+			// Clean up the app repository
+			err := git.RetryGitHubOperation(
+				func() error {
+					_, err := githubClient.Repositories.Delete(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						newAppName,
+					)
+					return err
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}, NodeTimeout(time.Minute))
+
+		It("created a new repository for the new app", func(ctx SpecContext) {
+			newAppRepo, _, err := git.RetryGitHubAPI(
+				func() (*github.Repository, *github.Response, error) {
+					return githubClient.Repositories.Get(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						newAppName,
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			newAppRepoId = newAppRepo.GetID()
+		}, NodeTimeout(time.Minute))
+
+		It("correctly configured action variables for new repository", func(ctx SpecContext) {
+			repoVars, _, err := githubClient.Actions.ListRepoVariables(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				newAppName,
+				&github.ListOptions{},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repoVars.TotalCount).To(Equal(4))
+			Expect(repoVars.Variables).To(ConsistOf(
+				Satisfy(func(v *github.ActionsVariable) bool {
+					return v.Name == "TENANT_NAME" &&
+						v.Value == newAppName // App tenant has same name as app
+				}),
+				Satisfy(func(v *github.ActionsVariable) bool {
+					return v.Name == "FAST_FEEDBACK" &&
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
+				}),
+				Satisfy(func(v *github.ActionsVariable) bool {
+					return v.Name == "EXTENDED_TEST" &&
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
+				}),
+				Satisfy(func(v *github.ActionsVariable) bool {
+					return v.Name == "PROD" &&
+						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", prodEnv.Environment)
+				}),
+			))
+		}, NodeTimeout(time.Minute))
+
+		It("correctly configured environments for the new app repo", func(ctx SpecContext) {
+			for _, env := range []environment.Environment{devEnv, prodEnv} {
+				envVars, _, err := githubClient.Actions.ListEnvVariables(
+					ctx,
+					int(newAppRepoId),
+					env.Environment,
+					&github.ListOptions{},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(envVars.TotalCount).To(Equal(5))
+				gcpVendor := env.Platform.(*environment.GCPVendor)
+				Expect(envVars.Variables).To(ConsistOf(
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "DPLATFORM" &&
+							v.Value == env.Environment
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "BASE_DOMAIN" &&
+							v.Value == env.GetDefaultIngressDomain().Domain
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "INTERNAL_SERVICES_DOMAIN" &&
+							v.Value == env.InternalServices.Domain
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "PROJECT_ID" &&
+							v.Value == gcpVendor.ProjectId
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "PROJECT_NUMBER" &&
+							v.Value == gcpVendor.ProjectNumber
+					}),
+				))
+			}
+		}, NodeTimeout(time.Minute))
+
+		It("created a PR with new app tenant and repository", func(ctx SpecContext) {
+			prList, _, err := githubClient.PullRequests.List(
+				ctx,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
+				&github.PullRequestListOptions{
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-app-tenant-" + newAppName,
+					Base: git.MainBranch,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prList).To(HaveLen(1))
+			Expect(prList[0]).NotTo(BeNil())
+			pr := prList[0]
+
+			Expect(pr.GetTitle()).To(Equal("New app tenant: " + newAppName))
+			Expect(pr.GetState()).To(Equal("open"))
+
+			prFiles, _, err := githubClient.PullRequests.ListFiles(
+				ctx,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
+				pr.GetNumber(),
+				&github.ListOptions{},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prFiles).To(HaveLen(1))
+			prFile := prFiles[0]
+
+			Expect(prFile.GetStatus()).To(Equal("added"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".app.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })
