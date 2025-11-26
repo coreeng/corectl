@@ -329,6 +329,129 @@ var _ = Describe("Create new application", func() {
 
 	})
 
+	Context("from template with config", Ordered, func() {
+		var (
+			createResult    CreateResult
+			localAppRepoDir string
+		)
+		BeforeAll(func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir = t.TempDir()
+			createResult, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{"resources":{"requests":{"cpu":"500m","memory":"512Mi"},"limits":{"cpu":"1000m","memory":"1024Mi"}}}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns correct repository name", func() {
+			Expect(createResult.RepositoryFullname.Name()).To(Equal(newAppName))
+		})
+
+		It("passes config argument to template", func() {
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5)) // name, tenant, config, working_directory, version_prefix
+
+			// Find the config argument
+			var configArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					configArg = arg
+					break
+				}
+			}
+
+			Expect(configArg.Name).To(Equal("config"))
+			configMap, ok := configArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			resources, ok := configMap["resources"].(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			requests, ok := resources["requests"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(requests["cpu"]).To(Equal("500m"))
+			Expect(requests["memory"]).To(Equal("512Mi"))
+
+			limits, ok := resources["limits"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(limits["cpu"]).To(Equal("1000m"))
+			Expect(limits["memory"]).To(Equal("1024Mi"))
+		})
+	})
+
+	Context("from template with invalid config JSON", func() {
+		It("returns error for invalid JSON", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{invalid json}`,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid config JSON"))
+		})
+	})
+
+	Context("from template without config", func() {
+		It("does not include config argument when Config is empty", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           "", // Empty config
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4)) // name, tenant, working_directory, version_prefix - NO config
+
+			// Verify config is not present
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				Expect(arg.Name).NotTo(Equal("config"))
+			}
+		})
+	})
+
 	Context("monorepo mode", Ordered, func() {
 		var (
 			monorepoServerRepo *gittest.BareRepository

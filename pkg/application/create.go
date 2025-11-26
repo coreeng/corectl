@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -50,6 +51,7 @@ type CreateOp struct {
 	ProdEnvs         []environment.Environment
 	Template         *template.Spec
 	GitAuth          git.AuthMethod
+	Config           string
 }
 
 type CreateResult struct {
@@ -332,6 +334,18 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 			Value: op.Tenant.Name,
 		},
 	}
+
+	if op.Config != "" {
+		var configMap map[string]any
+		if err := json.Unmarshal([]byte(op.Config), &configMap); err != nil {
+			return fmt.Errorf("invalid config JSON: %w", err)
+		}
+		args = append(args, template.Argument{
+			Name:  "config",
+			Value: configMap,
+		})
+	}
+
 	args = append(args, additionalArgs...)
 	logger.Debug().With(
 		zap.String("tenant", op.Tenant.Name),
