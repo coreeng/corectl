@@ -261,25 +261,33 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
-				template.Argument{
-					Name:  "name",
-					Value: newAppName,
-				},
-				template.Argument{
-					Name:  "tenant",
-					Value: "default-tenant",
-				},
-				template.Argument{
-					Name:  "working_directory",
-					Value: "",
-				},
-				template.Argument{
-					Name:  "version_prefix",
-					Value: "v",
-				},
-			))
+			// Now includes: name, tenant, template, working_directory, version_prefix
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
+
+			// Verify key arguments are present
+			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
+			for i, arg := range renderer.PassedAdditionalArgs[0] {
+				argNames[i] = arg.Name
+			}
+			Expect(argNames).To(ContainElements("name", "tenant", "template", "working_directory", "version_prefix"))
+
+			// Check specific values
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				switch arg.Name {
+				case "name":
+					Expect(arg.Value).To(Equal(newAppName))
+				case "tenant":
+					Expect(arg.Value).To(Equal("default-tenant"))
+				case "working_directory":
+					Expect(arg.Value).To(Equal(""))
+				case "version_prefix":
+					Expect(arg.Value).To(Equal("v"))
+				case "template":
+					templateMap, ok := arg.Value.(map[string]any)
+					Expect(ok).To(BeTrue())
+					Expect(templateMap["name"]).To(Equal("blank"))
+				}
+			}
 		})
 
 		It("renders template with passed arguments", func() {
@@ -363,7 +371,8 @@ var _ = Describe("Create new application", func() {
 
 		It("passes config argument to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5)) // name, tenant, config, working_directory, version_prefix
+			// Now includes: name, tenant, config, template, working_directory, version_prefix
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(6))
 
 			// Find the config argument
 			var configArg template.Argument
@@ -390,6 +399,22 @@ var _ = Describe("Create new application", func() {
 			Expect(ok).To(BeTrue())
 			Expect(limits["cpu"]).To(Equal("1000m"))
 			Expect(limits["memory"]).To(Equal("1024Mi"))
+		})
+
+		It("passes template.yaml as template argument", func() {
+			// Find the template argument
+			var templateArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "template" {
+					templateArg = arg
+					break
+				}
+			}
+
+			Expect(templateArg.Name).To(Equal("template"))
+			templateMap, ok := templateArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(templateMap["name"]).To(Equal("blank"))
 		})
 	})
 
@@ -443,12 +468,22 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4)) // name, tenant, working_directory, version_prefix - NO config
+			// Now includes: name, tenant, template, working_directory, version_prefix (no config)
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
 
-			// Verify config is not present
+			// Verify config is not present but template is
+			hasConfig := false
+			hasTemplate := false
 			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				Expect(arg.Name).NotTo(Equal("config"))
+				if arg.Name == "config" {
+					hasConfig = true
+				}
+				if arg.Name == "template" {
+					hasTemplate = true
+				}
 			}
+			Expect(hasConfig).To(BeFalse())
+			Expect(hasTemplate).To(BeTrue())
 		})
 	})
 
@@ -544,25 +579,33 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
-				template.Argument{
-					Name:  "name",
-					Value: appName,
-				},
-				template.Argument{
-					Name:  "tenant",
-					Value: "default-tenant",
-				},
-				template.Argument{
-					Name:  "working_directory",
-					Value: appName,
-				},
-				template.Argument{
-					Name:  "version_prefix",
-					Value: appName + "/v",
-				},
-			))
+			// Now includes: name, tenant, template, working_directory, version_prefix
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
+
+			// Verify key arguments are present
+			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
+			for i, arg := range renderer.PassedAdditionalArgs[0] {
+				argNames[i] = arg.Name
+			}
+			Expect(argNames).To(ContainElements("name", "tenant", "template", "working_directory", "version_prefix"))
+
+			// Check specific values
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				switch arg.Name {
+				case "name":
+					Expect(arg.Value).To(Equal(appName))
+				case "tenant":
+					Expect(arg.Value).To(Equal("default-tenant"))
+				case "working_directory":
+					Expect(arg.Value).To(Equal(appName))
+				case "version_prefix":
+					Expect(arg.Value).To(Equal(appName + "/v"))
+				case "template":
+					templateMap, ok := arg.Value.(map[string]any)
+					Expect(ok).To(BeTrue())
+					Expect(templateMap["name"]).To(Equal("blank"))
+				}
+			}
 		})
 
 		It("renders template with passed arguments", func() {

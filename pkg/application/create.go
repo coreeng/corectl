@@ -23,6 +23,7 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v60/github"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 type Service struct {
@@ -344,6 +345,19 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 			Name:  "config",
 			Value: configMap,
 		})
+	}
+
+	// Read template.yaml as raw map and pass it for fallback defaults
+	templateYamlPath := filepath.Join(op.Template.Path(), "template.yaml")
+	templateData, err := os.ReadFile(templateYamlPath)
+	if err == nil {
+		var templateMap map[string]any
+		if err := yaml.Unmarshal(templateData, &templateMap); err == nil {
+			args = append(args, template.Argument{
+				Name:  "template",
+				Value: templateMap,
+			})
+		}
 	}
 
 	args = append(args, additionalArgs...)

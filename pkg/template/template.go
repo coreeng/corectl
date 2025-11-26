@@ -35,3 +35,7 @@ func (t *Spec) GetParameter(name string) *Parameter {
 	}
 	return &t.Parameters[paramI]
 }
+
+func (t *Spec) Path() string {
+	return t.path
+}
