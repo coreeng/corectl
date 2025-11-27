@@ -23,7 +23,6 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v60/github"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 )
 
 type Service struct {
@@ -336,28 +335,25 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		},
 	}
 
-	if op.Config != "" {
-		var configMap map[string]any
-		if err := json.Unmarshal([]byte(op.Config), &configMap); err != nil {
-			return fmt.Errorf("invalid config JSON: %w", err)
-		}
-		args = append(args, template.Argument{
-			Name:  "config",
-			Value: configMap,
-		})
+	mergedConfig := make(map[string]any)
+
+	if op.Template.Config != nil {
+		mergedConfig = op.Template.Config
 	}
 
-	// Read template.yaml as raw map and pass it for fallback defaults
-	templateYamlPath := filepath.Join(op.Template.Path(), "template.yaml")
-	templateData, err := os.ReadFile(templateYamlPath)
-	if err == nil {
-		var templateMap map[string]any
-		if err := yaml.Unmarshal(templateData, &templateMap); err == nil {
-			args = append(args, template.Argument{
-				Name:  "template",
-				Value: templateMap,
-			})
+	if op.Config != "" {
+		var configOverrides map[string]any
+		if err := json.Unmarshal([]byte(op.Config), &configOverrides); err != nil {
+			return fmt.Errorf("invalid config JSON: %w", err)
 		}
+		mergedConfig = deepMerge(mergedConfig, configOverrides)
+	}
+
+	if len(mergedConfig) > 0 {
+		args = append(args, template.Argument{
+			Name:  "config",
+			Value: mergedConfig,
+		})
 	}
 
 	args = append(args, additionalArgs...)
@@ -526,6 +522,28 @@ func githubWorkflowsExist(path string) (bool, error) {
 		return false, fmt.Errorf("error checking .github/workflows directory: %w", err)
 	}
 	return len(dir) > 0, nil
+}
+
+func deepMerge(base, override map[string]any) map[string]any {
+	result := make(map[string]any)
+
+	for k, v := range base {
+		result[k] = v
+	}
+
+	for k, v := range override {
+		if baseVal, exists := result[k]; exists {
+			baseMap, baseIsMap := baseVal.(map[string]any)
+			overrideMap, overrideIsMap := v.(map[string]any)
+			if baseIsMap && overrideIsMap {
+				result[k] = deepMerge(baseMap, overrideMap)
+				continue
+			}
+		}
+		result[k] = v
+	}
+
+	return result
 }
 
 func (svc *Service) ValidateCreate(op CreateOp) error {
