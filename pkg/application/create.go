@@ -338,7 +338,7 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 	mergedConfig := make(map[string]any)
 
 	if op.Template.Config != nil {
-		mergedConfig = op.Template.Config
+		mergedConfig = deepMerge(mergedConfig, op.Template.Config)
 	}
 
 	if op.Config != "" {
