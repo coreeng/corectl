@@ -1,0 +1,28 @@
+---
+name: foo-2 Prod
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 5 * * 1-5"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  get-latest-version:
+    uses: coreeng/p2p/.github/workflows/p2p-get-latest-image-prod.yaml@v1
+    with:
+      image-name: foo-2
+
+  prod:
+    needs: [get-latest-version]
+    uses: coreeng/p2p/.github/workflows/p2p-workflow-prod.yaml@v1
+    secrets:
+      env_vars: ${{ secrets.env_vars }}
+    with:
+      app-name: foo-2
+      version: ${{ needs.get-latest-version.outputs.version }}
+      version-prefix: foo-2/v
+      working-directory: foo-2

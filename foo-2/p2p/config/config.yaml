@@ -1,0 +1,1 @@
+{'replicas': 2, 'resources': {'limits': {'cpu': '250m', 'memory': '512Mi'}}}
