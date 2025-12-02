@@ -1,6 +1,8 @@
 package template
 
 import (
+	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/kluctl/go-jinja2"
@@ -14,7 +16,7 @@ import yaml
 def to_yaml(value, indent=2, default_flow_style=False):
     if value is None:
         return ""
-    return yaml.dump(value, default_flow_style=default_flow_style, indent=indent, allow_unicode=True).rstrip('\n')
+    return yaml.dump(value, default_flow_style=default_flow_style, indent=indent, allow_unicode=True)
 `
 
 // toJsonFilter is Python code that defines a to_json filter for Jinja2 templates.
@@ -52,5 +54,43 @@ func Render(t *FulfilledTemplate, targetPath string) error {
 	); err != nil {
 		return err
 	}
+
+	// Jinja2 strips trailing newlines by default. Walk through rendered files
+	// and ensure they end with a newline for POSIX compliance.
+	if err := ensureTrailingNewlines(targetPath); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// ensureTrailingNewlines walks through all files in the directory and ensures
+// each file ends with a newline character.
+func ensureTrailingNewlines(dir string) error {
+	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		// Skip empty files or files that already end with newline
+		if len(content) == 0 || content[len(content)-1] == '\n' {
+			return nil
+		}
+
+		// Append newline and write back
+		content = append(content, '\n')
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(path, content, info.Mode())
+	})
 }
