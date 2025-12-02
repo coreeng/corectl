@@ -137,10 +137,14 @@ var _ = Describe("template arguments are collected", func() {
 					Name:  "param1",
 					Value: "value",
 				},
-				// Fixed args
+				// Existing args (all passed through, even if not defined as parameters)
 				{
 					Name:  "param2",
 					Value: 123,
+				},
+				{
+					Name:  "fixed-arg",
+					Value: "value",
 				},
 				// Default args
 				{
@@ -209,7 +213,11 @@ var _ = Describe("template arguments are collected", func() {
 					Name:  "param2",
 					Value: 123,
 				},
-				// Fixed args
+				// Existing args (all passed through, even if not defined as parameters)
+				{
+					Name:  "fixed-arg",
+					Value: "value",
+				},
 				{
 					Name:  "param3",
 					Value: "value",

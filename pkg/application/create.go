@@ -339,8 +339,6 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 
 	if op.Template.Config != nil {
 		mergedConfig = op.Template.Config
-		logger.Debug().With(zap.Any("template_config", op.Template.Config)).
-			Msg("using template.yaml config as base")
 	}
 
 	if op.Config != "" {
@@ -348,20 +346,14 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		if err := json.Unmarshal([]byte(op.Config), &configOverrides); err != nil {
 			return fmt.Errorf("invalid config JSON: %w", err)
 		}
-		logger.Debug().With(zap.Any("config_overrides", configOverrides)).
-			Msg("applying --config overrides")
 		mergedConfig = deepMerge(mergedConfig, configOverrides)
 	}
 
 	if len(mergedConfig) > 0 {
-		logger.Debug().With(zap.Any("merged_config", mergedConfig)).
-			Msg("final merged config")
 		args = append(args, template.Argument{
 			Name:  "config",
 			Value: mergedConfig,
 		})
-	} else {
-		logger.Debug().Msg("no config provided (template has no config section and --config is empty)")
 	}
 
 	args = append(args, additionalArgs...)
