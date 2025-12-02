@@ -261,25 +261,29 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
 			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
-				template.Argument{
-					Name:  "name",
-					Value: newAppName,
-				},
-				template.Argument{
-					Name:  "tenant",
-					Value: "default-tenant",
-				},
-				template.Argument{
-					Name:  "working_directory",
-					Value: "",
-				},
-				template.Argument{
-					Name:  "version_prefix",
-					Value: "v",
-				},
-			))
+
+			// Verify key arguments are present
+			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
+			for i, arg := range renderer.PassedAdditionalArgs[0] {
+				argNames[i] = arg.Name
+			}
+			Expect(argNames).To(ContainElements("name", "tenant", "working_directory", "version_prefix"))
+
+			// Check specific values
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				switch arg.Name {
+				case "name":
+					Expect(arg.Value).To(Equal(newAppName))
+				case "tenant":
+					Expect(arg.Value).To(Equal("default-tenant"))
+				case "working_directory":
+					Expect(arg.Value).To(Equal(""))
+				case "version_prefix":
+					Expect(arg.Value).To(Equal("v"))
+				}
+			}
 		})
 
 		It("renders template with passed arguments", func() {
@@ -327,6 +331,315 @@ var _ = Describe("Create new application", func() {
 			Expect(createResult.MonorepoMode).To(BeFalse())
 		})
 
+	})
+
+	Context("from template with config", Ordered, func() {
+		var (
+			createResult    CreateResult
+			localAppRepoDir string
+		)
+		BeforeAll(func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir = t.TempDir()
+			createResult, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{"resources":{"requests":{"cpu":"500m","memory":"512Mi"},"limits":{"cpu":"1000m","memory":"1024Mi"}}}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("returns correct repository name", func() {
+			Expect(createResult.RepositoryFullname.Name()).To(Equal(newAppName))
+		})
+
+		It("passes merged config argument to template (template.yaml + --config overrides)", func() {
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			// Now includes: name, tenant, config (merged), working_directory, version_prefix
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
+
+			// Find the config argument
+			var configArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					configArg = arg
+					break
+				}
+			}
+
+			Expect(configArg.Name).To(Equal("config"))
+			configMap, ok := configArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			// Verify --config overrides are present
+			resources, ok := configMap["resources"].(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			requests, ok := resources["requests"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(requests["cpu"]).To(Equal("500m"))
+			Expect(requests["memory"]).To(Equal("512Mi"))
+
+			limits, ok := resources["limits"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(limits["cpu"]).To(Equal("1000m"))
+			Expect(limits["memory"]).To(Equal("1024Mi"))
+
+			// Note: blank template has no config section, so merged config
+			// only contains --config values (no template defaults to merge)
+		})
+	})
+
+	Context("from template with invalid config JSON", func() {
+		It("returns error for invalid JSON", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{invalid json}`,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid config JSON"))
+		})
+	})
+
+	Context("from template without --config flag and no config section in template.yaml", func() {
+		It("does not pass config argument when template has no config section", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			// Blank template has no config: section in template.yaml
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           "", // Empty --config flag
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+
+			// Verify config is NOT present
+			hasConfig := false
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					hasConfig = true
+				}
+			}
+			Expect(hasConfig).To(BeFalse())
+		})
+	})
+
+	Context("when template has config section and --config provides overrides", func() {
+		It("deep merges template config with --config overrides", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Simulate template.yaml having a config section
+			templateToUse.Config = map[string]any{
+				"replicas": 2,
+				"resources": map[string]any{
+					"limits": map[string]any{
+						"cpu":    "1000m",
+						"memory": "1024Mi",
+					},
+				},
+			}
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{"resources":{"limits":{"cpu":"2000m"}}}`, // Override only CPU
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Find the config argument
+			var configArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					configArg = arg
+					break
+				}
+			}
+
+			Expect(configArg.Name).To(Equal("config"))
+			configMap, ok := configArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			// Verify base values from template.yaml config are preserved
+			Expect(configMap["replicas"]).To(Equal(2))
+
+			// Verify deep merge worked correctly
+			resources, ok := configMap["resources"].(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			limits, ok := resources["limits"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(limits["cpu"]).To(Equal("2000m"))     // Overridden by --config
+			Expect(limits["memory"]).To(Equal("1024Mi")) // From template.yaml config
+		})
+	})
+
+	Context("when template has config section but --config is empty", func() {
+		It("uses template config as-is", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Simulate template.yaml having a config section
+			templateToUse.Config = map[string]any{
+				"replicas": 3,
+				"resources": map[string]any{
+					"limits": map[string]any{
+						"cpu":    "500m",
+						"memory": "512Mi",
+					},
+				},
+			}
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           "", // Empty --config
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Find the config argument
+			var configArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					configArg = arg
+					break
+				}
+			}
+
+			Expect(configArg.Name).To(Equal("config"))
+			configMap, ok := configArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			// Verify all values from template.yaml config are present
+			Expect(configMap["replicas"]).To(Equal(3))
+
+			resources, ok := configMap["resources"].(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			limits, ok := resources["limits"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(limits["cpu"]).To(Equal("500m"))
+			Expect(limits["memory"]).To(Equal("512Mi"))
+		})
+	})
+
+	Context("when --config adds new keys not in template config", func() {
+		It("includes both template config and new --config keys", func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			// Simulate template.yaml having a config section
+			templateToUse.Config = map[string]any{
+				"replicas": 2,
+			}
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Config:           `{"newKey":"newValue","resources":{"limits":{"cpu":"1000m"}}}`,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Find the config argument
+			var configArg template.Argument
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				if arg.Name == "config" {
+					configArg = arg
+					break
+				}
+			}
+
+			Expect(configArg.Name).To(Equal("config"))
+			configMap, ok := configArg.Value.(map[string]any)
+			Expect(ok).To(BeTrue())
+
+			// From template.yaml config
+			Expect(configMap["replicas"]).To(Equal(2))
+			// New key from --config
+			Expect(configMap["newKey"]).To(Equal("newValue"))
+			// New nested structure from --config
+			resources, ok := configMap["resources"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			limits, ok := resources["limits"].(map[string]any)
+			Expect(ok).To(BeTrue())
+			Expect(limits["cpu"]).To(Equal("1000m"))
+		})
 	})
 
 	Context("monorepo mode", Ordered, func() {
@@ -421,25 +734,29 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
+			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
 			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveExactElements(
-				template.Argument{
-					Name:  "name",
-					Value: appName,
-				},
-				template.Argument{
-					Name:  "tenant",
-					Value: "default-tenant",
-				},
-				template.Argument{
-					Name:  "working_directory",
-					Value: appName,
-				},
-				template.Argument{
-					Name:  "version_prefix",
-					Value: appName + "/v",
-				},
-			))
+
+			// Verify key arguments are present
+			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
+			for i, arg := range renderer.PassedAdditionalArgs[0] {
+				argNames[i] = arg.Name
+			}
+			Expect(argNames).To(ContainElements("name", "tenant", "working_directory", "version_prefix"))
+
+			// Check specific values
+			for _, arg := range renderer.PassedAdditionalArgs[0] {
+				switch arg.Name {
+				case "name":
+					Expect(arg.Value).To(Equal(appName))
+				case "tenant":
+					Expect(arg.Value).To(Equal("default-tenant"))
+				case "working_directory":
+					Expect(arg.Value).To(Equal(appName))
+				case "version_prefix":
+					Expect(arg.Value).To(Equal(appName + "/v"))
+				}
+			}
 		})
 
 		It("renders template with passed arguments", func() {
@@ -652,3 +969,120 @@ type panicTemplateRenderer struct {
 func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ bool, _ ...template.Argument) error {
 	panic("Panic for test sake")
 }
+
+var _ = Describe("deepMerge", func() {
+	It("merges two empty maps", func() {
+		base := map[string]any{}
+		override := map[string]any{}
+		result := deepMerge(base, override)
+		Expect(result).To(BeEmpty())
+	})
+
+	It("returns override when base is empty", func() {
+		base := map[string]any{}
+		override := map[string]any{
+			"key1": "value1",
+			"key2": 42,
+		}
+		result := deepMerge(base, override)
+		Expect(result).To(HaveLen(2))
+		Expect(result["key1"]).To(Equal("value1"))
+		Expect(result["key2"]).To(Equal(42))
+	})
+
+	It("returns base when override is empty", func() {
+		base := map[string]any{
+			"key1": "value1",
+			"key2": 42,
+		}
+		override := map[string]any{}
+		result := deepMerge(base, override)
+		Expect(result).To(HaveLen(2))
+		Expect(result["key1"]).To(Equal("value1"))
+		Expect(result["key2"]).To(Equal(42))
+	})
+
+	It("override takes precedence for same keys", func() {
+		base := map[string]any{
+			"key1": "base-value",
+			"key2": "only-in-base",
+		}
+		override := map[string]any{
+			"key1": "override-value",
+			"key3": "only-in-override",
+		}
+		result := deepMerge(base, override)
+		Expect(result).To(HaveLen(3))
+		Expect(result["key1"]).To(Equal("override-value"))
+		Expect(result["key2"]).To(Equal("only-in-base"))
+		Expect(result["key3"]).To(Equal("only-in-override"))
+	})
+
+	It("deep merges nested maps", func() {
+		base := map[string]any{
+			"replicas": 2,
+			"resources": map[string]any{
+				"limits": map[string]any{
+					"cpu":    "1000m",
+					"memory": "1024Mi",
+				},
+				"requests": map[string]any{
+					"cpu":    "100m",
+					"memory": "128Mi",
+				},
+			},
+		}
+		override := map[string]any{
+			"resources": map[string]any{
+				"limits": map[string]any{
+					"cpu": "2000m", // Override only CPU
+				},
+			},
+		}
+		result := deepMerge(base, override)
+
+		Expect(result["replicas"]).To(Equal(2))
+
+		resources, ok := result["resources"].(map[string]any)
+		Expect(ok).To(BeTrue())
+
+		limits, ok := resources["limits"].(map[string]any)
+		Expect(ok).To(BeTrue())
+		Expect(limits["cpu"]).To(Equal("2000m"))    // Overridden
+		Expect(limits["memory"]).To(Equal("1024Mi")) // From base
+
+		requests, ok := resources["requests"].(map[string]any)
+		Expect(ok).To(BeTrue())
+		Expect(requests["cpu"]).To(Equal("100m"))    // From base
+		Expect(requests["memory"]).To(Equal("128Mi")) // From base
+	})
+
+	It("override replaces non-map with map", func() {
+		base := map[string]any{
+			"key": "string-value",
+		}
+		override := map[string]any{
+			"key": map[string]any{
+				"nested": "value",
+			},
+		}
+		result := deepMerge(base, override)
+		nested, ok := result["key"].(map[string]any)
+		Expect(ok).To(BeTrue())
+		Expect(nested["nested"]).To(Equal("value"))
+	})
+
+	It("override replaces map with non-map", func() {
+		base := map[string]any{
+			"key": map[string]any{
+				"nested": "value",
+			},
+		}
+		override := map[string]any{
+			"key": "string-value",
+		}
+		result := deepMerge(base, override)
+		Expect(result["key"]).To(Equal("string-value"))
+	})
+})
+

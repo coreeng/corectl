@@ -37,6 +37,7 @@ type AppCreateOpt struct {
 	Description    string
 	ArgsFile       string
 	Args           []string
+	Config         string
 	DryRun         bool
 
 	Streams userio.IOStreams
@@ -122,6 +123,13 @@ NOTE:
 		"a",
 		[]string{},
 		"Template argument in the format: <arg-name>=<arg-value>",
+	)
+	appCreateCmd.Flags().StringVarP(
+		&opts.Config,
+		"config",
+		"c",
+		"",
+		"JSON configuration object to pass to the template",
 	)
 
 	appCreateCmd.Flags().BoolVarP(
@@ -370,6 +378,7 @@ func createNewApp(
 		ProdEnvs:         prodEnvs,
 		Template:         fromTemplate,
 		GitAuth:          gitAuth,
+		Config:           opts.Config,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err

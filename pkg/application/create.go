@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -50,6 +51,7 @@ type CreateOp struct {
 	ProdEnvs         []environment.Environment
 	Template         *template.Spec
 	GitAuth          git.AuthMethod
+	Config           string
 }
 
 type CreateResult struct {
@@ -332,11 +334,34 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 			Value: op.Tenant.Name,
 		},
 	}
+
+	mergedConfig := make(map[string]any)
+
+	if op.Template.Config != nil {
+		mergedConfig = deepMerge(mergedConfig, op.Template.Config)
+	}
+
+	if op.Config != "" {
+		var configOverrides map[string]any
+		if err := json.Unmarshal([]byte(op.Config), &configOverrides); err != nil {
+			return fmt.Errorf("invalid config JSON: %w", err)
+		}
+		mergedConfig = deepMerge(mergedConfig, configOverrides)
+	}
+
+	if len(mergedConfig) > 0 {
+		args = append(args, template.Argument{
+			Name:  "config",
+			Value: mergedConfig,
+		})
+	}
+
 	args = append(args, additionalArgs...)
 	logger.Debug().With(
 		zap.String("tenant", op.Tenant.Name),
 		zap.String("app", op.Name),
 		zap.String("target_dir", targetDir),
+		zap.Any("config", mergedConfig),
 		zap.Bool("dry_run", svc.DryRun)).
 		Msg("calling render template")
 
@@ -498,6 +523,28 @@ func githubWorkflowsExist(path string) (bool, error) {
 		return false, fmt.Errorf("error checking .github/workflows directory: %w", err)
 	}
 	return len(dir) > 0, nil
+}
+
+func deepMerge(base, override map[string]any) map[string]any {
+	result := make(map[string]any)
+
+	for k, v := range base {
+		result[k] = v
+	}
+
+	for k, v := range override {
+		if baseVal, exists := result[k]; exists {
+			baseMap, baseIsMap := baseVal.(map[string]any)
+			overrideMap, overrideIsMap := v.(map[string]any)
+			if baseIsMap && overrideIsMap {
+				result[k] = deepMerge(baseMap, overrideMap)
+				continue
+			}
+		}
+		result[k] = v
+	}
+
+	return result
 }
 
 func (svc *Service) ValidateCreate(op CreateOp) error {

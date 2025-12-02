@@ -1,10 +1,11 @@
 package render
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -121,7 +122,8 @@ param1 value
 param3 default value
 9876
 
-param2 is integer!`
+param2 is integer!
+`
 		Expect(string(renderedContent)).To(Equal(expectedArgsFileContent))
 	})
 })

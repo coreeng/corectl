@@ -15,11 +15,12 @@ type Argument struct {
 }
 
 type Spec struct {
-	Name         string      `yaml:"name"`
-	Description  string      `yaml:"description"`
-	SkeletonPath string      `yaml:"skeletonPath"`
-	Parameters   []Parameter `yaml:"parameters"`
-	path         string      `yaml:"-"`
+	Name         string         `yaml:"name"`
+	Description  string         `yaml:"description"`
+	SkeletonPath string         `yaml:"skeletonPath"`
+	Parameters   []Parameter    `yaml:"parameters"`
+	Config       map[string]any `yaml:"config"`
+	path         string         `yaml:"-"`
 }
 
 func (t *Spec) IsValid() bool {

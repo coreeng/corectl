@@ -28,14 +28,10 @@ func CollectArgsFromAllSources(
 		return nil, err
 	}
 
-	passedArgs := make([]template.Argument, 0, len(fileArgs)+len(flagArgs))
+	passedArgs := make([]template.Argument, 0, len(fileArgs)+len(flagArgs)+len(existingArgs))
 	passedArgs = append(passedArgs, fileArgs...)
 	passedArgs = append(passedArgs, flagArgs...)
-	for _, arg := range existingArgs {
-		if spec.GetParameter(arg.Name) != nil {
-			passedArgs = append(passedArgs, arg)
-		}
-	}
+	passedArgs = append(passedArgs, existingArgs...)
 	missingParameters := collectAllMissingParameters(spec, passedArgs)
 
 	var promptedArgs []template.Argument
