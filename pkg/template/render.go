@@ -10,22 +10,26 @@ import (
 
 // toYamlFilter is Python code that defines a to_yaml filter for Jinja2 templates.
 // This allows templates to render objects as YAML using {{ config | to_yaml }}.
+// It handles Jinja2's Undefined type to avoid pickle errors when the value is not defined.
 const toYamlFilter = `
 import yaml
+from jinja2 import Undefined
 
 def to_yaml(value, indent=2, default_flow_style=False):
-    if value is None:
+    if value is None or isinstance(value, Undefined):
         return ""
     return yaml.dump(value, default_flow_style=default_flow_style, indent=indent, allow_unicode=True)
 `
 
 // toJsonFilter is Python code that defines a to_json filter for Jinja2 templates.
 // This allows templates to render objects as JSON using {{ config | to_json }}.
+// It handles Jinja2's Undefined type to avoid pickle errors when the value is not defined.
 const toJsonFilter = `
 import json
+from jinja2 import Undefined
 
 def to_json(value, indent=None, sort_keys=False):
-    if value is None:
+    if value is None or isinstance(value, Undefined):
         return "null"
     return json.dumps(value, indent=indent, sort_keys=sort_keys, ensure_ascii=False)
 `
