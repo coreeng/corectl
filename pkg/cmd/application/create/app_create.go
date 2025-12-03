@@ -157,6 +157,11 @@ NOTE:
 }
 
 func run(opts *AppCreateOpt, cfg *config.Config) error {
+	// Default description to app name if not set
+	if opts.Description == "" {
+		opts.Description = opts.Name
+	}
+
 	repoParams := []config.Parameter[string]{
 		cfg.Repositories.CPlatform,
 		cfg.Repositories.Templates,
@@ -499,7 +504,7 @@ func createAppTenantForTeam(
 		Name:          appTenantName,
 		Kind:          "app",
 		Parent:        teamTenant.Name,
-		Description:   opts.Name,
+		Description:   opts.Description,
 		ContactEmail:  teamTenant.ContactEmail,
 		Environments:  teamTenant.Environments,
 		Repos:         []string{}, // Will be populated after the repo is created

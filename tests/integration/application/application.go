@@ -316,6 +316,7 @@ var _ = Describe("application", Ordered, func() {
 			// Check for specific files in the PR
 			expectedFiles := []string{
 				fmt.Sprintf("%s/README.md", newAppName),
+				fmt.Sprintf("%s/app.yaml", newAppName),
 				fmt.Sprintf(".github/workflows/%s-fast-feedback.yaml", newAppName),
 				fmt.Sprintf(".github/workflows/%s-extended-test.yaml", newAppName),
 			}
