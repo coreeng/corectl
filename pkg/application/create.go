@@ -407,6 +407,7 @@ func (svc *Service) writeAppConfig(targetDir string, appName string, description
 
 	// Use custom encoder for 2-space indentation
 	var buf bytes.Buffer
+	buf.WriteString("---\n")
 	encoder := yaml.NewEncoder(&buf)
 	encoder.SetIndent(2)
 	if err := encoder.Encode(appConfig); err != nil {

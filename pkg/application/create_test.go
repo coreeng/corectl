@@ -409,8 +409,8 @@ var _ = Describe("Create new application", func() {
 			content, err := os.ReadFile(appYamlPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify fields are in order: name, description, config
-			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			// Verify starts with --- and fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("---\nname: new-app-name\n"))
 			Expect(string(content)).To(ContainSubstring("description:"))
 			Expect(string(content)).To(ContainSubstring("config:"))
 			Expect(string(content)).To(ContainSubstring("  resources:"))
@@ -495,8 +495,8 @@ var _ = Describe("Create new application", func() {
 
 			content, err := os.ReadFile(appYamlPath)
 			Expect(err).NotTo(HaveOccurred())
-			// Verify fields are in order: name, description, config
-			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			// Verify starts with --- and fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("---\nname: new-app-name\n"))
 			Expect(string(content)).To(ContainSubstring("description:"))
 			Expect(string(content)).To(ContainSubstring("config: {}"))
 		})
@@ -687,8 +687,8 @@ var _ = Describe("Create new application", func() {
 			content, err := os.ReadFile(appYamlPath)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify fields are in order: name, description, config
-			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			// Verify starts with --- and fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("---\nname: new-app-name\n"))
 			Expect(string(content)).To(ContainSubstring("description:"))
 			Expect(string(content)).To(ContainSubstring("config:"))
 			// Verify both template config and --config values are present
