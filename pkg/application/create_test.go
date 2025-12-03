@@ -314,6 +314,7 @@ var _ = Describe("Create new application", func() {
 							"README.md",
 							".github/workflows/fast-feedback.yaml",
 							".github/workflows/extended-test.yaml",
+							"app.yaml",
 						},
 					},
 				},
@@ -400,6 +401,24 @@ var _ = Describe("Create new application", func() {
 			// Note: blank template has no config section, so merged config
 			// only contains --config values (no template defaults to merge)
 		})
+
+		It("creates app.yaml file with merged config at repo root", func() {
+			appYamlPath := filepath.Join(localAppRepoDir, "app.yaml")
+			Expect(appYamlPath).To(BeAnExistingFile())
+
+			content, err := os.ReadFile(appYamlPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			Expect(string(content)).To(ContainSubstring("description:"))
+			Expect(string(content)).To(ContainSubstring("config:"))
+			Expect(string(content)).To(ContainSubstring("  resources:"))
+			Expect(string(content)).To(ContainSubstring("cpu: 500m"))
+			Expect(string(content)).To(ContainSubstring("memory: 512Mi"))
+			Expect(string(content)).To(ContainSubstring("cpu: 1000m"))
+			Expect(string(content)).To(ContainSubstring("memory: 1024Mi"))
+		})
 	})
 
 	Context("from template with invalid config JSON", func() {
@@ -429,7 +448,9 @@ var _ = Describe("Create new application", func() {
 	})
 
 	Context("from template without --config flag and no config section in template.yaml", func() {
-		It("does not pass config argument when template has no config section", func() {
+		var localAppRepoDir string
+
+		BeforeEach(func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
@@ -438,7 +459,7 @@ var _ = Describe("Create new application", func() {
 			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
 			Expect(err).NotTo(HaveOccurred())
 
-			localAppRepoDir := t.TempDir()
+			localAppRepoDir = t.TempDir()
 			_, err = service.Create(CreateOp{
 				Name:             "new-app-name",
 				OrgName:          "github-org-name",
@@ -451,7 +472,9 @@ var _ = Describe("Create new application", func() {
 				Config:           "", // Empty --config flag
 			})
 			Expect(err).NotTo(HaveOccurred())
+		})
 
+		It("does not pass config argument when template has no config section", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
 			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
 			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
@@ -464,6 +487,18 @@ var _ = Describe("Create new application", func() {
 				}
 			}
 			Expect(hasConfig).To(BeFalse())
+		})
+
+		It("creates app.yaml with empty config when there is no config", func() {
+			appYamlPath := filepath.Join(localAppRepoDir, "app.yaml")
+			Expect(appYamlPath).To(BeAnExistingFile())
+
+			content, err := os.ReadFile(appYamlPath)
+			Expect(err).NotTo(HaveOccurred())
+			// Verify fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			Expect(string(content)).To(ContainSubstring("description:"))
+			Expect(string(content)).To(ContainSubstring("config: {}"))
 		})
 	})
 
@@ -589,7 +624,9 @@ var _ = Describe("Create new application", func() {
 	})
 
 	Context("when --config adds new keys not in template config", func() {
-		It("includes both template config and new --config keys", func() {
+		var localAppRepoDir string
+
+		BeforeEach(func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
@@ -602,7 +639,7 @@ var _ = Describe("Create new application", func() {
 				"replicas": 2,
 			}
 
-			localAppRepoDir := t.TempDir()
+			localAppRepoDir = t.TempDir()
 			_, err = service.Create(CreateOp{
 				Name:             "new-app-name",
 				OrgName:          "github-org-name",
@@ -615,7 +652,9 @@ var _ = Describe("Create new application", func() {
 				Config:           `{"newKey":"newValue","resources":{"limits":{"cpu":"1000m"}}}`,
 			})
 			Expect(err).NotTo(HaveOccurred())
+		})
 
+		It("includes both template config and new --config keys", func() {
 			// Find the config argument
 			var configArg template.Argument
 			for _, arg := range renderer.PassedAdditionalArgs[0] {
@@ -639,6 +678,23 @@ var _ = Describe("Create new application", func() {
 			limits, ok := resources["limits"].(map[string]any)
 			Expect(ok).To(BeTrue())
 			Expect(limits["cpu"]).To(Equal("1000m"))
+		})
+
+		It("creates app.yaml with merged config from template and --config", func() {
+			appYamlPath := filepath.Join(localAppRepoDir, "app.yaml")
+			Expect(appYamlPath).To(BeAnExistingFile())
+
+			content, err := os.ReadFile(appYamlPath)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify fields are in order: name, description, config
+			Expect(string(content)).To(HavePrefix("name: new-app-name\n"))
+			Expect(string(content)).To(ContainSubstring("description:"))
+			Expect(string(content)).To(ContainSubstring("config:"))
+			// Verify both template config and --config values are present
+			Expect(string(content)).To(ContainSubstring("replicas: 2"))
+			Expect(string(content)).To(ContainSubstring("newKey: newValue"))
+			Expect(string(content)).To(ContainSubstring("cpu: 1000m"))
 		})
 	})
 
@@ -791,6 +847,7 @@ var _ = Describe("Create new application", func() {
 							"new-app-name/README.md",
 							".github/workflows/new-app-name-fast-feedback.yaml",
 							".github/workflows/new-app-name-extended-test.yaml",
+							"new-app-name/app.yaml",
 						},
 					},
 				},
@@ -1048,12 +1105,12 @@ var _ = Describe("deepMerge", func() {
 
 		limits, ok := resources["limits"].(map[string]any)
 		Expect(ok).To(BeTrue())
-		Expect(limits["cpu"]).To(Equal("2000m"))    // Overridden
+		Expect(limits["cpu"]).To(Equal("2000m"))     // Overridden
 		Expect(limits["memory"]).To(Equal("1024Mi")) // From base
 
 		requests, ok := resources["requests"].(map[string]any)
 		Expect(ok).To(BeTrue())
-		Expect(requests["cpu"]).To(Equal("100m"))    // From base
+		Expect(requests["cpu"]).To(Equal("100m"))     // From base
 		Expect(requests["memory"]).To(Equal("128Mi")) // From base
 	})
 
@@ -1085,4 +1142,3 @@ var _ = Describe("deepMerge", func() {
 		Expect(result["key"]).To(Equal("string-value"))
 	})
 })
-

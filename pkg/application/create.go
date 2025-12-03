@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -23,6 +24,7 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/google/go-github/v60/github"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 type Service struct {
@@ -365,7 +367,60 @@ func (svc *Service) renderTemplateMaybe(op CreateOp, targetDir string, additiona
 		zap.Bool("dry_run", svc.DryRun)).
 		Msg("calling render template")
 
-	return svc.TemplateRenderer.Render(op.Template, targetDir, svc.DryRun, args...)
+	if err := svc.TemplateRenderer.Render(op.Template, targetDir, svc.DryRun, args...); err != nil {
+		return err
+	}
+
+	// Write merged config to app.yaml at the top level of the repo (always created, even if empty)
+	if err := svc.writeAppConfig(targetDir, op.Name, op.Description, mergedConfig); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// appYAML represents the structure of app.yaml with fields in desired order
+type appYAML struct {
+	Name        string         `yaml:"name"`
+	Description string         `yaml:"description"`
+	Config      map[string]any `yaml:"config"`
+}
+
+// writeAppConfig writes the merged configuration to app.yaml at the target directory
+func (svc *Service) writeAppConfig(targetDir string, appName string, description string, config map[string]any) error {
+	appConfigPath := filepath.Join(targetDir, "app.yaml")
+	logger.Debug().With(
+		zap.String("path", appConfigPath),
+		zap.Bool("dry_run", svc.DryRun)).
+		Msg("writing app.yaml config file")
+
+	if svc.DryRun {
+		return nil
+	}
+
+	// Build app config with ordered fields: name, description, config
+	appConfig := appYAML{
+		Name:        appName,
+		Description: description,
+		Config:      config,
+	}
+
+	// Use custom encoder for 2-space indentation
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(appConfig); err != nil {
+		return fmt.Errorf("failed to marshal config to YAML: %w", err)
+	}
+	if err := encoder.Close(); err != nil {
+		return fmt.Errorf("failed to close YAML encoder: %w", err)
+	}
+
+	if err := os.WriteFile(appConfigPath, buf.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("failed to write app.yaml: %w", err)
+	}
+
+	return nil
 }
 
 func (svc *Service) moveGithubWorkflowsToRootMaybe(op CreateOp) error {
