@@ -261,21 +261,23 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+			// Args: name, description, tenant, working_directory, version_prefix (config is passed via configJSON)
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
 
 			// Verify key arguments are present
 			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
 			for i, arg := range renderer.PassedAdditionalArgs[0] {
 				argNames[i] = arg.Name
 			}
-			Expect(argNames).To(ContainElements("name", "tenant", "working_directory", "version_prefix"))
+			Expect(argNames).To(ContainElements("name", "description", "tenant", "working_directory", "version_prefix"))
 
 			// Check specific values
 			for _, arg := range renderer.PassedAdditionalArgs[0] {
 				switch arg.Name {
 				case "name":
 					Expect(arg.Value).To(Equal(newAppName))
+				case "description":
+					Expect(arg.Value).To(Equal(""))
 				case "tenant":
 					Expect(arg.Value).To(Equal("default-tenant"))
 				case "working_directory":
@@ -366,40 +368,14 @@ var _ = Describe("Create new application", func() {
 			Expect(createResult.RepositoryFullname.Name()).To(Equal(newAppName))
 		})
 
-		It("passes merged config argument to template (template.yaml + --config overrides)", func() {
+		It("passes config JSON to template renderer", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			// Now includes: name, tenant, config (merged), working_directory, version_prefix
+			// Args: name, description, tenant, working_directory, version_prefix (config is passed via configJSON)
 			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
 
-			// Find the config argument
-			var configArg template.Argument
-			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				if arg.Name == "config" {
-					configArg = arg
-					break
-				}
-			}
-
-			Expect(configArg.Name).To(Equal("config"))
-			configMap, ok := configArg.Value.(map[string]any)
-			Expect(ok).To(BeTrue())
-
-			// Verify --config overrides are present
-			resources, ok := configMap["resources"].(map[string]any)
-			Expect(ok).To(BeTrue())
-
-			requests, ok := resources["requests"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			Expect(requests["cpu"]).To(Equal("500m"))
-			Expect(requests["memory"]).To(Equal("512Mi"))
-
-			limits, ok := resources["limits"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			Expect(limits["cpu"]).To(Equal("1000m"))
-			Expect(limits["memory"]).To(Equal("1024Mi"))
-
-			// Note: blank template has no config section, so merged config
-			// only contains --config values (no template defaults to merge)
+			// Verify configJSON was passed correctly
+			Expect(renderer.PassedConfigJSON).To(HaveLen(1))
+			Expect(renderer.PassedConfigJSON[0]).To(Equal(`{"resources":{"requests":{"cpu":"500m","memory":"512Mi"},"limits":{"cpu":"1000m","memory":"1024Mi"}}}`))
 		})
 
 		It("creates app.yaml file with merged config at repo root", func() {
@@ -474,19 +450,14 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("does not pass config argument when template has no config section", func() {
+		It("passes empty config JSON when template has no config section", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+			// Args: name, description, tenant, working_directory, version_prefix (config is passed via configJSON)
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
 
-			// Verify config is NOT present
-			hasConfig := false
-			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				if arg.Name == "config" {
-					hasConfig = true
-				}
-			}
-			Expect(hasConfig).To(BeFalse())
+			// Verify empty configJSON was passed
+			Expect(renderer.PassedConfigJSON).To(HaveLen(1))
+			Expect(renderer.PassedConfigJSON[0]).To(BeEmpty())
 		})
 
 		It("creates app.yaml with empty config when there is no config", func() {
@@ -503,7 +474,7 @@ var _ = Describe("Create new application", func() {
 	})
 
 	Context("when template has config section and --config provides overrides", func() {
-		It("deep merges template config with --config overrides", func() {
+		It("deep merges template config with --config overrides in app.yaml", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
@@ -536,35 +507,24 @@ var _ = Describe("Create new application", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// Find the config argument
-			var configArg template.Argument
-			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				if arg.Name == "config" {
-					configArg = arg
-					break
-				}
-			}
+			// Verify configJSON was passed correctly
+			Expect(renderer.PassedConfigJSON).To(HaveLen(1))
+			Expect(renderer.PassedConfigJSON[0]).To(Equal(`{"resources":{"limits":{"cpu":"2000m"}}}`))
 
-			Expect(configArg.Name).To(Equal("config"))
-			configMap, ok := configArg.Value.(map[string]any)
-			Expect(ok).To(BeTrue())
+			// Verify deep merge in generated app.yaml
+			appYamlPath := filepath.Join(localAppRepoDir, "app.yaml")
+			content, err := os.ReadFile(appYamlPath)
+			Expect(err).NotTo(HaveOccurred())
 
-			// Verify base values from template.yaml config are preserved
-			Expect(configMap["replicas"]).To(Equal(2))
-
-			// Verify deep merge worked correctly
-			resources, ok := configMap["resources"].(map[string]any)
-			Expect(ok).To(BeTrue())
-
-			limits, ok := resources["limits"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			Expect(limits["cpu"]).To(Equal("2000m"))     // Overridden by --config
-			Expect(limits["memory"]).To(Equal("1024Mi")) // From template.yaml config
+			// Verify merged config values
+			Expect(string(content)).To(ContainSubstring("replicas: 2"))    // From template config
+			Expect(string(content)).To(ContainSubstring("cpu: 2000m"))     // Overridden by --config
+			Expect(string(content)).To(ContainSubstring("memory: 1024Mi")) // From template config
 		})
 	})
 
 	Context("when template has config section but --config is empty", func() {
-		It("uses template config as-is", func() {
+		It("uses template config as-is in app.yaml", func() {
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
 			}
@@ -597,29 +557,18 @@ var _ = Describe("Create new application", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// Find the config argument
-			var configArg template.Argument
-			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				if arg.Name == "config" {
-					configArg = arg
-					break
-				}
-			}
+			// Verify empty configJSON was passed
+			Expect(renderer.PassedConfigJSON).To(HaveLen(1))
+			Expect(renderer.PassedConfigJSON[0]).To(BeEmpty())
 
-			Expect(configArg.Name).To(Equal("config"))
-			configMap, ok := configArg.Value.(map[string]any)
-			Expect(ok).To(BeTrue())
+			// Verify template config is used in app.yaml
+			appYamlPath := filepath.Join(localAppRepoDir, "app.yaml")
+			content, err := os.ReadFile(appYamlPath)
+			Expect(err).NotTo(HaveOccurred())
 
-			// Verify all values from template.yaml config are present
-			Expect(configMap["replicas"]).To(Equal(3))
-
-			resources, ok := configMap["resources"].(map[string]any)
-			Expect(ok).To(BeTrue())
-
-			limits, ok := resources["limits"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			Expect(limits["cpu"]).To(Equal("500m"))
-			Expect(limits["memory"]).To(Equal("512Mi"))
+			Expect(string(content)).To(ContainSubstring("replicas: 3"))
+			Expect(string(content)).To(ContainSubstring("cpu: 500m"))
+			Expect(string(content)).To(ContainSubstring("memory: 512Mi"))
 		})
 	})
 
@@ -654,30 +603,10 @@ var _ = Describe("Create new application", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("includes both template config and new --config keys", func() {
-			// Find the config argument
-			var configArg template.Argument
-			for _, arg := range renderer.PassedAdditionalArgs[0] {
-				if arg.Name == "config" {
-					configArg = arg
-					break
-				}
-			}
-
-			Expect(configArg.Name).To(Equal("config"))
-			configMap, ok := configArg.Value.(map[string]any)
-			Expect(ok).To(BeTrue())
-
-			// From template.yaml config
-			Expect(configMap["replicas"]).To(Equal(2))
-			// New key from --config
-			Expect(configMap["newKey"]).To(Equal("newValue"))
-			// New nested structure from --config
-			resources, ok := configMap["resources"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			limits, ok := resources["limits"].(map[string]any)
-			Expect(ok).To(BeTrue())
-			Expect(limits["cpu"]).To(Equal("1000m"))
+		It("passes configJSON to renderer", func() {
+			// Verify configJSON was passed correctly
+			Expect(renderer.PassedConfigJSON).To(HaveLen(1))
+			Expect(renderer.PassedConfigJSON[0]).To(Equal(`{"newKey":"newValue","resources":{"limits":{"cpu":"1000m"}}}`))
 		})
 
 		It("creates app.yaml with merged config from template and --config", func() {
@@ -790,15 +719,15 @@ var _ = Describe("Create new application", func() {
 
 		It("passes correct arguments to template", func() {
 			Expect(renderer.PassedAdditionalArgs).To(HaveLen(1))
-			// Blank template has no config section, so only: name, tenant, working_directory, version_prefix
-			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(4))
+			// Args: name, description, tenant, working_directory, version_prefix (config is passed via configJSON)
+			Expect(renderer.PassedAdditionalArgs[0]).To(HaveLen(5))
 
 			// Verify key arguments are present
 			argNames := make([]string, len(renderer.PassedAdditionalArgs[0]))
 			for i, arg := range renderer.PassedAdditionalArgs[0] {
 				argNames[i] = arg.Name
 			}
-			Expect(argNames).To(ContainElements("name", "tenant", "working_directory", "version_prefix"))
+			Expect(argNames).To(ContainElements("name", "description", "tenant", "working_directory", "version_prefix"))
 
 			// Check specific values
 			for _, arg := range renderer.PassedAdditionalArgs[0] {
@@ -1023,15 +952,15 @@ func readFileContent(path ...string) string {
 type panicTemplateRenderer struct {
 }
 
-func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ bool, _ ...template.Argument) error {
+func (r *panicTemplateRenderer) Render(_ *template.Spec, _ string, _ bool, _ string, _ ...template.Argument) error {
 	panic("Panic for test sake")
 }
 
-var _ = Describe("deepMerge", func() {
+var _ = Describe("render.DeepMerge", func() {
 	It("merges two empty maps", func() {
 		base := map[string]any{}
 		override := map[string]any{}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		Expect(result).To(BeEmpty())
 	})
 
@@ -1041,7 +970,7 @@ var _ = Describe("deepMerge", func() {
 			"key1": "value1",
 			"key2": 42,
 		}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		Expect(result).To(HaveLen(2))
 		Expect(result["key1"]).To(Equal("value1"))
 		Expect(result["key2"]).To(Equal(42))
@@ -1053,7 +982,7 @@ var _ = Describe("deepMerge", func() {
 			"key2": 42,
 		}
 		override := map[string]any{}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		Expect(result).To(HaveLen(2))
 		Expect(result["key1"]).To(Equal("value1"))
 		Expect(result["key2"]).To(Equal(42))
@@ -1068,7 +997,7 @@ var _ = Describe("deepMerge", func() {
 			"key1": "override-value",
 			"key3": "only-in-override",
 		}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		Expect(result).To(HaveLen(3))
 		Expect(result["key1"]).To(Equal("override-value"))
 		Expect(result["key2"]).To(Equal("only-in-base"))
@@ -1096,7 +1025,7 @@ var _ = Describe("deepMerge", func() {
 				},
 			},
 		}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 
 		Expect(result["replicas"]).To(Equal(2))
 
@@ -1123,7 +1052,7 @@ var _ = Describe("deepMerge", func() {
 				"nested": "value",
 			},
 		}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		nested, ok := result["key"].(map[string]any)
 		Expect(ok).To(BeTrue())
 		Expect(nested["nested"]).To(Equal("value"))
@@ -1138,7 +1067,7 @@ var _ = Describe("deepMerge", func() {
 		override := map[string]any{
 			"key": "string-value",
 		}
-		result := deepMerge(base, override)
+		result := render.DeepMerge(base, override)
 		Expect(result["key"]).To(Equal("string-value"))
 	})
 })
