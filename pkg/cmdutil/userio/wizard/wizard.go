@@ -252,22 +252,22 @@ func (m Model) View() string {
 		}
 		if m.inputModel != nil {
 			// show editing icon if an input component has been injected
-			buffer.WriteString(fmt.Sprintf("%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width))))
+			fmt.Fprintf(&buffer, "%s%s\n", "📝 ", m.Styles.Bold.Render(wrap.String(task.title, m.width)))
 		} else if task.isAnonymous() {
 			continue
 		} else if task.completed {
-			buffer.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&buffer,
 				"%s %s\n",
 				m.Styles.Marks.Render(task.status),
 				m.Styles.Bold.Render(wrap.String(task.completedTitle, m.width)),
-			))
+			)
 		} else {
 			// show spinner for incomplete tasks
-			buffer.WriteString(fmt.Sprintf(
+			fmt.Fprintf(&buffer,
 				"%s%s\n",
 				m.spinner.View(),
 				m.Styles.Bold.Render(wrap.String(task.title, m.width)),
-			))
+			)
 		}
 	}
 
