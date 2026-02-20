@@ -154,7 +154,7 @@ var _ = Describe("application", Ordered, func() {
 					&github.ListOptions{},
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(envVars.TotalCount).To(Equal(5))
+				Expect(envVars.TotalCount).To(Equal(6))
 				gcpVendor := env.Platform.(*environment.GCPVendor)
 				Expect(envVars.Variables).To(ConsistOf(
 					Satisfy(func(v *github.ActionsVariable) bool {
@@ -176,6 +176,10 @@ var _ = Describe("application", Ordered, func() {
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "PROJECT_NUMBER" &&
 							v.Value == gcpVendor.ProjectNumber
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "REGION" &&
+							v.Value == gcpVendor.Region
 					}),
 				))
 			}
@@ -448,7 +452,7 @@ var _ = Describe("application", Ordered, func() {
 					&github.ListOptions{},
 				)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(envVars.TotalCount).To(Equal(5))
+				Expect(envVars.TotalCount).To(Equal(6))
 				gcpVendor := env.Platform.(*environment.GCPVendor)
 				Expect(envVars.Variables).To(ConsistOf(
 					Satisfy(func(v *github.ActionsVariable) bool {
@@ -470,6 +474,10 @@ var _ = Describe("application", Ordered, func() {
 					Satisfy(func(v *github.ActionsVariable) bool {
 						return v.Name == "PROJECT_NUMBER" &&
 							v.Value == gcpVendor.ProjectNumber
+					}),
+					Satisfy(func(v *github.ActionsVariable) bool {
+						return v.Name == "REGION" &&
+							v.Value == gcpVendor.Region
 					}),
 				))
 			}
