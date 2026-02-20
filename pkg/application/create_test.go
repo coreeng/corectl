@@ -203,7 +203,7 @@ var _ = Describe("Create new application", func() {
 			})))
 		})
 		It("configured environments with variables", func() {
-			Expect(createEnvVarCapture.Requests).To(HaveLen(10))
+			Expect(createEnvVarCapture.Requests).To(HaveLen(12))
 			for _, env := range []environment.Environment{devEnv, prodEnv} {
 				var envRelatedRequests []httpmock.ActionEnvVariableRequest
 				for _, r := range createEnvVarCapture.Requests {
@@ -232,6 +232,10 @@ var _ = Describe("Create new application", func() {
 					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
 						return r.Var.Name == "PROJECT_NUMBER" &&
 							r.Var.Value == gcpVendor.ProjectNumber
+					}),
+					Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
+						return r.Var.Name == "REGION" &&
+							r.Var.Value == gcpVendor.Region
 					}),
 				))
 				Expect(envRelatedRequests).To(HaveEach(Satisfy(func(r httpmock.ActionEnvVariableRequest) bool {
