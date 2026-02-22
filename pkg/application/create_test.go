@@ -340,6 +340,71 @@ var _ = Describe("Create new application", func() {
 
 	})
 
+	Context("from template with public visibility", Ordered, func() {
+		var (
+			createPublicRepoCapture *httpmock.HttpCaptureHandler[github.Repository]
+		)
+		BeforeAll(func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+
+			newAppCloneUrl := newAppServerRepo.LocalCloneUrl()
+			createPublicRepoCapture = httpmock.NewCaptureHandler[github.Repository](
+				&github.Repository{
+					ID:   &newRepoId,
+					Name: &newAppName,
+					Owner: &github.User{
+						Login: &githubOrg,
+					},
+					CloneURL: &newAppCloneUrl,
+				})
+
+			publicGithubClient := github.NewClient(mock.NewMockedHTTPClient(
+				mock.WithRequestMatchHandler(
+					mock.PostOrgsReposByOrg,
+					createPublicRepoCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					mock.PostReposActionsVariablesByOwnerByRepo,
+					createRepoVarCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					mock.PutReposEnvironmentsByOwnerByRepoByEnvironmentName,
+					createEnvCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					mock.PostRepositoriesEnvironmentsVariablesByRepositoryIdByEnvironmentName,
+					createEnvVarCapture.Func(),
+				),
+			))
+
+			service = NewService(renderer, publicGithubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			localAppRepoDir := t.TempDir()
+			_, err = service.Create(CreateOp{
+				Name:             "new-app-name",
+				OrgName:          "github-org-name",
+				LocalPath:        localAppRepoDir,
+				Tenant:           defaultTenant,
+				FastFeedbackEnvs: []environment.Environment{devEnv},
+				ExtendedTestEnvs: []environment.Environment{devEnv},
+				ProdEnvs:         []environment.Environment{prodEnv},
+				Template:         templateToUse,
+				Public:           true,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("created repo with public visibility", func() {
+			Expect(createPublicRepoCapture.Requests).To(HaveLen(1))
+			newRepoReq := createPublicRepoCapture.Requests[0]
+			Expect(*newRepoReq.Visibility).To(Equal("public"))
+		})
+	})
+
 	Context("from template with config", Ordered, func() {
 		var (
 			createResult    CreateResult

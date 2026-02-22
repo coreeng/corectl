@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/glamour v0.10.0
 	github.com/charmbracelet/lipgloss v1.1.1-0.20250404203927-76690c660834
-	github.com/coreeng/core-platform/pkg v0.52.3
+	github.com/coreeng/core-platform/pkg v0.52.9
 	github.com/go-git/go-billy/v5 v5.7.0
 	github.com/go-git/go-git/v5 v5.16.5
 	github.com/google/go-github/v60 v60.0.0
@@ -43,7 +43,6 @@ require (
 	github.com/charmbracelet/x/exp/slice v0.0.0-20260216111343-536eb63c1f4c // indirect
 	github.com/clipperhouse/displaywidth v0.10.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/coreeng/core-platform v0.52.3 // indirect
 	github.com/gofrs/flock v0.13.0 // indirect
 	github.com/google/go-github/v59 v59.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
