@@ -8,12 +8,10 @@ Accepted
 
 ## Context
 
-We want to have the history of commands that were run on corectl, 
-to facilitate diagnostic of client issues. 
+We want to have the history of commands that were run on corectl,
+to facilitate diagnostic of client issues.
 That way, if there is an unexpected error, the user can send us the log files and we
 can see the commands the user ran, which arguments were used and what was the exact error.
-
-
 
 ### Considerations
 
@@ -24,11 +22,12 @@ information ends up in the log file and library debug logs will not go there for
 ### Requirements
 
 There are a few requirements:
+
 * We should be able to log to file as well as to console with different logging levels
 * Log level to the console level should be configurable
 * log file should be max sized, with retention period and max backups.
 
 ### Options
 
-For the requirements our current logging provider does not satisfy them. One that does and is highly used in the community 
+For the requirements our current logging provider does not satisfy them. One that does and is highly used in the community
 is [zap](https://github.com/uber-go/zap), which seems like the way to go.
