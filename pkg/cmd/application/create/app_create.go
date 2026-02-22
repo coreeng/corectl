@@ -39,6 +39,7 @@ type AppCreateOpt struct {
 	Args           []string
 	Config         string
 	DryRun         bool
+	Public         bool
 
 	Streams userio.IOStreams
 }
@@ -138,6 +139,13 @@ NOTE:
 		"n",
 		false,
 		"Dry run",
+	)
+
+	appCreateCmd.Flags().BoolVar(
+		&opts.Public,
+		"public",
+		false,
+		"Create a public GitHub repository (default is private)",
 	)
 
 	config.RegisterBoolParameterAsFlag(
@@ -384,6 +392,7 @@ func createNewApp(
 		Template:         fromTemplate,
 		GitAuth:          gitAuth,
 		Config:           opts.Config,
+		Public:           opts.Public,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err

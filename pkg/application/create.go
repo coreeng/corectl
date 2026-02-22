@@ -51,6 +51,7 @@ type CreateOp struct {
 	Template         *template.Spec
 	GitAuth          git.AuthMethod
 	Config           string
+	Public           bool
 }
 
 type CreateResult struct {
@@ -389,6 +390,9 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		Msg("github: create repository")
 	deleteBranchOnMerge := true
 	visibility := "private"
+	if op.Public {
+		visibility = "public"
+	}
 	repo := github.Repository{
 		ID:                  github.Int64(1234),
 		Name:                &repoName,
