@@ -9,8 +9,7 @@ Accepted
 ## Context
 
 Sometimes we deal with multiple applications in a single repository.
-We want corectl to be able to create applications in such setup. 
-
+We want corectl to be able to create applications in such setup.
 
 ## Current interface
 
@@ -28,8 +27,9 @@ Flags:
       --tenant string          Tenant to configure for P2P
 ```
 
-This results in 
-- new local git repository created in <local-path>
+This results in:
+
+- new local git repository created in `<local-path>`
 - application skeleton is rendered in root of the repository
 - repository is pushed to remote
 - github repository variables are initialized
