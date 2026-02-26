@@ -15,7 +15,7 @@ jobs:
     name: Create release
     steps:
       - name: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: go-private-module-access
@@ -26,7 +26,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: go-releaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           args: release --clean
