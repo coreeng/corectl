@@ -15,7 +15,7 @@ import (
 
 type CreateOrUpdateOp struct {
 	Tenant            *tenant.Tenant
-	ParentTenant      *tenant.Tenant
+	OwnerTenant       *tenant.Tenant
 	CplatformRepoPath string
 	BranchName        string
 	CommitMessage     string
@@ -64,9 +64,9 @@ func CreateOrUpdate(
 	var relativeFilepath string
 	if !op.DryRun {
 		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
-			Tenant:       op.Tenant,
-			ParentTenant: op.ParentTenant,
-			TenantsDir:   configpath.GetCorectlCPlatformDir("tenants"),
+			Tenant:      op.Tenant,
+			OwnerTenant: op.OwnerTenant,
+			TenantsDir:  configpath.GetCorectlCPlatformDir("tenants"),
 		}); err != nil {
 			return result, err
 		}
@@ -75,8 +75,10 @@ func CreateOrUpdate(
 			return result, err
 		}
 	} else {
-		// Approximation for dry-run
-		relativeFilepath = fmt.Sprintf("tenants/%s.%s.yml", op.Tenant.Name, op.Tenant.Kind)
+		relativeFilepath, err = approximateTenantFilePathForDryRun(op)
+		if err != nil {
+			return result, err
+		}
 	}
 
 	if err = repository.AddFiles(relativeFilepath); err != nil {
@@ -113,4 +115,24 @@ func CreateOrUpdate(
 
 	result.PRUrl = pullRequest.GetHTMLURL()
 	return result, nil
+}
+
+func approximateTenantFilePathForDryRun(op *CreateOrUpdateOp) (string, error) {
+	// Best-effort path approximation used only for dry-run git operations.
+	// The actual path is determined by core-platform's tenant.CreateOrUpdate.
+	switch op.Tenant.Kind {
+	case "OrgUnit":
+		return fmt.Sprintf("tenants/tenants/%s.ou.yaml", op.Tenant.Name), nil
+	case "DeliveryUnit":
+		owner := op.Tenant.Owner
+		if owner == "" && op.OwnerTenant != nil {
+			owner = op.OwnerTenant.Name
+		}
+		if owner == "" {
+			return fmt.Sprintf("tenants/tenants/%s.du.yaml", op.Tenant.Name), nil
+		}
+		return fmt.Sprintf("tenants/tenants/%s/%s.du.yaml", owner, op.Tenant.Name), nil
+	default:
+		return "", fmt.Errorf("unknown tenant kind for dry-run: %s", op.Tenant.Kind)
+	}
 }

@@ -96,19 +96,11 @@ var _ = Describe("AppCreateOpt", func() {
 		})
 	})
 
-	Describe("createPRWithUpdatedReposListForTenant", func() {
-		Context("when tenant is an app tenant", func() {
-			It("should accept app tenants without error on kind validation", func() {
-				// This test verifies that app tenants are allowed to have repos
-				// The function expects only app tenants now since team tenants
-				// are converted to app tenants in the main flow
-				appTenant := &coretnt.Tenant{
-					Name: "test-app-tenant",
-					Kind: "app",
-				}
-
-				// Verify the tenant kind is correct
-				Expect(appTenant.Kind).To(Equal("app"))
+	Describe("createPRWithUpdatedRepoForTenant", func() {
+		Context("when tenant is a delivery unit", func() {
+			It("should construct a delivery unit tenant", func() {
+				du := &coretnt.Tenant{Name: "test-du", Kind: "DeliveryUnit"}
+				Expect(du.Kind).To(Equal("DeliveryUnit"))
 			})
 		})
 	})

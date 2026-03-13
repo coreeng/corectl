@@ -24,8 +24,9 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 
 		validTenant = &coretnt.Tenant{
 			Name:         "new-tenant",
-			Kind:         "app",
-			Parent:       "parent",
+			Kind:         "DeliveryUnit",
+			Type:         "application",
+			Owner:        "parent",
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
 			Environments: []string{

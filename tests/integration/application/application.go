@@ -187,7 +187,7 @@ var _ = Describe("application", Ordered, func() {
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-add-repo-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -196,7 +196,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("Add new repository " + newAppName + " for tenant " + testconfig.Cfg.Tenant))
+			Expect(pr.GetTitle()).To(Equal("Set repository " + newAppName + " for tenant " + testconfig.Cfg.Tenant))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
@@ -211,7 +211,7 @@ var _ = Describe("application", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("modified"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + testconfig.Cfg.Tenant + ".app.yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + testconfig.Cfg.Tenant + ".du.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 
@@ -345,7 +345,7 @@ var _ = Describe("application", Ordered, func() {
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-add-repo-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -354,7 +354,7 @@ var _ = Describe("application", Ordered, func() {
 		}, SpecTimeout(time.Minute))
 	})
 
-	Context("create in monorepo mode with team tenant", Ordered, func() {
+	Context("create in monorepo mode with org unit tenant", Ordered, func() {
 		var (
 			teamTenantName string
 			monorepoName   string
@@ -364,14 +364,14 @@ var _ = Describe("application", Ordered, func() {
 		)
 
 		BeforeAll(func(ctx SpecContext) {
-			// Use existing "parent" team tenant
+			// Use existing "parent" org unit
 			teamTenantName = "parent"
 
 			monorepoName = "test-monorepo-team-" + strings.ToLower(testRunId)
 			monorepoDir = filepath.Join(homeDir, monorepoName)
 			createMonorepoRepositoryRemoteAndLocal(githubClient, ctx, cfg, monorepoName, monorepoDir)
 
-			// Create a new app within the monorepo under a team tenant.
+			// Create a new app within the monorepo under an org unit.
 			newAppName = "new-monorepo-team-app-" + strings.ToLower(testRunId)
 			appDir = filepath.Join(monorepoDir, newAppName)
 			_, err := corectl.Run(
@@ -414,13 +414,13 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 		}, SpecTimeout(time.Minute))
 
-		It("created a PR for new app tenant configuration", func(ctx SpecContext) {
+		It("created a PR for new delivery unit configuration", func(ctx SpecContext) {
 			prList, _, err := githubClient.PullRequests.List(
 				ctx,
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-app-tenant-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -428,7 +428,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList).To(HaveLen(1))
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
-			Expect(pr.GetTitle()).To(Equal("New app tenant: " + newAppName))
+			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newAppName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
@@ -442,11 +442,11 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prFiles).To(HaveLen(1))
 			prFile := prFiles[0]
 			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".app.yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".du.yaml"))
 		}, SpecTimeout(2*time.Minute))
 	})
 
-	Context("create with team tenant", Ordered, func() {
+	Context("create with org unit tenant", Ordered, func() {
 		var (
 			teamTenantName string
 			newAppName     string
@@ -455,10 +455,10 @@ var _ = Describe("application", Ordered, func() {
 		)
 
 		BeforeAll(func(ctx SpecContext) {
-			// Use existing "parent" team tenant
+			// Use existing "parent" org unit
 			teamTenantName = "parent"
 
-			// Create an app with this team tenant
+			// Create an app with this org unit
 			newAppName = "team-app-" + strings.ToLower(testRunId)
 			appDir = filepath.Join(homeDir, newAppName)
 			_, err := corectl.Run(
@@ -567,13 +567,13 @@ var _ = Describe("application", Ordered, func() {
 			}
 		}, NodeTimeout(time.Minute))
 
-		It("created a PR with new app tenant and repository", func(ctx SpecContext) {
+		It("created a PR with new delivery unit and repository", func(ctx SpecContext) {
 			prList, _, err := githubClient.PullRequests.List(
 				ctx,
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-app-tenant-" + newAppName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
 					Base: git.MainBranch,
 				},
 			)
@@ -582,7 +582,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("New app tenant: " + newAppName))
+			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newAppName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
@@ -597,7 +597,7 @@ var _ = Describe("application", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".app.yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".du.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })

@@ -69,15 +69,13 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 		return fmt.Errorf("tenant is not found: %s", opts.TenantName)
 	}
 
-	if t.Kind == "team" {
-		return fmt.Errorf("cannot add repository to team tenant '%s': only app tenants can have repositories", t.Name)
+	if t.Kind == "OrgUnit" {
+		return fmt.Errorf("cannot set repository for org unit '%s': only delivery units can have a repository", t.Name)
 	}
 
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("adding repository to list: %s", opts.RepositoryUrl))
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("setting repository: %s", opts.RepositoryUrl))
 	if !opts.DryRun {
-		if err := t.AddRepository(opts.RepositoryUrl); err != nil {
-			return fmt.Errorf("failed to add repository: %w", err)
-		}
+		t.Repo = opts.RepositoryUrl
 	}
 
 	repoName, err := git.DeriveRepositoryFullnameFromUrl(opts.RepositoryUrl)

@@ -31,10 +31,16 @@ func GetTenantTree(tenants []coretnt.Tenant, root string) (*Node, error) {
 
 	// Populate the `Children` slices
 	for _, tenant := range tenants {
-		parent, exists := nodeMap[tenant.Parent]
-		if exists {
-			parent.Children = append(parent.Children, nodeMap[tenant.Name])
+		if tenant.Name == coretnt.RootName {
+			continue
 		}
+
+		parentName := deriveTreeParentName(tenant)
+		parent, exists := nodeMap[parentName]
+		if !exists {
+			continue
+		}
+		parent.Children = append(parent.Children, nodeMap[tenant.Name])
 	}
 
 	rootNode, exists := nodeMap[root]
@@ -42,6 +48,22 @@ func GetTenantTree(tenants []coretnt.Tenant, root string) (*Node, error) {
 		return nil, fmt.Errorf("root tenant '%s' not found", root)
 	}
 	return rootNode, nil
+}
+
+func deriveTreeParentName(t coretnt.Tenant) string {
+	// With the OU/DU model, we treat:
+	// - OrgUnits as direct children of root
+	// - DeliveryUnits as children of their owning OrgUnit
+	if t.Kind == "OrgUnit" {
+		return coretnt.RootName
+	}
+	if t.Kind == "DeliveryUnit" {
+		if t.Owner != "" {
+			return t.Owner
+		}
+		return coretnt.RootName
+	}
+	return coretnt.RootName
 }
 
 // Renders a tree
