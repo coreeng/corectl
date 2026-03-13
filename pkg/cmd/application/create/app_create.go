@@ -272,6 +272,16 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	var nextStepsMessage string
 	if createdAppResult.MonorepoMode {
+		if teamTenant != nil {
+			logger.Warn().Msgf("Creating PR with new app tenant '%s' for team %s in platform repo (monorepo mode)",
+				appTenant.Name, teamTenant.Name)
+			tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, teamTenant, createdAppResult)
+			if err != nil {
+				return err
+			}
+			logger.Warn().Msgf("Created PR with new app tenant: %s", tenantUpdateResult.PRUrl)
+		}
+
 		nextStepsMessage = fmt.Sprintf(
 			nextStepsMessageTemplateMonoRepo,
 			createdAppResult.PRUrl,
