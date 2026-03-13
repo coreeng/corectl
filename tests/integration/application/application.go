@@ -124,12 +124,8 @@ var _ = Describe("application", Ordered, func() {
 				&github.ListOptions{},
 			)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(repoVars.TotalCount).To(Equal(4))
+			Expect(repoVars.TotalCount).To(Equal(3))
 			Expect(repoVars.Variables).To(ConsistOf(
-				Satisfy(func(v *github.ActionsVariable) bool {
-					return v.Name == "TENANT_NAME" &&
-						v.Value == testconfig.Cfg.Tenant
-				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "FAST_FEEDBACK" &&
 						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
@@ -422,12 +418,8 @@ var _ = Describe("application", Ordered, func() {
 				&github.ListOptions{},
 			)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(repoVars.TotalCount).To(Equal(4))
+			Expect(repoVars.TotalCount).To(Equal(3))
 			Expect(repoVars.Variables).To(ConsistOf(
-				Satisfy(func(v *github.ActionsVariable) bool {
-					return v.Name == "TENANT_NAME" &&
-						v.Value == newAppName // App tenant has same name as app
-				}),
 				Satisfy(func(v *github.ActionsVariable) bool {
 					return v.Name == "FAST_FEEDBACK" &&
 						v.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
