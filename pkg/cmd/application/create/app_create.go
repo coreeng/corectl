@@ -272,6 +272,20 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	var nextStepsMessage string
 	if createdAppResult.MonorepoMode {
+		// In monorepo mode we normally don't create a tenant configuration PR.
+		// However, if the selected tenant is a team, corectl creates an app tenant for the app.
+		// That app tenant must be persisted in the platform repo so that platform automation
+		// (e.g. GCP identity/WIF) is provisioned for the app tenant.
+		if teamTenant != nil {
+			logger.Warn().Msgf("Creating PR with new app tenant '%s' for team %s in platform repo (monorepo mode)",
+				appTenant.Name, teamTenant.Name)
+			tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, teamTenant, createdAppResult)
+			if err != nil {
+				return err
+			}
+			logger.Warn().Msgf("Created PR with new app tenant: %s", tenantUpdateResult.PRUrl)
+		}
+
 		nextStepsMessage = fmt.Sprintf(
 			nextStepsMessageTemplateMonoRepo,
 			createdAppResult.PRUrl,

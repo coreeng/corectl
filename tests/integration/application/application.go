@@ -354,6 +354,98 @@ var _ = Describe("application", Ordered, func() {
 		}, SpecTimeout(time.Minute))
 	})
 
+	Context("create in monorepo mode with team tenant", Ordered, func() {
+		var (
+			teamTenantName string
+			monorepoName   string
+			monorepoDir    string
+			newAppName     string
+			appDir         string
+		)
+
+		BeforeAll(func(ctx SpecContext) {
+			// Use existing "parent" team tenant
+			teamTenantName = "parent"
+
+			monorepoName = "test-monorepo-team-" + testRunId
+			monorepoDir = filepath.Join(homeDir, monorepoName)
+			createMonorepoRepositoryRemoteAndLocal(githubClient, ctx, cfg, monorepoName, monorepoDir)
+
+			// Create a new app within the monorepo under a team tenant.
+			newAppName = "new-monorepo-team-app-" + testRunId
+			appDir = filepath.Join(monorepoDir, newAppName)
+			_, err := corectl.Run(
+				"application", "create", newAppName, appDir,
+				"-t", testdata.BlankTemplate(),
+				"--tenant", teamTenantName,
+				"--non-interactive")
+			Expect(err).ToNot(HaveOccurred())
+		}, NodeTimeout(3*time.Minute))
+
+		AfterAll(func(ctx SpecContext) {
+			// Clean up the monorepo repository
+			err := git.RetryGitHubOperation(
+				func() error {
+					_, err := githubClient.Repositories.Delete(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						monorepoName,
+					)
+					return err
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}, NodeTimeout(time.Minute))
+
+		It("created a PR for the new app in the monorepo", func(ctx SpecContext) {
+			prList, _, err := githubClient.PullRequests.List(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				monorepoName,
+				&github.PullRequestListOptions{
+					Head: cfg.GitHub.Organization.Value + ":add-" + newAppName,
+					Base: git.MainBranch,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prList).To(HaveLen(1))
+			Expect(prList[0]).NotTo(BeNil())
+		}, SpecTimeout(time.Minute))
+
+		It("created a PR for new app tenant configuration", func(ctx SpecContext) {
+			prList, _, err := githubClient.PullRequests.List(
+				ctx,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
+				&github.PullRequestListOptions{
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-app-tenant-" + newAppName,
+					Base: git.MainBranch,
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prList).To(HaveLen(1))
+			Expect(prList[0]).NotTo(BeNil())
+			pr := prList[0]
+			Expect(pr.GetTitle()).To(Equal("New app tenant: " + newAppName))
+			Expect(pr.GetState()).To(Equal("open"))
+
+			prFiles, _, err := githubClient.PullRequests.ListFiles(
+				ctx,
+				cfgDetails.CPlatformRepoName.Organization(),
+				cfgDetails.CPlatformRepoName.Name(),
+				pr.GetNumber(),
+				&github.ListOptions{},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(prFiles).To(HaveLen(1))
+			prFile := prFiles[0]
+			Expect(prFile.GetStatus()).To(Equal("added"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + teamTenantName + "/" + newAppName + ".app.yaml"))
+		}, SpecTimeout(2*time.Minute))
+	})
+
 	Context("create with team tenant", Ordered, func() {
 		var (
 			teamTenantName string
