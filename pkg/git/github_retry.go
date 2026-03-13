@@ -28,15 +28,20 @@ func RetryGitHubAPI[T any](operation func() (T, *github.Response, error), maxRet
 			return result, resp, nil
 		}
 
-		// Check if this is a 404 or 403 error that might be due to propagation delay
-		if resp != nil && (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden) && attempt < maxRetries {
+		statusCode := 0
+		if resp != nil && resp.Response != nil {
+			statusCode = resp.StatusCode
+		}
+
+		// Retry on transient GitHub errors / propagation delays
+		if isRetryableGitHubStatus(statusCode) && attempt < maxRetries {
 			delay := baseDelay * time.Duration(1<<attempt) // Exponential backoff: 2s, 4s, 8s, 16s
 			logger.Warn().With(
 				zap.Int("attempt", attempt+1),
 				zap.Int("max_retries", maxRetries+1),
 				zap.Duration("delay", delay),
-				zap.Int("status_code", resp.StatusCode),
-			).Msg("github: API call failed with 404/403, retrying due to potential propagation delay")
+				zap.Int("status_code", statusCode),
+			).Msg("github: API call failed, retrying")
 
 			time.Sleep(delay)
 			continue
@@ -47,6 +52,13 @@ func RetryGitHubAPI[T any](operation func() (T, *github.Response, error), maxRet
 	}
 
 	return result, resp, err
+}
+
+func isRetryableGitHubStatus(statusCode int) bool {
+	return statusCode == http.StatusNotFound ||
+		statusCode == http.StatusForbidden ||
+		statusCode == http.StatusTooManyRequests ||
+		statusCode >= 500
 }
 
 // IsGitHub404Error checks if an error is likely a GitHub 404 error or Git repository not ready error

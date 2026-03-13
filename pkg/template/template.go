@@ -15,8 +15,12 @@ type Argument struct {
 }
 
 type Spec struct {
-	Name         string         `yaml:"name"`
-	Description  string         `yaml:"description"`
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	// Kind classifies the template at a high level.
+	// Core Platform software templates use: 'app' or 'infra'.
+	// If missing, corectl assumes 'app' for backwards compatibility.
+	Kind         string         `yaml:"kind"`
 	SkeletonPath string         `yaml:"skeletonPath"`
 	Parameters   []Parameter    `yaml:"parameters"`
 	Config       map[string]any `yaml:"config"`

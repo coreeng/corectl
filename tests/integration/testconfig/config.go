@@ -2,7 +2,6 @@ package testconfig
 
 import (
 	"github.com/coreeng/corectl/pkg/git"
-	"github.com/coreeng/corectl/testdata"
 	"os"
 )
 
@@ -12,7 +11,9 @@ const (
 
 var Cfg = ConfigType{
 	GitHubOrg: testGitHubOrg,
-	Tenant:    testdata.DefaultTenant(),
+	// Integration tests assume ADR-65 OU/DU model.
+	// Use the existing top-level org unit from fixtures.
+	Tenant: "parent",
 }
 
 type ConfigType struct {

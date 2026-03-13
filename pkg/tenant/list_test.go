@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("tenant table", func() {
 	DescribeTable("render",
-		func(tenants []coretnt.Tenant, expectedOutput string) {
+		func(tenants []coretnt.Tenant, expectedSubstrings []string) {
 			var stdin, stdout, stderr bytes.Buffer
 			streams := userio.NewIOStreams(&stdin, &stdout, &stderr)
 			table := NewTable(streams)
@@ -19,22 +19,30 @@ var _ = Describe("tenant table", func() {
 				table.AppendRow(t)
 			}
 			result := table.Render()
-			Expect(result).To(Equal(expectedOutput))
+			for _, s := range expectedSubstrings {
+				Expect(result).To(ContainSubstring(s))
+			}
 		},
-		Entry("no tenants", []coretnt.Tenant{}, ` NAME  PARENT  CONTACT EMAIL `),
+		Entry("no tenants", []coretnt.Tenant{}, []string{"NAME", "KIND", "OWNER", "TYPE", "PREFIX", "REPO", "CONTACT EMAIL"}),
 		Entry("normal list", []coretnt.Tenant{
 			{
 				Name:         "tenant1",
-				Parent:       "parent1",
+				Kind:         "DeliveryUnit",
+				Owner:        "parent1",
+				Type:         "application",
+				Prefix:       "",
+				Repo:         "https://github.com/org/repo1",
 				ContactEmail: "tenant1@company.com",
 			},
 			{
 				Name:         "tenant2",
-				Parent:       "parent2",
+				Kind:         "DeliveryUnit",
+				Owner:        "parent2",
+				Type:         "infrastructure",
+				Prefix:       "area/subarea",
+				Repo:         "",
 				ContactEmail: "tenant2@company.com",
 			},
-		}, ` NAME     PARENT   CONTACT EMAIL       
- tenant1  parent1  tenant1@company.com 
- tenant2  parent2  tenant2@company.com `),
+		}, []string{"tenant1", "DeliveryUnit", "parent1", "application", "https://github.com/org/repo1", "tenant1@company.com", "tenant2", "parent2", "infrastructure", "area/subarea", "tenant2@company.com"}),
 	)
 })

@@ -21,14 +21,15 @@ import (
 var _ = Describe("Create or Update", func() {
 	const expectedTenantFileContent = `---
 name: new-tenant
-kind: app
-parent: parent
+kind: DeliveryUnit
+type: application
+owner: parent
+prefix: area/subarea
 description: Tenant description
 contactEmail: abc@abc.com
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group
 readonlyGroup: readonly-group
 cloudAccess: []
@@ -66,8 +67,10 @@ cloudAccess: []
 		Expect(err).NotTo(HaveOccurred())
 		defaultTenant = tenant.Tenant{
 			Name:         "new-tenant",
-			Kind:         "app",
-			Parent:       parentTenant.Name,
+			Kind:         "DeliveryUnit",
+			Type:         "application",
+			Owner:        parentTenant.Name,
+			Prefix:       "area/subarea",
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
 			Environments: []string{
@@ -106,7 +109,7 @@ cloudAccess: []
 			createResult, err = CreateOrUpdate(
 				&CreateOrUpdateOp{
 					Tenant:            &defaultTenant,
-					ParentTenant:      parentTenant,
+					OwnerTenant:       parentTenant,
 					CplatformRepoPath: cplatformLocalRepo.Path(),
 					BranchName:        branchName,
 					CommitMessage:     commitMsg,
@@ -156,7 +159,7 @@ cloudAccess: []
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
 						Message:      commitMsg,
-						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.app.yaml"},
+						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.du.yaml"},
 					},
 				},
 			})
