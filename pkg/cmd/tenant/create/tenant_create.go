@@ -165,6 +165,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	rootTenant := coretnt.RootTenant(tenantsPath)
 
 	envsDir := configpath.GetCorectlCPlatformDir("environments")
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
@@ -227,6 +228,12 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 			return err
 		}
 		ownerTenant = &owner
+	} else {
+		if strings.TrimSpace(opt.Owner) != "" {
+			return fmt.Errorf("--owner is only valid for DeliveryUnit")
+		}
+		// Org units are always created at the tenants root (top level).
+		ownerTenant = rootTenant
 	}
 
 	typ := ""
@@ -235,6 +242,10 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		if strings.TrimSpace(opt.Type) != "" {
+			return fmt.Errorf("--type is only valid for DeliveryUnit")
+		}
 	}
 
 	repo := ""
@@ -242,6 +253,10 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		repo, err = repoInput.GetValue(opt.Streams)
 		if err != nil {
 			return err
+		}
+	} else {
+		if strings.TrimSpace(opt.Repo) != "" {
+			return fmt.Errorf("--repo is only valid for DeliveryUnit")
 		}
 	}
 
@@ -261,7 +276,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	}
 
 	ownerName := ""
-	if ownerTenant != nil {
+	if kind == "DeliveryUnit" && ownerTenant != nil {
 		ownerName = ownerTenant.Name
 	}
 
