@@ -60,7 +60,7 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	)
 	defer opts.Streams.CurrentHandler.Done()
 
-	tenantsDir := configpath.GetCorectlCPlatformDir("tenants")
+	tenantsDir := configpath.GetCorectlCPlatformDir("tenants", "tenants")
 	t, err := tenant.FindByName(tenantsDir, opts.TenantName)
 	if err != nil {
 		return fmt.Errorf("failed to find the tenant: %w", err)
@@ -69,15 +69,13 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 		return fmt.Errorf("tenant is not found: %s", opts.TenantName)
 	}
 
-	if t.Kind == "team" {
-		return fmt.Errorf("cannot add repository to team tenant '%s': only app tenants can have repositories", t.Name)
+	if t.Kind == "OrgUnit" {
+		return fmt.Errorf("cannot add repository to OrgUnit tenant '%s': only DeliveryUnit tenants can have a repository", t.Name)
 	}
 
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("adding repository to list: %s", opts.RepositoryUrl))
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("setting repository: %s", opts.RepositoryUrl))
 	if !opts.DryRun {
-		if err := t.AddRepository(opts.RepositoryUrl); err != nil {
-			return fmt.Errorf("failed to add repository: %w", err)
-		}
+		t.Repo = opts.RepositoryUrl
 	}
 
 	repoName, err := git.DeriveRepositoryFullnameFromUrl(opts.RepositoryUrl)

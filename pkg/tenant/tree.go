@@ -20,7 +20,6 @@ type Node struct {
 //
 // Returns: A pointer to the root node of the tree
 func GetTenantTree(tenants []coretnt.Tenant, root string) (*Node, error) {
-	// Build a map of tenants indexed by name for faster access
 	nodeMap := make(map[string]*Node)
 	for _, tenant := range tenants {
 		nodeMap[tenant.Name] = &Node{
@@ -29,9 +28,19 @@ func GetTenantTree(tenants []coretnt.Tenant, root string) (*Node, error) {
 		}
 	}
 
-	// Populate the `Children` slices
 	for _, tenant := range tenants {
-		parent, exists := nodeMap[tenant.Parent]
+		var parentName string
+		switch tenant.Kind {
+		case "OrgUnit":
+			// OrgUnits have no explicit owner; they always belong to the virtual root
+			parentName = coretnt.RootName
+		case "DeliveryUnit":
+			parentName = tenant.Owner
+		default:
+			// virtual root node or unknown — skip
+			continue
+		}
+		parent, exists := nodeMap[parentName]
 		if exists {
 			parent.Children = append(parent.Children, nodeMap[tenant.Name])
 		}

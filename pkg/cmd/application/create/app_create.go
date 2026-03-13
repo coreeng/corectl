@@ -220,23 +220,23 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	selectedTenant, err := selector.Tenant(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant, opts.Streams)
+	selectedTenant, err := selector.Tenant(configpath.GetCorectlCPlatformDir("tenants", "tenants"), opts.Tenant, opts.Streams)
 	if err != nil {
 		return err
 	}
 	logger.Info().Msgf("tenant selected: %s", selectedTenant.Name)
 
-	// If the selected tenant is a team, create an app tenant under it
+	// If the selected tenant is an OrgUnit, create a DeliveryUnit under it
 	var appTenant *coretnt.Tenant
-	var teamTenant *coretnt.Tenant
-	if selectedTenant.Kind == "team" {
-		logger.Info().Msgf("Selected tenant '%s' is a team. Creating app tenant for application '%s'", selectedTenant.Name, opts.Name)
-		teamTenant = selectedTenant
-		appTenant, err = createAppTenantForTeam(opts, selectedTenant)
+	var ownerTenant *coretnt.Tenant
+	if selectedTenant.Kind == "OrgUnit" {
+		logger.Info().Msgf("Selected tenant '%s' is an OrgUnit. Creating DeliveryUnit for application '%s'", selectedTenant.Name, opts.Name)
+		ownerTenant = selectedTenant
+		appTenant, err = createDeliveryUnitForOrgUnit(opts, selectedTenant)
 		if err != nil {
-			return fmt.Errorf("failed to create app tenant: %w", err)
+			return fmt.Errorf("failed to create DeliveryUnit tenant: %w", err)
 		}
-		logger.Info().Msgf("Will create app tenant '%s' under team '%s'", appTenant.Name, selectedTenant.Name)
+		logger.Info().Msgf("Will create DeliveryUnit '%s' under OrgUnit '%s'", appTenant.Name, selectedTenant.Name)
 	} else {
 		appTenant = selectedTenant
 	}
@@ -272,14 +272,14 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	var nextStepsMessage string
 	if createdAppResult.MonorepoMode {
-		if teamTenant != nil {
-			logger.Warn().Msgf("Creating PR with new app tenant '%s' for team %s in platform repo (monorepo mode)",
-				appTenant.Name, teamTenant.Name)
-			tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, teamTenant, createdAppResult)
+		if ownerTenant != nil {
+			logger.Warn().Msgf("Creating PR with new DeliveryUnit '%s' for OrgUnit %s in platform repo (monorepo mode)",
+				appTenant.Name, ownerTenant.Name)
+			tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerTenant, createdAppResult)
 			if err != nil {
 				return err
 			}
-			logger.Warn().Msgf("Created PR with new app tenant: %s", tenantUpdateResult.PRUrl)
+			logger.Warn().Msgf("Created PR with new DeliveryUnit tenant: %s", tenantUpdateResult.PRUrl)
 		}
 
 		nextStepsMessage = fmt.Sprintf(
@@ -292,15 +292,15 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	} else {
 		var tenantUpdateResult *tenant.CreateOrUpdateResult
 
-		// If we created an app tenant from a team, create a combined PR with both the tenant and the repo
-		if teamTenant != nil {
-			logger.Warn().Msgf("Creating PR with new app tenant '%s' and application %s for team %s in platform repo",
-				appTenant.Name, opts.Name, teamTenant.Name)
-			tenantUpdateResult, err = createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, teamTenant, createdAppResult)
+		// If we created a DeliveryUnit from an OrgUnit, create a combined PR with both the tenant and the repo
+		if ownerTenant != nil {
+			logger.Warn().Msgf("Creating PR with new DeliveryUnit '%s' and application %s for OrgUnit %s in platform repo",
+				appTenant.Name, opts.Name, ownerTenant.Name)
+			tenantUpdateResult, err = createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerTenant, createdAppResult)
 			if err != nil {
 				return err
 			}
-			logger.Warn().Msgf("Created PR with new app tenant and application: %s", tenantUpdateResult.PRUrl)
+			logger.Warn().Msgf("Created PR with new DeliveryUnit tenant and application: %s", tenantUpdateResult.PRUrl)
 		} else {
 			tenantUpdateResult, err = createPRWithUpdatedReposListForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
 			if err != nil {
@@ -431,13 +431,12 @@ func createPRWithUpdatedReposListForTenant(
 	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo",
 		opts.Name, appTenant.Name)
 
-	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil && errors.Is(err, coretnt.ErrRepositoryAlreadyPresent) {
+	repoUrl := createdAppResult.RepositoryFullname.HttpUrl()
+	if appTenant.Repo == repoUrl {
 		logger.Warn().Msgf("Application is already registered for tenant. Skipping.")
 		return nil, nil
-	} else if err != nil {
-		logger.Error().Msgf("Failed to add application to tenant: %s", err)
-		return nil, err
 	}
+	appTenant.Repo = repoUrl
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 	logger.Warn().Msgf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name())
 
@@ -497,38 +496,35 @@ func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec)
 	}
 }
 
-func createAppTenantForTeam(
+func createDeliveryUnitForOrgUnit(
 	opts *AppCreateOpt,
-	teamTenant *coretnt.Tenant,
+	orgUnit *coretnt.Tenant,
 ) (*coretnt.Tenant, error) {
-	// Generate a unique name for the app tenant
 	appTenantName := opts.Name
 
-	// Check if the app tenant already exists
-	tenantsPath := configpath.GetCorectlCPlatformDir("tenants")
+	tenantsPath := configpath.GetCorectlCPlatformDir("tenants", "tenants")
 	existingTenants, err := coretnt.List(tenantsPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list existing tenants: %w", err)
 	}
 
-	// Check for name collision
 	for _, t := range existingTenants {
 		if t.Name == appTenantName {
 			return nil, fmt.Errorf("tenant with name '%s' already exists", appTenantName)
 		}
 	}
 
-	// Create the app tenant inheriting properties from the team
+	// Create the DeliveryUnit inheriting properties from the OrgUnit
 	appTenant := &coretnt.Tenant{
 		Name:          appTenantName,
-		Kind:          "app",
-		Parent:        teamTenant.Name,
+		Kind:          "DeliveryUnit",
+		Type:          "application",
+		Owner:         orgUnit.Name,
 		Description:   opts.Description,
-		ContactEmail:  teamTenant.ContactEmail,
-		Environments:  teamTenant.Environments,
-		Repos:         []string{}, // Will be populated after the repo is created
-		AdminGroup:    teamTenant.AdminGroup,
-		ReadOnlyGroup: teamTenant.ReadOnlyGroup,
+		ContactEmail:  orgUnit.ContactEmail,
+		Environments:  orgUnit.Environments,
+		AdminGroup:    orgUnit.AdminGroup,
+		ReadOnlyGroup: orgUnit.ReadOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
@@ -562,32 +558,29 @@ func createPRWithNewTenantAndRepo(
 	cfg *config.Config,
 	githubClient *github.Client,
 	appTenant *coretnt.Tenant,
-	teamTenant *coretnt.Tenant,
+	ownerTenant *coretnt.Tenant,
 	createdAppResult application.CreateResult,
 ) (*tenant.CreateOrUpdateResult, error) {
-	// Add the repository to the tenant before creating the PR
-	if err := appTenant.AddRepository(createdAppResult.RepositoryFullname.HttpUrl()); err != nil {
-		return nil, fmt.Errorf("failed to add repository to tenant: %w", err)
-	}
+	appTenant.Repo = createdAppResult.RepositoryFullname.HttpUrl()
 
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
-			ParentTenant:      teamTenant,
+			OwnerTenant:       ownerTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
-			BranchName:        fmt.Sprintf("new-app-tenant-%s", appTenant.Name),
-			CommitMessage:     fmt.Sprintf("Add new app tenant: %s", appTenant.Name),
-			PRName:            fmt.Sprintf("New app tenant: %s", appTenant.Name),
-			PRBody:            fmt.Sprintf("Adds new app tenant '%s'", appTenant.Name),
+			BranchName:        fmt.Sprintf("new-deliveryunit-tenant-%s", appTenant.Name),
+			CommitMessage:     fmt.Sprintf("Add new DeliveryUnit tenant: %s", appTenant.Name),
+			PRName:            fmt.Sprintf("New DeliveryUnit tenant: %s", appTenant.Name),
+			PRBody:            fmt.Sprintf("Adds new DeliveryUnit tenant '%s'", appTenant.Name),
 			GitAuth:           gitAuth,
 			DryRun:            opts.DryRun,
 		},
 		githubClient,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create PR for new app tenant and repo: %w", err)
+		return nil, fmt.Errorf("failed to create PR for new DeliveryUnit tenant and repo: %w", err)
 	}
 
 	return &result, nil

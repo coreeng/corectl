@@ -21,20 +21,19 @@ var _ = Describe("tenant table", func() {
 			result := table.Render()
 			Expect(result).To(Equal(expectedOutput))
 		},
-		Entry("no tenants", []coretnt.Tenant{}, ` NAME  PARENT  CONTACT EMAIL `),
+		Entry("no tenants", []coretnt.Tenant{}, ` NAME  KIND  OWNER  CONTACT EMAIL `),
 		Entry("normal list", []coretnt.Tenant{
 			{
-				Name:         "tenant1",
-				Parent:       "parent1",
-				ContactEmail: "tenant1@company.com",
+				Name:         "team1",
+				Kind:         "OrgUnit",
+				ContactEmail: "team1@company.com",
 			},
 			{
-				Name:         "tenant2",
-				Parent:       "parent2",
-				ContactEmail: "tenant2@company.com",
+				Name:         "app1",
+				Kind:         "DeliveryUnit",
+				Owner:        "team1",
+				ContactEmail: "app1@company.com",
 			},
-		}, ` NAME     PARENT   CONTACT EMAIL       
- tenant1  parent1  tenant1@company.com 
- tenant2  parent2  tenant2@company.com `),
+		}, " NAME   KIND          OWNER  CONTACT EMAIL     \n team1  OrgUnit              team1@company.com \n app1   DeliveryUnit  team1  app1@company.com  "),
 	)
 })

@@ -13,7 +13,7 @@ import (
 )
 
 func Tenant(_ string, overrideTenantName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
-	cPlatRepoPath := configpath.GetCorectlCPlatformDir("tenants")
+	cPlatRepoPath := configpath.GetCorectlCPlatformDir("tenants", "tenants")
 	existingTenants, err := coretnt.List(cPlatRepoPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't load tenant configuration in path %s: %w", cPlatRepoPath, err)

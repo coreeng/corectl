@@ -36,7 +36,7 @@ var _ = Describe("tenant", Ordered, func() {
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
-	Context("create", Ordered, func() {
+	Context("create DeliveryUnit", Ordered, func() {
 		var (
 			newTenantName string
 		)
@@ -46,11 +46,12 @@ var _ = Describe("tenant", Ordered, func() {
 			_, err := corectl.Run(
 				"tenant", "create",
 				"--name", newTenantName,
-				"--parent", "parent",
+				"--kind", "DeliveryUnit",
+				"--owner", "parent",
+				"--type", "application",
 				"--description", "Some tenant description",
 				"--contact-email", "ce@company.com",
 				"--environments", "dev,prod",
-				// Omitting repositories parameter
 				"--admin-group", "ag",
 				"--readonly-group", "rg",
 				"--non-interactive")
@@ -63,7 +64,7 @@ var _ = Describe("tenant", Ordered, func() {
 				cfgDetails.CPlatformRepoName.Organization(),
 				cfgDetails.CPlatformRepoName.Name(),
 				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-team-tenant-" + newTenantName,
+					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-DeliveryUnit-tenant-" + newTenantName,
 					Base: git.MainBranch,
 				},
 			)
@@ -72,7 +73,7 @@ var _ = Describe("tenant", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("New team tenant: " + newTenantName))
+			Expect(pr.GetTitle()).To(Equal("New DeliveryUnit tenant: " + newTenantName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := githubClient.PullRequests.ListFiles(
@@ -87,7 +88,7 @@ var _ = Describe("tenant", Ordered, func() {
 			prFile := prFiles[0]
 
 			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".team.yaml"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".du.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })

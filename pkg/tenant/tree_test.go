@@ -36,90 +36,71 @@ func TestGenerateTenantTreeWithOnlyTheRootTenantShouldSucceed(t *testing.T) {
 
 func TestGenerateTenantTreeFromManyTenantsShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
-		{Name: "myroot"},
+		{Name: coretnt.RootName},
 
-		{Name: "top", Parent: "myroot"},
-		{Name: "child1", Parent: "top"},
-		{Name: "child11", Parent: "child1"},
-		{Name: "child12", Parent: "child1"},
-		{Name: "child2", Parent: "top"},
-		{Name: "child21", Parent: "child2"},
-		{Name: "child22", Parent: "child2"},
+		{Name: "ou-alpha", Kind: "OrgUnit"},
+		{Name: "du-alpha-1", Kind: "DeliveryUnit", Owner: "ou-alpha"},
+		{Name: "du-alpha-2", Kind: "DeliveryUnit", Owner: "ou-alpha"},
 
-		{Name: "bottom", Parent: "myroot"},
-		{Name: "childA", Parent: "bottom"},
-		{Name: "childAA", Parent: "childA"},
-		{Name: "childB", Parent: "bottom"},
+		{Name: "ou-beta", Kind: "OrgUnit"},
+		{Name: "du-beta-1", Kind: "DeliveryUnit", Owner: "ou-beta"},
+		{Name: "du-beta-2", Kind: "DeliveryUnit", Owner: "ou-beta"},
+		{Name: "du-beta-3", Kind: "DeliveryUnit", Owner: "ou-beta"},
 	}
 
-	node, err := GetTenantTree(tenants, "myroot")
+	node, err := GetTenantTree(tenants, coretnt.RootName)
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, node, nil)
 
 	items, lines := RenderTenantTree(node)
 
-	assert.Equal(t, len(items), 12)
-	assert.Equal(t, items[0], "myroot")
-	assert.Equal(t, items[1], "top")
-	assert.Equal(t, items[2], "child1")
-	assert.Equal(t, items[3], "child11")
-	assert.Equal(t, items[4], "child12")
-	assert.Equal(t, items[5], "child2")
-	assert.Equal(t, items[6], "child21")
-	assert.Equal(t, items[7], "child22")
-	assert.Equal(t, items[8], "bottom")
-	assert.Equal(t, items[9], "childA")
-	assert.Equal(t, items[10], "childAA")
-	assert.Equal(t, items[11], "childB")
+	assert.Equal(t, 8, len(items))
+	assert.Equal(t, coretnt.RootName, items[0])
+	assert.Equal(t, "ou-alpha", items[1])
+	assert.Equal(t, "du-alpha-1", items[2])
+	assert.Equal(t, "du-alpha-2", items[3])
+	assert.Equal(t, "ou-beta", items[4])
+	assert.Equal(t, "du-beta-1", items[5])
+	assert.Equal(t, "du-beta-2", items[6])
+	assert.Equal(t, "du-beta-3", items[7])
 
-	assert.Equal(t, len(lines), 12)
-	assert.Equal(t, lines[0], "myroot")
-	assert.Equal(t, lines[1], "├── top")
-	assert.Equal(t, lines[2], "│   ├── child1")
-	assert.Equal(t, lines[3], "│   │   ├── child11")
-	assert.Equal(t, lines[4], "│   │   └── child12")
-	assert.Equal(t, lines[5], "│   └── child2")
-	assert.Equal(t, lines[6], "│       ├── child21")
-	assert.Equal(t, lines[7], "│       └── child22")
-	assert.Equal(t, lines[8], "└── bottom")
-	assert.Equal(t, lines[9], "    ├── childA")
-	assert.Equal(t, lines[10], "    │   └── childAA")
-	assert.Equal(t, lines[11], "    └── childB")
+	assert.Equal(t, 8, len(lines))
+	assert.Equal(t, coretnt.RootName, lines[0])
+	assert.Equal(t, "├── ou-alpha", lines[1])
+	assert.Equal(t, "│   ├── du-alpha-1", lines[2])
+	assert.Equal(t, "│   └── du-alpha-2", lines[3])
+	assert.Equal(t, "└── ou-beta", lines[4])
+	assert.Equal(t, "    ├── du-beta-1", lines[5])
+	assert.Equal(t, "    ├── du-beta-2", lines[6])
+	assert.Equal(t, "    └── du-beta-3", lines[7])
 }
 
 func TestGenerateTenantTreeFromSubTenantShouldSucceed(t *testing.T) {
 	tenants := []coretnt.Tenant{
 		{Name: coretnt.RootName},
 
-		{Name: "top", Parent: coretnt.RootName},
-		{Name: "child1", Parent: "top"},
-		{Name: "child11", Parent: "child1"},
-		{Name: "child12", Parent: "child1"},
-		{Name: "child2", Parent: "top"},
-		{Name: "child21", Parent: "child2"},
-		{Name: "child22", Parent: "child2"},
+		{Name: "ou-alpha", Kind: "OrgUnit"},
+		{Name: "du-alpha-1", Kind: "DeliveryUnit", Owner: "ou-alpha"},
+		{Name: "du-alpha-2", Kind: "DeliveryUnit", Owner: "ou-alpha"},
 
-		{Name: "bottom", Parent: coretnt.RootName},
-		{Name: "childA", Parent: "bottom"},
-		{Name: "childAA", Parent: "childA"},
-		{Name: "childB", Parent: "bottom"},
+		{Name: "ou-beta", Kind: "OrgUnit"},
+		{Name: "du-beta-1", Kind: "DeliveryUnit", Owner: "ou-beta"},
+		{Name: "du-beta-2", Kind: "DeliveryUnit", Owner: "ou-beta"},
 	}
 
-	node, err := GetTenantTree(tenants, "bottom")
+	node, err := GetTenantTree(tenants, "ou-beta")
 	assert.Equal(t, err, nil)
 	assert.NotEqual(t, node, nil)
 
 	items, lines := RenderTenantTree(node)
 
-	assert.Equal(t, len(items), 4)
-	assert.Equal(t, items[0], "bottom")
-	assert.Equal(t, items[1], "childA")
-	assert.Equal(t, items[2], "childAA")
-	assert.Equal(t, items[3], "childB")
+	assert.Equal(t, 3, len(items))
+	assert.Equal(t, "ou-beta", items[0])
+	assert.Equal(t, "du-beta-1", items[1])
+	assert.Equal(t, "du-beta-2", items[2])
 
-	assert.Equal(t, len(lines), 4)
-	assert.Equal(t, lines[0], "bottom")
-	assert.Equal(t, lines[1], "├── childA")
-	assert.Equal(t, lines[2], "│   └── childAA")
-	assert.Equal(t, lines[3], "└── childB")
+	assert.Equal(t, 3, len(lines))
+	assert.Equal(t, "ou-beta", lines[0])
+	assert.Equal(t, "├── du-beta-1", lines[1])
+	assert.Equal(t, "└── du-beta-2", lines[2])
 }

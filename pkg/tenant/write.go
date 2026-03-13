@@ -15,7 +15,7 @@ import (
 
 type CreateOrUpdateOp struct {
 	Tenant            *tenant.Tenant
-	ParentTenant      *tenant.Tenant
+	OwnerTenant       *tenant.Tenant
 	CplatformRepoPath string
 	BranchName        string
 	CommitMessage     string
@@ -64,9 +64,9 @@ func CreateOrUpdate(
 	var relativeFilepath string
 	if !op.DryRun {
 		if err = tenant.CreateOrUpdate(tenant.CreateOrUpdateOp{
-			Tenant:       op.Tenant,
-			ParentTenant: op.ParentTenant,
-			TenantsDir:   configpath.GetCorectlCPlatformDir("tenants"),
+			Tenant:      op.Tenant,
+			OwnerTenant: op.OwnerTenant,
+			TenantsDir:  configpath.GetCorectlCPlatformDir("tenants", "tenants"),
 		}); err != nil {
 			return result, err
 		}
@@ -75,8 +75,15 @@ func CreateOrUpdate(
 			return result, err
 		}
 	} else {
-		// Approximation for dry-run
-		relativeFilepath = fmt.Sprintf("tenants/%s.%s.yml", op.Tenant.Name, op.Tenant.Kind)
+		kindMapping := "unknown"
+		if m := tenant.GetTenantKindMapping(op.Tenant.Kind); m != nil {
+			kindMapping = *m
+		}
+		if op.OwnerTenant == nil || op.OwnerTenant.Name == tenant.RootName {
+			relativeFilepath = fmt.Sprintf("tenants/tenants/%s.%s.yaml", op.Tenant.Name, kindMapping)
+		} else {
+			relativeFilepath = fmt.Sprintf("tenants/tenants/%s/%s.%s.yaml", op.OwnerTenant.Name, op.Tenant.Name, kindMapping)
+		}
 	}
 
 	if err = repository.AddFiles(relativeFilepath); err != nil {

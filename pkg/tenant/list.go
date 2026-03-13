@@ -12,7 +12,7 @@ type Table struct {
 
 func NewTable(streams userio.IOStreams) Table {
 	t := table.NewWriter()
-	t.AppendHeader(table.Row{"Name", "Parent", "Contact Email"})
+	t.AppendHeader(table.Row{"Name", "Kind", "Owner", "Contact Email"})
 	t.Style().Options.DrawBorder = false
 	t.Style().Options.SeparateColumns = false
 	t.Style().Options.SeparateFooter = false
@@ -24,7 +24,7 @@ func NewTable(streams userio.IOStreams) Table {
 }
 
 func (t Table) AppendRow(tnnt tenant.Tenant) {
-	t.table.AppendRows([]table.Row{{tnnt.Name, tnnt.Parent, tnnt.ContactEmail}})
+	t.table.AppendRows([]table.Row{{tnnt.Name, tnnt.Kind, tnnt.Owner, tnnt.ContactEmail}})
 }
 
 func (t Table) Render() string {

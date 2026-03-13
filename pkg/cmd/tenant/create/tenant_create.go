@@ -26,11 +26,12 @@ import (
 type TenantCreateOpt struct {
 	Name           string
 	Kind           string
-	Parent         string
+	Owner          string
+	Type           string
 	Description    string
 	ContactEmail   string
 	Environments   []string
-	Repositories   []string
+	Repo           string
 	AdminGroup     string
 	ReadOnlyGroup  string
 	NonInteractive bool
@@ -72,13 +73,19 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&opt.Kind,
 		"kind",
 		"",
-		"Tenant kind: 'team' or 'app'",
+		"Tenant kind: 'OrgUnit' or 'DeliveryUnit'",
 	)
 	tenantCreateCmd.Flags().StringVar(
-		&opt.Parent,
-		"parent",
+		&opt.Owner,
+		"owner",
 		"",
-		"Parent tenant name",
+		"Owner OrgUnit name (required for DeliveryUnit)",
+	)
+	tenantCreateCmd.Flags().StringVar(
+		&opt.Type,
+		"type",
+		"",
+		"Delivery unit type: 'application' or 'infrastructure' (required for DeliveryUnit)",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Description,
@@ -98,11 +105,11 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		nil,
 		"Environments, available to tenant",
 	)
-	tenantCreateCmd.Flags().StringSliceVar(
-		&opt.Repositories,
-		"repositories",
-		nil,
-		"Repositories, tenant is responsible for.",
+	tenantCreateCmd.Flags().StringVar(
+		&opt.Repo,
+		"repo",
+		"",
+		"Repository URL for the delivery unit (optional, DeliveryUnit only)",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.AdminGroup,
@@ -144,7 +151,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	tenantsPath := configpath.GetCorectlCPlatformDir("tenants")
+	tenantsPath := configpath.GetCorectlCPlatformDir("tenants", "tenants")
 	existingTenants, err := coretnt.List(tenantsPath)
 	if err != nil {
 		return err
@@ -167,7 +174,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 
 	nameInput := opt.createNameInputSwitch(existingTenants)
 	kindInput := opt.createKindInputSwitch()
-	parentInput := opt.createParentInputSwitch(rootTenant, existingTenants)
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
 	envsInput := opt.createEnvironmentsInputSwitch(envs)
@@ -179,10 +185,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		return err
 	}
 	kind, err := kindInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
-	}
-	parent, err := parentInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
 	}
@@ -198,21 +200,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-
-	var repositories []string
-	if kind == "app" {
-		repositoriesInput := opt.createRepositoriesInputSwitch()
-		repositories, err = repositoriesInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-	} else {
-		if len(opt.Repositories) > 0 {
-			return fmt.Errorf("cannot specify --repositories for team tenant: only app tenants can have repositories")
-		}
-		repositories = []string{}
-	}
-
 	adminGroup, err := adminGroupInput.GetValue(opt.Streams)
 	if err != nil {
 		return err
@@ -225,17 +212,48 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	t := coretnt.Tenant{
 		Name:          name,
 		Kind:          kind,
-		Parent:        parent.Name,
 		Description:   description,
 		ContactEmail:  contactEmail,
 		Environments:  tenantEnvironments,
-		Repos:         repositories,
 		AdminGroup:    adminGroup,
 		ReadOnlyGroup: readOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.DryRun, cfg, &t, &parent, existingTenants)
+	var ownerTenant *coretnt.Tenant
+
+	switch kind {
+	case "OrgUnit":
+		if opt.Repo != "" {
+			return fmt.Errorf("cannot specify --repo for OrgUnit: only DeliveryUnits can have a repository")
+		}
+		ownerTenant = rootTenant
+
+	case "DeliveryUnit":
+		ownerInput := opt.createOwnerInputSwitch(rootTenant, existingTenants)
+		owner, err := ownerInput.GetValue(opt.Streams)
+		if err != nil {
+			return err
+		}
+		ownerTenant = &owner
+
+		typeInput := opt.createTypeInputSwitch()
+		duType, err := typeInput.GetValue(opt.Streams)
+		if err != nil {
+			return err
+		}
+		t.Type = duType
+		t.Owner = owner.Name
+
+		repoInput := opt.createRepoInputSwitch()
+		repo, err := repoInput.GetValue(opt.Streams)
+		if err != nil {
+			return err
+		}
+		t.Repo = repo
+	}
+
+	_, err = createTenant(opt.DryRun, cfg, &t, ownerTenant, existingTenants)
 	if err != nil {
 		return err
 	}
@@ -246,7 +264,7 @@ func createTenant(
 	dryRun bool,
 	cfg *config.Config,
 	t *coretnt.Tenant,
-	parentTenant *coretnt.Tenant,
+	ownerTenant *coretnt.Tenant,
 	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
 	logger.Warn().Msgf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
@@ -254,14 +272,12 @@ func createTenant(
 	tenantMap := map[string]*coretnt.Tenant{
 		t.Name: t,
 	}
-	for _, tenant := range allTenants {
-		tenantMap[tenant.Name] = &tenant
+	for _, tnt := range allTenants {
+		tenantMap[tnt.Name] = &tnt
 	}
 
 	if err := validateTenant(tenantMap, t); err != nil {
-
 		logger.Warn().Msgf("Unable to create such a tenant: %s", err)
-
 		return tenant.CreateOrUpdateResult{}, err
 	}
 
@@ -271,7 +287,7 @@ func createTenant(
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
-			ParentTenant:      parentTenant,
+			OwnerTenant:       ownerTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("new-%s-tenant-%s", t.Kind, t.Name),
 			CommitMessage:     fmt.Sprintf("Add new %s tenant: %s", t.Kind, t.Name),
@@ -283,7 +299,6 @@ func createTenant(
 	)
 	if err != nil {
 		logger.Warn().Msgf("Failed to create a PR for new %s tenant: %s", t.Kind, err)
-
 	} else {
 		logger.Warn().Msgf("Created PR for new %s tenant %s: %s", t.Kind, t.Name, result.PRUrl)
 	}
@@ -342,19 +357,26 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 	}
 }
 
-func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
-	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
-	node, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
+func (opt *TenantCreateOpt) createOwnerInputSwitch(rootTenant *coretnt.Tenant, existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
+	orgUnits := make([]coretnt.Tenant, 0)
+	for _, t := range existingTenants {
+		if t.Kind == "OrgUnit" {
+			orgUnits = append(orgUnits, t)
+		}
 	}
-	items, lines := tenant.RenderTenantTree(node)
+
+	var items []string
+	var lines []string
+	for _, ou := range orgUnits {
+		items = append(items, ou.Name)
+		lines = append(lines, ou.Name)
+	}
 
 	return userio.InputSourceSwitch[string, coretnt.Tenant]{
-		DefaultValue: userio.AsZeroable(opt.Parent),
+		DefaultValue: userio.AsZeroable(opt.Owner),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt:         "Parent tenant:",
+				Prompt:         "Owner OrgUnit:",
 				Items:          items,
 				DisplayedItems: lines,
 			}, nil
@@ -364,17 +386,15 @@ func (opt *TenantCreateOpt) createParentInputSwitch(rootTenant *coretnt.Tenant, 
 			if inp == rootTenant.Name {
 				return *rootTenant, nil
 			}
-
-			tenantIndx := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
+			idx := slices.IndexFunc(orgUnits, func(t coretnt.Tenant) bool {
 				return t.Name == inp
 			})
-			if tenantIndx >= 0 {
-				return existingTenants[tenantIndx], nil
+			if idx >= 0 {
+				return orgUnits[idx], nil
 			}
-
-			return coretnt.Tenant{}, errors.New("unknown tenant")
+			return coretnt.Tenant{}, errors.New("unknown OrgUnit")
 		},
-		ErrMessage: "invalid parent tenant",
+		ErrMessage: "invalid owner OrgUnit",
 	}
 }
 
@@ -466,39 +486,33 @@ func (opt *TenantCreateOpt) createEnvironmentsInputSwitch(envs []environment.Env
 	}
 }
 
-func (opt *TenantCreateOpt) createRepositoriesInputSwitch() userio.InputSourceSwitch[[]string, []string] {
-	validateFn := func(repos []string) ([]string, error) {
-		var filteredRepos []string
-		for _, repo := range repos {
-			repo = strings.TrimSpace(repo)
-			if repo == "" {
-				continue
-			}
-			filteredRepos = append(filteredRepos, repo)
+func (opt *TenantCreateOpt) createRepoInputSwitch() userio.InputSourceSwitch[string, string] {
+	validateFn := func(inp string) (string, error) {
+		inp = strings.TrimSpace(inp)
+		if inp == "" {
+			return "", nil
 		}
 		t := &coretnt.Tenant{
-			Repos: filteredRepos,
+			Kind: "DeliveryUnit",
+			Repo: inp,
 		}
-		err := t.ValidateField("Repos")
+		err := t.ValidateField("Repo")
 		if err != nil {
-			return nil, err
+			return "", err
 		}
-		return filteredRepos, nil
-
+		return inp, nil
 	}
-	return userio.InputSourceSwitch[[]string, []string]{
-		DefaultValue: userio.AsZeroableSlice(opt.Repositories),
+	return userio.InputSourceSwitch[string, string]{
+		DefaultValue: userio.AsZeroable(opt.Repo),
 		Optional:     true,
-		InteractivePromptFn: func() (userio.InputPrompt[[]string], error) {
-			return &userio.TextInput[[]string]{
-				Prompt: "Repositories (comma separated GitHub links):",
-				ValidateAndMap: func(inp string) ([]string, error) {
-					return validateFn(strings.Split(inp, ","))
-				},
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.TextInput[string]{
+				Prompt:         "Repository URL (optional GitHub link):",
+				ValidateAndMap: validateFn,
 			}, nil
 		},
 		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid repositories list",
+		ErrMessage:     "invalid repository URL",
 	}
 }
 
@@ -555,9 +569,8 @@ func (opt *TenantCreateOpt) createReadOnlyGroupInputSwitch() userio.InputSourceS
 func (opt *TenantCreateOpt) createKindInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
 		inp = strings.TrimSpace(inp)
-		inp = strings.ToLower(inp)
-		if inp != "team" && inp != "app" {
-			return "", errors.New("kind must be either 'team' or 'app'")
+		if inp != "OrgUnit" && inp != "DeliveryUnit" {
+			return "", errors.New("kind must be either 'OrgUnit' or 'DeliveryUnit'")
 		}
 		t := &coretnt.Tenant{
 			Kind: inp,
@@ -571,7 +584,7 @@ func (opt *TenantCreateOpt) createKindInputSwitch() userio.InputSourceSwitch[str
 
 	defaultKind := opt.Kind
 	if defaultKind == "" {
-		defaultKind = "team"
+		defaultKind = "OrgUnit"
 	}
 
 	return userio.InputSourceSwitch[string, string]{
@@ -579,11 +592,46 @@ func (opt *TenantCreateOpt) createKindInputSwitch() userio.InputSourceSwitch[str
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
 				Prompt: "Tenant kind:",
-				Items:  []string{"team", "app"},
+				Items:  []string{"OrgUnit", "DeliveryUnit"},
 			}, nil
 		},
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid tenant kind",
+	}
+}
+
+func (opt *TenantCreateOpt) createTypeInputSwitch() userio.InputSourceSwitch[string, string] {
+	validateFn := func(inp string) (string, error) {
+		inp = strings.TrimSpace(inp)
+		if inp != "application" && inp != "infrastructure" {
+			return "", errors.New("type must be either 'application' or 'infrastructure'")
+		}
+		t := &coretnt.Tenant{
+			Kind: "DeliveryUnit",
+			Type: inp,
+		}
+		err := t.ValidateField("Type")
+		if err != nil {
+			return "", err
+		}
+		return inp, nil
+	}
+
+	defaultType := opt.Type
+	if defaultType == "" {
+		defaultType = "application"
+	}
+
+	return userio.InputSourceSwitch[string, string]{
+		DefaultValue: userio.AsZeroable(defaultType),
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.SingleSelect{
+				Prompt: "Delivery unit type:",
+				Items:  []string{"application", "infrastructure"},
+			}, nil
+		},
+		ValidateAndMap: validateFn,
+		ErrMessage:     "invalid delivery unit type",
 	}
 }
 

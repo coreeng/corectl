@@ -43,7 +43,7 @@ func run(opts *TenantListOpts, cfg *config.Config) error {
 		return fmt.Errorf("failed to update config repos: %w", err)
 	}
 
-	tenants, err := tenant.List(configpath.GetCorectlCPlatformDir("tenants"))
+	tenants, err := tenant.List(configpath.GetCorectlCPlatformDir("tenants", "tenants"))
 	if err != nil {
 		return fmt.Errorf("failed to list tenants: %w", err)
 	}

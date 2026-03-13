@@ -21,14 +21,14 @@ import (
 var _ = Describe("Create or Update", func() {
 	const expectedTenantFileContent = `---
 name: new-tenant
-kind: app
-parent: parent
+kind: DeliveryUnit
+type: application
+owner: parent
 description: Tenant description
 contactEmail: abc@abc.com
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group
 readonlyGroup: readonly-group
 cloudAccess: []
@@ -41,7 +41,7 @@ cloudAccess: []
 		mainBranchRefName   plumbing.ReferenceName
 		originalMainRef     *plumbing.Reference
 		defaultTenant       tenant.Tenant
-		parentTenant        *tenant.Tenant
+		ownerTenant         *tenant.Tenant
 		branchName          string
 		commitMsg           string
 		newPrName           string
@@ -61,13 +61,14 @@ cloudAccess: []
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		parentTenant, err = tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants"), "parent")
-		Expect(parentTenant).NotTo(BeNil())
+		ownerTenant, err = tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants", "tenants"), "parent")
+		Expect(ownerTenant).NotTo(BeNil())
 		Expect(err).NotTo(HaveOccurred())
 		defaultTenant = tenant.Tenant{
 			Name:         "new-tenant",
-			Kind:         "app",
-			Parent:       parentTenant.Name,
+			Kind:         "DeliveryUnit",
+			Type:         "application",
+			Owner:        ownerTenant.Name,
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
 			Environments: []string{
@@ -76,6 +77,7 @@ cloudAccess: []
 			},
 			AdminGroup:    "admin-group",
 			ReadOnlyGroup: "readonly-group",
+			CloudAccess:   make([]tenant.CloudAccess, 0),
 		}
 
 		mainBranchRefName = plumbing.NewBranchReferenceName(git.MainBranch)
@@ -106,7 +108,7 @@ cloudAccess: []
 			createResult, err = CreateOrUpdate(
 				&CreateOrUpdateOp{
 					Tenant:            &defaultTenant,
-					ParentTenant:      parentTenant,
+					OwnerTenant:       ownerTenant,
 					CplatformRepoPath: cplatformLocalRepo.Path(),
 					BranchName:        branchName,
 					CommitMessage:     commitMsg,
@@ -156,7 +158,7 @@ cloudAccess: []
 				ExpectedCommits: []gittest.ExpectedCommit{
 					{
 						Message:      commitMsg,
-						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.app.yaml"},
+						ChangedFiles: []string{"./tenants/tenants/parent/new-tenant.du.yaml"},
 					},
 				},
 			})
@@ -178,7 +180,6 @@ cloudAccess: []
 			newTenantFile, err := os.ReadFile(filepath.Join(*defaultTenant.SavedPath()))
 			Expect(err).NotTo(HaveOccurred())
 			content := string(newTenantFile)
-			// Verify exact string match with expected content
 			Expect(content).To(Equal(expectedTenantFileContent))
 		})
 	})

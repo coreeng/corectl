@@ -1,13 +1,11 @@
 ---
 name: parent
-kind: team
-parent: root
+kind: OrgUnit
 description: "Parent tenant"
 contactEmail: parent@prod.domain
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group@prod.domain
 readonlyGroup: readonly-group@prod.domain
 cloudAccess: []

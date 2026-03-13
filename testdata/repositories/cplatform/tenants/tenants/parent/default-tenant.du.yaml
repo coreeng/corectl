@@ -1,13 +1,13 @@
 ---
 name: default-tenant
-kind: app
-parent: parent
+kind: DeliveryUnit
+type: application
+owner: parent
 description: "Default tenant to use in tests"
 contactEmail: parent@prod.domain
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group@prod.domain
 readonlyGroup: readonly-group@prod.domain
 cloudAccess: []
