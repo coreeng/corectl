@@ -6,6 +6,18 @@ import (
 )
 
 func TestFillDefaultSpecValues(t *testing.T) {
+	t.Run("default kind", func(t *testing.T) {
+		s := Spec{Name: "name"}
+		fillDefaultSpecValues(&s)
+		assert.Equal(t, "app", s.Kind)
+	})
+
+	t.Run("preserve kind", func(t *testing.T) {
+		s := Spec{Name: "name", Kind: "infra"}
+		fillDefaultSpecValues(&s)
+		assert.Equal(t, "infra", s.Kind)
+	})
+
 	t.Run("no parameters", func(t *testing.T) {
 		s := Spec{
 			Name: "name",

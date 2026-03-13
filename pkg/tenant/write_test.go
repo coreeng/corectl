@@ -24,6 +24,7 @@ name: new-tenant
 kind: DeliveryUnit
 type: application
 owner: parent
+prefix: area/subarea
 description: Tenant description
 contactEmail: abc@abc.com
 environments:
@@ -69,6 +70,7 @@ cloudAccess: []
 			Kind:         "DeliveryUnit",
 			Type:         "application",
 			Owner:        parentTenant.Name,
+			Prefix:       "area/subarea",
 			Description:  "Tenant description",
 			ContactEmail: "abc@abc.com",
 			Environments: []string{

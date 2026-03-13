@@ -104,4 +104,32 @@ var _ = Describe("AppCreateOpt", func() {
 			})
 		})
 	})
+
+	Describe("deliveryUnitTypeFromTemplate", func() {
+		It("defaults to application when template is nil", func() {
+			duType, err := deliveryUnitTypeFromTemplate(nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("application"))
+		})
+
+		It("maps app kind to application", func() {
+			s := &template.Spec{Kind: "app"}
+			duType, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("application"))
+		})
+
+		It("maps infra kind to infrastructure", func() {
+			s := &template.Spec{Kind: "infra"}
+			duType, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("infrastructure"))
+		})
+
+		It("rejects unknown kinds", func() {
+			s := &template.Spec{Kind: "weird"}
+			_, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).To(HaveOccurred())
+		})
+	})
 })

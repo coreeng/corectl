@@ -380,13 +380,13 @@ func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant) err
 			logger.Error().Msg(warn.Error())
 		}
 	}
-	var tenantRelatedErr coretnt.TenantRelatedError
-	if len(validationResult.Errors) > 0 &&
-		errors.As(validationResult.Errors[0], &tenantRelatedErr) &&
-		tenantRelatedErr.IsRelatedToTenant(t) {
-		return tenantRelatedErr
+	if len(validationResult.Errors) == 0 {
+		return nil
 	}
-	return nil
+
+	// Prefer returning all validation errors to avoid silently writing invalid tenants.
+	// (e.g. OrgUnits must have admin/readonly groups; this is enforced by ValidateTenants.)
+	return errors.Join(validationResult.Errors...)
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
