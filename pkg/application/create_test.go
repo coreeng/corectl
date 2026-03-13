@@ -167,10 +167,6 @@ var _ = Describe("Create new application", func() {
 		It("created variables in new repo", func() {
 			Expect(createRepoVarCapture.Requests).To(ConsistOf(
 				Satisfy(func(v httpmock.ActionVariableRequest) bool {
-					return v.Var.Name == "TENANT_NAME" &&
-						v.Var.Value == defaultTenant.Name
-				}),
-				Satisfy(func(v httpmock.ActionVariableRequest) bool {
 					return v.Var.Name == "FAST_FEEDBACK" &&
 						v.Var.Value == fmt.Sprintf("{\"include\":[{\"deploy_env\":\"%s\"}]}", devEnv.Environment)
 				}),
