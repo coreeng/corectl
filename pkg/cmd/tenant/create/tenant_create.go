@@ -33,7 +33,6 @@ type TenantCreateOpt struct {
 	ContactEmail   string
 	Environments   []string
 	Repo           string
-	Repositories   []string // Deprecated alias for --repo (0 or 1 values)
 	AdminGroup     string
 	ReadOnlyGroup  string
 	NonInteractive bool
@@ -75,20 +74,13 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&opt.Kind,
 		"kind",
 		"",
-		"Tenant kind: OrgUnit or DeliveryUnit (legacy: team or app)",
+		"Tenant kind: OrgUnit or DeliveryUnit",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Owner,
 		"owner",
 		"",
 		"Owner org unit name (required for DeliveryUnit)",
-	)
-	// Backwards compatibility: --parent is an alias for --owner.
-	tenantCreateCmd.Flags().StringVar(
-		&opt.Owner,
-		"parent",
-		"",
-		"(Deprecated) Alias for --owner",
 	)
 	// Delivery unit type.
 	tenantCreateCmd.Flags().StringVar(
@@ -121,12 +113,6 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		"environments",
 		nil,
 		"Environments, available to tenant",
-	)
-	tenantCreateCmd.Flags().StringSliceVar(
-		&opt.Repositories,
-		"repositories",
-		nil,
-		"(Deprecated) Repository URL (0 or 1 values). Use --repo instead.",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Repo,
@@ -179,7 +165,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	rootTenant := coretnt.RootTenant(tenantsPath)
 
 	envsDir := configpath.GetCorectlCPlatformDir("environments")
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
@@ -235,7 +220,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	}
 
 	// Owner / type / repo are kind-dependent.
-	ownerTenant := rootTenant
+	var ownerTenant *coretnt.Tenant
 	if kind == "DeliveryUnit" {
 		owner, err := ownerInput.GetValue(opt.Streams)
 		if err != nil {
@@ -275,11 +260,16 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		}
 	}
 
+	ownerName := ""
+	if ownerTenant != nil {
+		ownerName = ownerTenant.Name
+	}
+
 	t := coretnt.Tenant{
 		Name:          name,
 		Kind:          kind,
 		Type:          typ,
-		Owner:         ownerTenant.Name,
+		Owner:         ownerName,
 		Prefix:        prefix,
 		Description:   description,
 		ContactEmail:  contactEmail,
@@ -288,12 +278,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		AdminGroup:    adminGroup,
 		ReadOnlyGroup: readOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
-	}
-	if t.Kind == "OrgUnit" {
-		// Org units must not specify an owner.
-		t.Owner = ""
-		// Org units must not specify a repo.
-		t.Repo = ""
 	}
 
 	_, err = createTenant(opt.DryRun, cfg, &t, ownerTenant, existingTenants)
@@ -329,24 +313,24 @@ func createTenant(
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	kindDisplay := tenantKindDisplay(t.Kind)
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
 			OwnerTenant:       ownerTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("new-%s-tenant-%s", tenantKindSlug(t.Kind), t.Name),
-			CommitMessage:     fmt.Sprintf("Add new %s tenant: %s", t.Kind, t.Name),
-			PRName:            fmt.Sprintf("New %s tenant: %s", t.Kind, t.Name),
-			PRBody:            fmt.Sprintf("Adds new %s tenant '%s'", t.Kind, t.Name),
+			CommitMessage:     fmt.Sprintf("Add new %s: %s", kindDisplay, t.Name),
+			PRName:            fmt.Sprintf("New %s: %s", kindDisplay, t.Name),
+			PRBody:            fmt.Sprintf("Adds new %s '%s'", kindDisplay, t.Name),
 			GitAuth:           gitAuth,
 			DryRun:            dryRun,
 		}, githubClient,
 	)
 	if err != nil {
-		logger.Warn().Msgf("Failed to create a PR for new %s tenant: %s", t.Kind, err)
-
+		logger.Warn().Msgf("Failed to create a PR for new %s: %s", kindDisplay, err)
 	} else {
-		logger.Warn().Msgf("Created PR for new %s tenant %s: %s", t.Kind, t.Name, result.PRUrl)
+		logger.Warn().Msgf("Created PR for new %s %s: %s", kindDisplay, t.Name, result.PRUrl)
 	}
 	return result, err
 }
@@ -357,6 +341,17 @@ func tenantKindSlug(kind string) string {
 		return "ou"
 	case "DeliveryUnit":
 		return "du"
+	default:
+		return strings.ToLower(kind)
+	}
+}
+
+func tenantKindDisplay(kind string) string {
+	switch kind {
+	case "OrgUnit":
+		return "org unit"
+	case "DeliveryUnit":
+		return "delivery unit"
 	default:
 		return strings.ToLower(kind)
 	}
@@ -557,9 +552,6 @@ func (opt *TenantCreateOpt) createTypeInputSwitch() userio.InputSourceSwitch[str
 
 func (opt *TenantCreateOpt) createRepoInputSwitch() userio.InputSourceSwitch[string, string] {
 	validateFn := func(inp string) (string, error) {
-		if len(opt.Repositories) > 1 {
-			return "", fmt.Errorf("only one repository can be specified; use --repo or provide a single value for --repositories")
-		}
 		inp = strings.TrimSpace(inp)
 		t := &coretnt.Tenant{Kind: "DeliveryUnit", Repo: inp}
 		if err := t.ValidateField("Repo"); err != nil {
@@ -568,13 +560,8 @@ func (opt *TenantCreateOpt) createRepoInputSwitch() userio.InputSourceSwitch[str
 		return inp, nil
 	}
 
-	defaultRepo := opt.Repo
-	if defaultRepo == "" && len(opt.Repositories) == 1 {
-		defaultRepo = opt.Repositories[0]
-	}
-
 	return userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(defaultRepo),
+		DefaultValue: userio.AsZeroable(opt.Repo),
 		Optional:     true,
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.TextInput[string]{
@@ -715,9 +702,9 @@ func normalizeTenantKind(inp string) (string, error) {
 	}
 	canon := strings.ToLower(inp)
 	switch canon {
-	case "orgunit", "ou", "team":
+	case "orgunit":
 		return "OrgUnit", nil
-	case "deliveryunit", "du", "app":
+	case "deliveryunit":
 		return "DeliveryUnit", nil
 	default:
 		return "", fmt.Errorf("unknown tenant kind: %s (valid: OrgUnit, DeliveryUnit)", inp)

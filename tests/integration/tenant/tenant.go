@@ -77,7 +77,7 @@ var _ = Describe("tenant", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("New DeliveryUnit tenant: " + newTenantName))
+			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newTenantName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := git.RetryGitHubAPI(

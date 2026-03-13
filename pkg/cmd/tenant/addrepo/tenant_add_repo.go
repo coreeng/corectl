@@ -25,7 +25,7 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 	opts := TenantAddRepoOpts{}
 	tenantAddRepoCmd := &cobra.Command{
 		Use:   "add-repo <tenant-name> <repository-url>",
-		Short: "Add a repository to the tenant",
+		Short: "Set the repository for a delivery unit",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
@@ -55,8 +55,8 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	}
 
 	opts.Streams.Wizard(
-		fmt.Sprintf("Adding repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
-		fmt.Sprintf("Added repository %s to tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
+		fmt.Sprintf("Setting repository %s for tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
+		fmt.Sprintf("Set repository %s for tenant %s in platform repo %s", opts.RepositoryUrl, opts.TenantName, cfg.Repositories.CPlatform.Value),
 	)
 	defer opts.Streams.CurrentHandler.Done()
 
@@ -71,6 +71,10 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 
 	if t.Kind == "OrgUnit" {
 		return fmt.Errorf("cannot set repository for org unit '%s': only delivery units can have a repository", t.Name)
+	}
+
+	if t.Repo != "" && t.Repo != opts.RepositoryUrl {
+		return fmt.Errorf("tenant '%s' already has a different repo set (%s)", t.Name, t.Repo)
 	}
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("setting repository: %s", opts.RepositoryUrl))
@@ -91,10 +95,10 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	result, err := corectltnt.CreateOrUpdate(&corectltnt.CreateOrUpdateOp{
 		Tenant:            t,
 		CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
-		BranchName:        fmt.Sprintf("%s-add-repo-%s", t.Name, repoName.Name()),
-		CommitMessage:     fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
-		PRName:            fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
-		PRBody:            fmt.Sprintf("Add repository %s for tenant %s", repoName.Name(), t.Name),
+		BranchName:        fmt.Sprintf("%s-set-repo-%s", t.Name, repoName.Name()),
+		CommitMessage:     fmt.Sprintf("Set repository %s for tenant %s", repoName.Name(), t.Name),
+		PRName:            fmt.Sprintf("Set repository %s for tenant %s", repoName.Name(), t.Name),
+		PRBody:            fmt.Sprintf("Setting repository %s for tenant %s", repoName.Name(), t.Name),
 		GitAuth:           gitAuth,
 		DryRun:            opts.DryRun,
 	}, githubClient)
@@ -104,6 +108,6 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 	}
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("created PR link: %s", result.PRUrl))
-	opts.Streams.CurrentHandler.Info(fmt.Sprintf("added repository for tenant %s successfully", t.Name))
+	opts.Streams.CurrentHandler.Info(fmt.Sprintf("set repository for tenant %s successfully", t.Name))
 	return nil
 }
