@@ -367,12 +367,12 @@ var _ = Describe("application", Ordered, func() {
 			// Use existing "parent" team tenant
 			teamTenantName = "parent"
 
-			monorepoName = "test-monorepo-team-" + testRunId
+			monorepoName = "test-monorepo-team-" + strings.ToLower(testRunId)
 			monorepoDir = filepath.Join(homeDir, monorepoName)
 			createMonorepoRepositoryRemoteAndLocal(githubClient, ctx, cfg, monorepoName, monorepoDir)
 
 			// Create a new app within the monorepo under a team tenant.
-			newAppName = "new-monorepo-team-app-" + testRunId
+			newAppName = "new-monorepo-team-app-" + strings.ToLower(testRunId)
 			appDir = filepath.Join(monorepoDir, newAppName)
 			_, err := corectl.Run(
 				"application", "create", newAppName, appDir,
