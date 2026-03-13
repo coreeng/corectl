@@ -481,10 +481,12 @@ func createPRWithUpdatedRepoForTenant(
 	appTenant.Repo = newRepo
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 	logger.Warn().Msgf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name())
+	rootOwner := coretnt.RootTenant(configpath.GetCorectlCPlatformDir("tenants"))
 
 	tenantUpdateResult, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            appTenant,
+			OwnerTenant:       rootOwner,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("%s-set-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name()),
 			CommitMessage:     fmt.Sprintf("Set repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
@@ -576,25 +578,8 @@ func createDeliveryUnitForOrgUnit(
 		ReadOnlyGroup: orgUnit.ReadOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
-
-	tenantMap := map[string]*coretnt.Tenant{
-		du.Name: du,
-	}
-	for _, t := range existingTenants {
-		tenantMap[t.Name] = &t
-	}
-	validationResult := coretnt.ValidateTenants(tenantMap)
-	for _, warn := range validationResult.Warnings {
-		var tenantRelatedWarn coretnt.TenantRelatedError
-		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(du) {
-			logger.Error().Msg(warn.Error())
-		}
-	}
-	var tenantRelatedErr coretnt.TenantRelatedError
-	if len(validationResult.Errors) > 0 &&
-		errors.As(validationResult.Errors[0], &tenantRelatedErr) &&
-		tenantRelatedErr.IsRelatedToTenant(du) {
-		return nil, tenantRelatedErr
+	if err := tenant.ValidateNewTenant(existingTenants, du); err != nil {
+		return nil, err
 	}
 
 	return du, nil

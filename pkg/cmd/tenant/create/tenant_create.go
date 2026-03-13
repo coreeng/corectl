@@ -273,6 +273,16 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
+	} else if kind == "DeliveryUnit" {
+		// For convenience, inherit groups from the owner org unit unless explicitly provided.
+		if ownerTenant != nil {
+			if adminGroup == "" {
+				adminGroup = ownerTenant.AdminGroup
+			}
+			if readOnlyGroup == "" {
+				readOnlyGroup = ownerTenant.ReadOnlyGroup
+			}
+		}
 	}
 
 	ownerName := ""
@@ -310,15 +320,7 @@ func createTenant(
 	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
 	logger.Warn().Msgf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
-
-	tenantMap := map[string]*coretnt.Tenant{
-		t.Name: t,
-	}
-	for _, tenant := range allTenants {
-		tenantMap[tenant.Name] = &tenant
-	}
-
-	if err := validateTenant(tenantMap, t); err != nil {
+	if err := tenant.ValidateNewTenant(allTenants, t); err != nil {
 
 		logger.Warn().Msgf("Unable to create such a tenant: %s", err)
 
@@ -370,23 +372,6 @@ func tenantKindDisplay(kind string) string {
 	default:
 		return strings.ToLower(kind)
 	}
-}
-
-func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant) error {
-	validationResult := coretnt.ValidateTenants(tenantMap)
-	for _, warn := range validationResult.Warnings {
-		var tenantRelatedWarn coretnt.TenantRelatedError
-		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(t) {
-			logger.Error().Msg(warn.Error())
-		}
-	}
-	if len(validationResult.Errors) == 0 {
-		return nil
-	}
-
-	// Prefer returning all validation errors to avoid silently writing invalid tenants.
-	// (e.g. OrgUnits must have admin/readonly groups; this is enforced by ValidateTenants.)
-	return errors.Join(validationResult.Errors...)
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
@@ -721,6 +706,8 @@ func normalizeTenantKind(inp string) (string, error) {
 		return "OrgUnit", nil
 	case "deliveryunit":
 		return "DeliveryUnit", nil
+	case "team", "app", "ou", "du":
+		return "", fmt.Errorf("legacy tenant kind '%s' is not supported anymore; use OrgUnit or DeliveryUnit (see ADR-65)", canon)
 	default:
 		return "", fmt.Errorf("unknown tenant kind: %s (valid: OrgUnit, DeliveryUnit)", inp)
 	}

@@ -86,10 +86,12 @@ func run(opts *TenantSetRepoOpts, cfg *config.Config) error {
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
+	rootOwner := tenant.RootTenant(tenantsDir)
 
 	opts.Streams.CurrentHandler.Info("creating GitHub PR")
 	result, err := corectltnt.CreateOrUpdate(&corectltnt.CreateOrUpdateOp{
 		Tenant:            t,
+		OwnerTenant:       rootOwner,
 		CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 		BranchName:        fmt.Sprintf("%s-set-repo-%s", t.Name, repoName.Name()),
 		CommitMessage:     fmt.Sprintf("Set repository %s for tenant %s", repoName.Name(), t.Name),

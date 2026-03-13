@@ -46,6 +46,30 @@ To check for available operations run:
 corectl --help
 ```
 
+## Tenants (ADR-65)
+
+Core Platform tenants use an OrgUnit/DeliveryUnit model:
+
+- OrgUnit: top-level organisational unit (`kind: OrgUnit`, file `*.ou.yaml`)
+- DeliveryUnit: owned by an OrgUnit (`kind: DeliveryUnit`, file `*.du.yaml`), with required `type: application|infrastructure`
+
+Common operations:
+
+```bash
+# Create an org unit (top level)
+corectl tenant create --kind OrgUnit --name <ou> --admin-group <group> --readonly-group <group> \
+  --contact-email <email> --environments dev,prod [--prefix area/subarea]
+
+# Create a delivery unit owned by an org unit
+corectl tenant create --kind DeliveryUnit --name <du> --owner <ou> --type application \
+  --contact-email <email> --environments dev,prod [--repo <url>] [--prefix area/subarea]
+
+# Set the repository for a delivery unit
+corectl tenant set-repo <du> <repository-url>
+```
+
+Legacy kinds (`team`, `app`) are not supported post-migration.
+
 # GitHub Access Token
 
 ## Classic Personal Access Token
