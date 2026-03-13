@@ -1,11 +1,11 @@
-package addrepo
+package setrepo
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type TenantAddRepoOpts struct {
+type TenantSetRepoOpts struct {
 	TenantName    string
 	RepositoryUrl string
 	DryRun        bool
@@ -21,10 +21,10 @@ type TenantAddRepoOpts struct {
 	Streams userio.IOStreams
 }
 
-func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
-	opts := TenantAddRepoOpts{}
-	tenantAddRepoCmd := &cobra.Command{
-		Use:   "add-repo <tenant-name> <repository-url>",
+func NewTenantSetRepoCmd(cfg *config.Config) *cobra.Command {
+	opts := TenantSetRepoOpts{}
+	tenantSetRepoCmd := &cobra.Command{
+		Use:   "set-repo <tenant-name> <repository-url>",
 		Short: "Set the repository for a delivery unit",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -41,13 +41,13 @@ func NewTenantAddRepoCmd(cfg *config.Config) *cobra.Command {
 		},
 	}
 
-	config.RegisterStringParameterAsFlag(&cfg.GitHub.Token, tenantAddRepoCmd.Flags())
-	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantAddRepoCmd.Flags())
+	config.RegisterStringParameterAsFlag(&cfg.GitHub.Token, tenantSetRepoCmd.Flags())
+	config.RegisterBoolParameterAsFlag(&cfg.Repositories.AllowDirty, tenantSetRepoCmd.Flags())
 
-	return tenantAddRepoCmd
+	return tenantSetRepoCmd
 }
 
-func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
+func run(opts *TenantSetRepoOpts, cfg *config.Config) error {
 	repoParams := []config.Parameter[string]{cfg.Repositories.CPlatform}
 	err := config.Update(cfg.GitHub.Token.Value, opts.Streams, cfg.Repositories.AllowDirty.Value, repoParams)
 	if err != nil {
@@ -71,10 +71,6 @@ func run(opts *TenantAddRepoOpts, cfg *config.Config) error {
 
 	if t.Kind == "OrgUnit" {
 		return fmt.Errorf("cannot set repository for org unit '%s': only delivery units can have a repository", t.Name)
-	}
-
-	if t.Repo != "" && t.Repo != opts.RepositoryUrl {
-		return fmt.Errorf("tenant '%s' already has a different repo set (%s)", t.Name, t.Repo)
 	}
 
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("setting repository: %s", opts.RepositoryUrl))
