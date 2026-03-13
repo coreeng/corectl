@@ -25,14 +25,10 @@ import (
 
 type TenantCreateOpt struct {
 	Name           string
-	Kind           string
-	Owner          string
-	Type           string
 	Prefix         string
 	Description    string
 	ContactEmail   string
 	Environments   []string
-	Repo           string
 	AdminGroup     string
 	ReadOnlyGroup  string
 	NonInteractive bool
@@ -45,7 +41,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 	opt := TenantCreateOpt{}
 	tenantCreateCmd := &cobra.Command{
 		Use:   "create",
-		Short: "Creates tenant",
+		Short: "Creates an org unit",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cmd.SilenceUsage = true
 			nonInteractive, err := cmd.Flags().GetBool("non-interactive")
@@ -68,28 +64,8 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&opt.Name,
 		"name",
 		"",
-		"Tenant name. Should be valid K8S label.",
+		"Org unit name. Should be valid K8S label.",
 	)
-	tenantCreateCmd.Flags().StringVar(
-		&opt.Kind,
-		"kind",
-		"",
-		"Tenant kind: OrgUnit or DeliveryUnit",
-	)
-	tenantCreateCmd.Flags().StringVar(
-		&opt.Owner,
-		"owner",
-		"",
-		"Owner org unit name (required for DeliveryUnit)",
-	)
-	// Delivery unit type.
-	tenantCreateCmd.Flags().StringVar(
-		&opt.Type,
-		"type",
-		"",
-		"Delivery unit type: application or infrastructure (required for DeliveryUnit)",
-	)
-	// Optional hierarchy prefix.
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Prefix,
 		"prefix",
@@ -100,37 +76,31 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&opt.Description,
 		"description",
 		"",
-		"Description for tenant",
+		"Description for the org unit",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.ContactEmail,
 		"contact-email",
 		"",
-		"Contact email for tenant",
+		"Contact email for the org unit",
 	)
 	tenantCreateCmd.Flags().StringSliceVar(
 		&opt.Environments,
 		"environments",
 		nil,
-		"Environments, available to tenant",
-	)
-	tenantCreateCmd.Flags().StringVar(
-		&opt.Repo,
-		"repo",
-		"",
-		"Repository URL (DeliveryUnit only)",
+		"Environments available to the org unit",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.AdminGroup,
 		"admin-group",
 		"",
-		"Admin group for tenant",
+		"Admin group for the org unit",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.ReadOnlyGroup,
 		"readonly-group",
 		"",
-		"Readonly group for tenant",
+		"Readonly group for the org unit",
 	)
 
 	tenantCreateCmd.Flags().BoolVarP(
@@ -182,24 +152,14 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	}
 
 	nameInput := opt.createNameInputSwitch(existingTenants)
-	kindInput := opt.createKindInputSwitch()
 	prefixInput := opt.createPrefixInputSwitch()
 	descriptionInput := opt.createDescriptionInputSwitch()
 	contactEmailInput := opt.createContactEmailInputSwitch()
 	envsInput := opt.createEnvironmentsInputSwitch(envs)
-	typeInput := opt.createTypeInputSwitch()
-	ownerInput := opt.createOwnerInputSwitch(existingTenants)
-	repoInput := opt.createRepoInputSwitch()
+	adminGroupInput := opt.createAdminGroupInputSwitch()
+	readOnlyGroupInput := opt.createReadOnlyGroupInputSwitch()
 
 	name, err := nameInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
-	}
-	rawKind, err := kindInput.GetValue(opt.Streams)
-	if err != nil {
-		return err
-	}
-	kind, err := normalizeTenantKind(rawKind)
 	if err != nil {
 		return err
 	}
@@ -219,98 +179,29 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-
-	// Owner / type / repo are kind-dependent.
-	var ownerTenant *coretnt.Tenant
-	if kind == "DeliveryUnit" {
-		owner, err := ownerInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-		ownerTenant = &owner
-	} else {
-		if strings.TrimSpace(opt.Owner) != "" {
-			return fmt.Errorf("--owner is only valid for DeliveryUnit")
-		}
-		// Org units are always created at the tenants root (top level).
-		ownerTenant = rootTenant
+	adminGroup, err := adminGroupInput.GetValue(opt.Streams)
+	if err != nil {
+		return err
 	}
-
-	typ := ""
-	if kind == "DeliveryUnit" {
-		typ, err = typeInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-	} else {
-		if strings.TrimSpace(opt.Type) != "" {
-			return fmt.Errorf("--type is only valid for DeliveryUnit")
-		}
-	}
-
-	repo := ""
-	if kind == "DeliveryUnit" {
-		repo, err = repoInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-	} else {
-		if strings.TrimSpace(opt.Repo) != "" {
-			return fmt.Errorf("--repo is only valid for DeliveryUnit")
-		}
-	}
-
-	adminGroup := strings.TrimSpace(opt.AdminGroup)
-	readOnlyGroup := strings.TrimSpace(opt.ReadOnlyGroup)
-	switch kind {
-	case "OrgUnit":
-		adminGroupInput := opt.createAdminGroupInputSwitch()
-		adminGroup, err = adminGroupInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-		readOnlyGroupInput := opt.createReadOnlyGroupInputSwitch()
-		readOnlyGroup, err = readOnlyGroupInput.GetValue(opt.Streams)
-		if err != nil {
-			return err
-		}
-	case "DeliveryUnit":
-		// For convenience, inherit groups from the owner org unit unless explicitly provided.
-		if ownerTenant != nil {
-			if adminGroup == "" {
-				adminGroup = ownerTenant.AdminGroup
-			}
-			if readOnlyGroup == "" {
-				readOnlyGroup = ownerTenant.ReadOnlyGroup
-			}
-		}
-	}
-
-	ownerName := ""
-	if kind == "DeliveryUnit" && ownerTenant != nil {
-		ownerName = ownerTenant.Name
+	readOnlyGroup, err := readOnlyGroupInput.GetValue(opt.Streams)
+	if err != nil {
+		return err
 	}
 
 	t := coretnt.Tenant{
 		Name:          name,
-		Kind:          kind,
-		Type:          typ,
-		Owner:         ownerName,
+		Kind:          "OrgUnit",
 		Prefix:        prefix,
 		Description:   description,
 		ContactEmail:  contactEmail,
 		Environments:  tenantEnvironments,
-		Repo:          repo,
 		AdminGroup:    adminGroup,
 		ReadOnlyGroup: readOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.DryRun, cfg, &t, ownerTenant, existingTenants)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = createTenant(opt.DryRun, cfg, &t, rootTenant, existingTenants)
+	return err
 }
 
 func createTenant(
@@ -320,59 +211,34 @@ func createTenant(
 	ownerTenant *coretnt.Tenant,
 	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
-	logger.Warn().Msgf("Creating tenant %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
+	logger.Warn().Msgf("Creating org unit %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
 	if err := tenant.ValidateNewTenant(allTenants, t); err != nil {
-
-		logger.Warn().Msgf("Unable to create such a tenant: %s", err)
-
+		logger.Warn().Msgf("Unable to create org unit: %s", err)
 		return tenant.CreateOrUpdateResult{}, err
 	}
 
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-	kindDisplay := tenantKindDisplay(t.Kind)
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
 			OwnerTenant:       ownerTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
-			BranchName:        fmt.Sprintf("new-%s-tenant-%s", tenantKindSlug(t.Kind), t.Name),
-			CommitMessage:     fmt.Sprintf("Add new %s: %s", kindDisplay, t.Name),
-			PRName:            fmt.Sprintf("New %s: %s", kindDisplay, t.Name),
-			PRBody:            fmt.Sprintf("Adds new %s '%s'", kindDisplay, t.Name),
+			BranchName:        fmt.Sprintf("new-ou-tenant-%s", t.Name),
+			CommitMessage:     fmt.Sprintf("Add new org unit: %s", t.Name),
+			PRName:            fmt.Sprintf("New org unit: %s", t.Name),
+			PRBody:            fmt.Sprintf("Adds new org unit '%s'", t.Name),
 			GitAuth:           gitAuth,
 			DryRun:            dryRun,
 		}, githubClient,
 	)
 	if err != nil {
-		logger.Warn().Msgf("Failed to create a PR for new %s: %s", kindDisplay, err)
+		logger.Warn().Msgf("Failed to create a PR for new org unit: %s", err)
 	} else {
-		logger.Warn().Msgf("Created PR for new %s %s: %s", kindDisplay, t.Name, result.PRUrl)
+		logger.Warn().Msgf("Created PR for new org unit %s: %s", t.Name, result.PRUrl)
 	}
 	return result, err
-}
-
-func tenantKindSlug(kind string) string {
-	switch kind {
-	case "OrgUnit":
-		return "ou"
-	case "DeliveryUnit":
-		return "du"
-	default:
-		return strings.ToLower(kind)
-	}
-}
-
-func tenantKindDisplay(kind string) string {
-	switch kind {
-	case "OrgUnit":
-		return "org unit"
-	case "DeliveryUnit":
-		return "delivery unit"
-	default:
-		return strings.ToLower(kind)
-	}
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
@@ -397,8 +263,8 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 		DefaultValue: userio.AsZeroable(opt.Name),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.TextInput[string]{
-				Prompt:      "Tenant name (valid K8S namespace name):",
-				Placeholder: "tenant-name",
+				Prompt:      "Org unit name (valid K8S namespace name):",
+				Placeholder: "org-unit-name",
 				ValidateAndMap: func(inp string) (string, error) {
 					name, err := validateFn(inp)
 					return name, err
@@ -406,44 +272,7 @@ func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tena
 			}, nil
 		},
 		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid tenant name",
-	}
-}
-
-func (opt *TenantCreateOpt) createOwnerInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, coretnt.Tenant] {
-	orgUnits := make([]coretnt.Tenant, 0)
-	for _, t := range existingTenants {
-		if t.Kind == "OrgUnit" {
-			orgUnits = append(orgUnits, t)
-		}
-	}
-	items := make([]string, 0, len(orgUnits))
-	for _, t := range orgUnits {
-		items = append(items, t.Name)
-	}
-
-	return userio.InputSourceSwitch[string, coretnt.Tenant]{
-		DefaultValue: userio.AsZeroable(opt.Owner),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.SingleSelect{
-				Prompt: "Owner org unit:",
-				Items:  items,
-			}, nil
-		},
-		ValidateAndMap: func(inp string) (coretnt.Tenant, error) {
-			inp = strings.TrimSpace(inp)
-			if inp == "" {
-				return coretnt.Tenant{}, errors.New("owner is required")
-			}
-			tenantIndx := slices.IndexFunc(orgUnits, func(t coretnt.Tenant) bool {
-				return t.Name == inp
-			})
-			if tenantIndx >= 0 {
-				return orgUnits[tenantIndx], nil
-			}
-			return coretnt.Tenant{}, errors.New("unknown owner org unit")
-		},
-		ErrMessage: "invalid owner",
+		ErrMessage:     "invalid org unit name",
 	}
 }
 
@@ -468,7 +297,7 @@ func (opt *TenantCreateOpt) createDescriptionInputSwitch() userio.InputSourceSwi
 			}, nil
 		},
 		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid tenant description",
+		ErrMessage:     "invalid org unit description",
 	}
 }
 
@@ -519,60 +348,6 @@ func (opt *TenantCreateOpt) createPrefixInputSwitch() userio.InputSourceSwitch[s
 		},
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid prefix",
-	}
-}
-
-func (opt *TenantCreateOpt) createTypeInputSwitch() userio.InputSourceSwitch[string, string] {
-	validateFn := func(inp string) (string, error) {
-		inp = strings.TrimSpace(inp)
-		inp = strings.ToLower(inp)
-		t := &coretnt.Tenant{Kind: "DeliveryUnit", Type: inp}
-		if err := t.ValidateField("Type"); err != nil {
-			return "", err
-		}
-		return inp, nil
-	}
-
-	defaultType := opt.Type
-	if defaultType == "" {
-		defaultType = "application"
-	}
-
-	return userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(defaultType),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.SingleSelect{
-				Prompt: "Delivery unit type:",
-				Items:  []string{"application", "infrastructure"},
-			}, nil
-		},
-		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid delivery unit type",
-	}
-}
-
-func (opt *TenantCreateOpt) createRepoInputSwitch() userio.InputSourceSwitch[string, string] {
-	validateFn := func(inp string) (string, error) {
-		inp = strings.TrimSpace(inp)
-		t := &coretnt.Tenant{Kind: "DeliveryUnit", Repo: inp}
-		if err := t.ValidateField("Repo"); err != nil {
-			return "", err
-		}
-		return inp, nil
-	}
-
-	return userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(opt.Repo),
-		Optional:     true,
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.TextInput[string]{
-				Prompt:         "Repository URL (optional):",
-				Placeholder:    "https://github.com/org/repo",
-				ValidateAndMap: validateFn,
-			}, nil
-		},
-		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid repo url",
 	}
 }
 
@@ -661,56 +436,6 @@ func (opt *TenantCreateOpt) createReadOnlyGroupInputSwitch() userio.InputSourceS
 		},
 		ValidateAndMap: validateFn,
 		ErrMessage:     "invalid read only group",
-	}
-}
-
-func (opt *TenantCreateOpt) createKindInputSwitch() userio.InputSourceSwitch[string, string] {
-	validateFn := func(inp string) (string, error) {
-		inp = strings.TrimSpace(inp)
-		kind, err := normalizeTenantKind(inp)
-		if err != nil {
-			return "", err
-		}
-		t := &coretnt.Tenant{Kind: kind}
-		if err := t.ValidateField("Kind"); err != nil {
-			return "", err
-		}
-		return kind, nil
-	}
-
-	defaultKind := opt.Kind
-	if defaultKind == "" {
-		defaultKind = "OrgUnit"
-	}
-
-	return userio.InputSourceSwitch[string, string]{
-		DefaultValue: userio.AsZeroable(defaultKind),
-		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
-			return &userio.SingleSelect{
-				Prompt: "Tenant kind:",
-				Items:  []string{"OrgUnit", "DeliveryUnit"},
-			}, nil
-		},
-		ValidateAndMap: validateFn,
-		ErrMessage:     "invalid tenant kind",
-	}
-}
-
-func normalizeTenantKind(inp string) (string, error) {
-	inp = strings.TrimSpace(inp)
-	if inp == "" {
-		return "", errors.New("kind is required")
-	}
-	canon := strings.ToLower(inp)
-	switch canon {
-	case "orgunit":
-		return "OrgUnit", nil
-	case "deliveryunit":
-		return "DeliveryUnit", nil
-	case "team", "app", "ou", "du":
-		return "", fmt.Errorf("legacy tenant kind '%s' is not supported anymore; use OrgUnit or DeliveryUnit (see ADR-65)", canon)
-	default:
-		return "", fmt.Errorf("unknown tenant kind: %s (valid: OrgUnit, DeliveryUnit)", inp)
 	}
 }
 
