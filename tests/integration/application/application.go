@@ -182,14 +182,20 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		It("created a PR with new app link for the tenant", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						&github.PullRequestListOptions{
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(HaveLen(1))
@@ -199,12 +205,18 @@ var _ = Describe("application", Ordered, func() {
 			Expect(pr.GetTitle()).To(Equal("Set repository " + newAppName + " for tenant " + testconfig.Cfg.Tenant))
 			Expect(pr.GetState()).To(Equal("open"))
 
-			prFiles, _, err := githubClient.PullRequests.ListFiles(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				pr.GetNumber(),
-				&github.ListOptions{},
+			prFiles, _, err := git.RetryGitHubAPI(
+				func() ([]*github.CommitFile, *github.Response, error) {
+					return githubClient.PullRequests.ListFiles(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						pr.GetNumber(),
+						&github.ListOptions{},
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prFiles).To(HaveLen(1))
@@ -340,14 +352,20 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		It("did not create a PR for updating tenant configuration", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						&github.PullRequestListOptions{
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(BeEmpty())
@@ -400,14 +418,20 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		It("created a PR for the new app in the monorepo", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfg.GitHub.Organization.Value,
-				monorepoName,
-				&github.PullRequestListOptions{
-					Head: cfg.GitHub.Organization.Value + ":add-" + newAppName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfg.GitHub.Organization.Value,
+						monorepoName,
+						&github.PullRequestListOptions{
+							Head: cfg.GitHub.Organization.Value + ":add-" + newAppName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(HaveLen(1))
@@ -415,14 +439,20 @@ var _ = Describe("application", Ordered, func() {
 		}, SpecTimeout(time.Minute))
 
 		It("created a PR for new delivery unit configuration", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						&github.PullRequestListOptions{
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(HaveLen(1))
@@ -431,12 +461,18 @@ var _ = Describe("application", Ordered, func() {
 			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newAppName))
 			Expect(pr.GetState()).To(Equal("open"))
 
-			prFiles, _, err := githubClient.PullRequests.ListFiles(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				pr.GetNumber(),
-				&github.ListOptions{},
+			prFiles, _, err := git.RetryGitHubAPI(
+				func() ([]*github.CommitFile, *github.Response, error) {
+					return githubClient.PullRequests.ListFiles(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						pr.GetNumber(),
+						&github.ListOptions{},
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prFiles).To(HaveLen(1))
@@ -568,14 +604,20 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		It("created a PR with new delivery unit and repository", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						&github.PullRequestListOptions{
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(HaveLen(1))
@@ -585,12 +627,18 @@ var _ = Describe("application", Ordered, func() {
 			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newAppName))
 			Expect(pr.GetState()).To(Equal("open"))
 
-			prFiles, _, err := githubClient.PullRequests.ListFiles(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				pr.GetNumber(),
-				&github.ListOptions{},
+			prFiles, _, err := git.RetryGitHubAPI(
+				func() ([]*github.CommitFile, *github.Response, error) {
+					return githubClient.PullRequests.ListFiles(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						pr.GetNumber(),
+						&github.ListOptions{},
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prFiles).To(HaveLen(1))

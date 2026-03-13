@@ -51,7 +51,7 @@ func TestRetryGitHubAPI_NonRetryableError(t *testing.T) {
 	callCount := 0
 	operation := func() (*github.Repository, *github.Response, error) {
 		callCount++
-		return nil, &github.Response{Response: &http.Response{StatusCode: 500}}, errors.New("500 Internal Server Error")
+		return nil, &github.Response{Response: &http.Response{StatusCode: 400}}, errors.New("400 Bad Request")
 	}
 
 	result, resp, err := RetryGitHubAPI(operation, 3, 10*time.Millisecond)
@@ -59,7 +59,25 @@ func TestRetryGitHubAPI_NonRetryableError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, result)
 	assert.NotNil(t, resp)
-	assert.Equal(t, 1, callCount, "Should not retry non-404 errors")
+	assert.Equal(t, 1, callCount, "Should not retry non-transient errors")
+}
+
+func TestRetryGitHubAPI_500Retry(t *testing.T) {
+	callCount := 0
+	operation := func() (*github.Repository, *github.Response, error) {
+		callCount++
+		if callCount < 3 {
+			return nil, &github.Response{Response: &http.Response{StatusCode: 500}}, errors.New("500 Internal Server Error")
+		}
+		return &github.Repository{}, &github.Response{Response: &http.Response{StatusCode: 200}}, nil
+	}
+
+	result, resp, err := RetryGitHubAPI(operation, 3, 10*time.Millisecond)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.NotNil(t, resp)
+	assert.Equal(t, 3, callCount, "Should retry 5xx errors")
 }
 
 func TestRetryGitHubAPI_MaxRetriesExceeded(t *testing.T) {

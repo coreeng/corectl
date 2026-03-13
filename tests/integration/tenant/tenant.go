@@ -57,14 +57,20 @@ var _ = Describe("tenant", Ordered, func() {
 		})
 
 		It("created a PR in the CPlatform repository", func(ctx SpecContext) {
-			prList, _, err := githubClient.PullRequests.List(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				&github.PullRequestListOptions{
-					Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-du-tenant-" + newTenantName,
-					Base: git.MainBranch,
+			prList, _, err := git.RetryGitHubAPI(
+				func() ([]*github.PullRequest, *github.Response, error) {
+					return githubClient.PullRequests.List(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						&github.PullRequestListOptions{
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-du-tenant-" + newTenantName,
+							Base: git.MainBranch,
+						},
+					)
 				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prList).To(HaveLen(1))
@@ -74,12 +80,18 @@ var _ = Describe("tenant", Ordered, func() {
 			Expect(pr.GetTitle()).To(Equal("New DeliveryUnit tenant: " + newTenantName))
 			Expect(pr.GetState()).To(Equal("open"))
 
-			prFiles, _, err := githubClient.PullRequests.ListFiles(
-				ctx,
-				cfgDetails.CPlatformRepoName.Organization(),
-				cfgDetails.CPlatformRepoName.Name(),
-				pr.GetNumber(),
-				&github.ListOptions{},
+			prFiles, _, err := git.RetryGitHubAPI(
+				func() ([]*github.CommitFile, *github.Response, error) {
+					return githubClient.PullRequests.ListFiles(
+						ctx,
+						cfgDetails.CPlatformRepoName.Organization(),
+						cfgDetails.CPlatformRepoName.Name(),
+						pr.GetNumber(),
+						&github.ListOptions{},
+					)
+				},
+				git.DefaultMaxRetries,
+				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prFiles).To(HaveLen(1))
