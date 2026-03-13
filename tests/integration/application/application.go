@@ -181,7 +181,7 @@ var _ = Describe("application", Ordered, func() {
 			}
 		}, NodeTimeout(time.Minute))
 
-		It("created a PR with new app link for the tenant", func(ctx SpecContext) {
+		It("created a PR for new delivery unit configuration", func(ctx SpecContext) {
 			prList, _, err := git.RetryGitHubAPI(
 				func() ([]*github.PullRequest, *github.Response, error) {
 					return githubClient.PullRequests.List(
@@ -189,7 +189,7 @@ var _ = Describe("application", Ordered, func() {
 						cfgDetails.CPlatformRepoName.Organization(),
 						cfgDetails.CPlatformRepoName.Name(),
 						&github.PullRequestListOptions{
-							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
+							Head: cfgDetails.CPlatformRepoName.Organization() + ":new-du-tenant-" + newAppName,
 							Base: git.MainBranch,
 						},
 					)
@@ -202,7 +202,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prList[0]).NotTo(BeNil())
 			pr := prList[0]
 
-			Expect(pr.GetTitle()).To(Equal("Set repository " + newAppName + " for tenant " + testconfig.Cfg.Tenant))
+			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newAppName))
 			Expect(pr.GetState()).To(Equal("open"))
 
 			prFiles, _, err := git.RetryGitHubAPI(
@@ -222,8 +222,8 @@ var _ = Describe("application", Ordered, func() {
 			Expect(prFiles).To(HaveLen(1))
 			prFile := prFiles[0]
 
-			Expect(prFile.GetStatus()).To(Equal("modified"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + testconfig.Cfg.Tenant + ".du.yaml"))
+			Expect(prFile.GetStatus()).To(Equal("added"))
+			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/" + testconfig.Cfg.Tenant + "/" + newAppName + ".du.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 
@@ -351,25 +351,7 @@ var _ = Describe("application", Ordered, func() {
 			Expect(err.(*github.ErrorResponse).Response.StatusCode).To(Equal(404))
 		}, NodeTimeout(time.Minute))
 
-		It("did not create a PR for updating tenant configuration", func(ctx SpecContext) {
-			prList, _, err := git.RetryGitHubAPI(
-				func() ([]*github.PullRequest, *github.Response, error) {
-					return githubClient.PullRequests.List(
-						ctx,
-						cfgDetails.CPlatformRepoName.Organization(),
-						cfgDetails.CPlatformRepoName.Name(),
-						&github.PullRequestListOptions{
-							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + testconfig.Cfg.Tenant + "-set-repo-" + newAppName,
-							Base: git.MainBranch,
-						},
-					)
-				},
-				git.DefaultMaxRetries,
-				git.DefaultBaseDelay,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prList).To(BeEmpty())
-		}, SpecTimeout(time.Minute))
+		// This command now always creates a new delivery unit owned by the selected org unit.
 	})
 
 	Context("create in monorepo mode with org unit tenant", Ordered, func() {

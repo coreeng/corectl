@@ -57,14 +57,12 @@ Common operations:
 
 ```bash
 # Create an org unit (top level)
-corectl tenant create --kind OrgUnit --name <ou> --admin-group <group> --readonly-group <group> \
+corectl tenant create --name <ou> --admin-group <group> --readonly-group <group> \
   --contact-email <email> --environments dev,prod [--prefix area/subarea]
 
-# Create a delivery unit owned by an org unit
-corectl tenant create --kind DeliveryUnit --name <du> --owner <ou> --type application \
-  --contact-email <email> --environments dev,prod [--repo <url>] [--prefix area/subarea]
+# Delivery units are created via `corectl application create` (owned by the selected org unit).
 
-# Set the repository for a delivery unit
+# Set the repository for a delivery unit (if you need to adjust it)
 corectl tenant set-repo <du> <repository-url>
 ```
 

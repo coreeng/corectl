@@ -36,72 +36,6 @@ var _ = Describe("tenant", Ordered, func() {
 		testsetup.SetupGitGlobalConfigFromCurrentToOtherHomeDir(homeDir)
 	})
 
-	Context("create", Ordered, func() {
-		var (
-			newTenantName string
-		)
-
-		BeforeAll(func() {
-			newTenantName = "new-tenant-name-" + randstr.Hex(6)
-			_, err := corectl.Run(
-				"tenant", "create",
-				"--name", newTenantName,
-				"--kind", "DeliveryUnit",
-				"--owner", "parent",
-				"--type", "application",
-				"--description", "Some tenant description",
-				"--contact-email", "ce@company.com",
-				"--environments", "dev,prod",
-				"--non-interactive")
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("created a PR in the CPlatform repository", func(ctx SpecContext) {
-			prList, _, err := git.RetryGitHubAPI(
-				func() ([]*github.PullRequest, *github.Response, error) {
-					return githubClient.PullRequests.List(
-						ctx,
-						cfgDetails.CPlatformRepoName.Organization(),
-						cfgDetails.CPlatformRepoName.Name(),
-						&github.PullRequestListOptions{
-							Head: cfgDetails.CPlatformRepoName.Organization() + ":" + "new-du-tenant-" + newTenantName,
-							Base: git.MainBranch,
-						},
-					)
-				},
-				git.DefaultMaxRetries,
-				git.DefaultBaseDelay,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prList).To(HaveLen(1))
-			Expect(prList[0]).NotTo(BeNil())
-			pr := prList[0]
-
-			Expect(pr.GetTitle()).To(Equal("New delivery unit: " + newTenantName))
-			Expect(pr.GetState()).To(Equal("open"))
-
-			prFiles, _, err := git.RetryGitHubAPI(
-				func() ([]*github.CommitFile, *github.Response, error) {
-					return githubClient.PullRequests.ListFiles(
-						ctx,
-						cfgDetails.CPlatformRepoName.Organization(),
-						cfgDetails.CPlatformRepoName.Name(),
-						pr.GetNumber(),
-						&github.ListOptions{},
-					)
-				},
-				git.DefaultMaxRetries,
-				git.DefaultBaseDelay,
-			)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(prFiles).To(HaveLen(1))
-			prFile := prFiles[0]
-
-			Expect(prFile.GetStatus()).To(Equal("added"))
-			Expect(prFile.GetFilename()).To(Equal("tenants/tenants/parent/" + newTenantName + ".du.yaml"))
-		}, SpecTimeout(time.Minute))
-	})
-
 	Context("create org unit", Ordered, func() {
 		var (
 			newOrgUnitName string
@@ -112,7 +46,6 @@ var _ = Describe("tenant", Ordered, func() {
 			_, err := corectl.Run(
 				"tenant", "create",
 				"--name", newOrgUnitName,
-				"--kind", "OrgUnit",
 				"--description", "Some org unit description",
 				"--contact-email", "ou@company.com",
 				"--environments", "dev,prod",
