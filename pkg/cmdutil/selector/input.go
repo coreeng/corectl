@@ -26,6 +26,50 @@ func Tenant(_ string, overrideTenantName string, streams userio.IOStreams) (*cor
 	return tenantOutput, nil
 }
 
+func OrgUnit(_ string, overrideOrgUnitName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
+	cPlatRepoPath := configpath.GetCorectlCPlatformDir("tenants")
+	existingTenants, err := coretnt.List(cPlatRepoPath)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't load tenant configuration in path %s: %w", cPlatRepoPath, err)
+	}
+	orgUnits := *sliceFilter(existingTenants, func(t coretnt.Tenant) bool {
+		return t.Kind == "OrgUnit"
+	})
+	inputOrgUnit := createOrgUnitInput(overrideOrgUnitName, orgUnits)
+	orgUnitOutput, err := inputOrgUnit.GetValue(streams)
+	if err != nil {
+		return nil, fmt.Errorf("config repo path %s: %w", cPlatRepoPath, err)
+	}
+	return orgUnitOutput, nil
+}
+
+func createOrgUnitInput(defaultOrgUnit string, orgUnits []coretnt.Tenant) *userio.InputSourceSwitch[string, *coretnt.Tenant] {
+	validateFn := func(e string) (*coretnt.Tenant, error) {
+		inpName := strings.TrimSpace(e)
+		idx := slices.IndexFunc(orgUnits, func(t coretnt.Tenant) bool {
+			return t.Name == inpName
+		})
+		if idx < 0 {
+			return nil, fmt.Errorf("cannot find %s org unit, available org units: %v", e, sliceMap(orgUnits, func(t coretnt.Tenant) string {
+				return t.Name
+			}))
+		}
+		return &orgUnits[idx], nil
+	}
+	names := sliceMap(orgUnits, func(t coretnt.Tenant) string { return t.Name })
+	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
+		DefaultValue: userio.AsZeroable(defaultOrgUnit),
+		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
+			return &userio.SingleSelect{
+				Prompt: "Org unit:",
+				Items:  names,
+			}, nil
+		},
+		ValidateAndMap: validateFn,
+		ErrMessage:     fmt.Sprintf("org unit %s invalid", defaultOrgUnit),
+	}
+}
+
 func Environment(cPlatRepoPath, overrideEnvName string, tenantOnboardedEnvs []string, streams userio.IOStreams) (*environment.Environment, error) {
 	cPlatEnvRepoPath := configpath.GetCorectlCPlatformDir("environments")
 	tenantEnvs, err := getTenantEnvs(cPlatEnvRepoPath, tenantOnboardedEnvs)

@@ -49,6 +49,45 @@ func TestTenantSelectorInvalidCPlatRepo(t *testing.T) {
 	assert.Nil(t, tenant)
 }
 
+func TestOrgUnitSelectorReturnsOrgUnit(t *testing.T) {
+	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
+
+	orgUnit, err := OrgUnit(cPlatRepo.Path(), "parent", streams)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "parent", orgUnit.Name)
+	assert.Equal(t, "OrgUnit", orgUnit.Kind)
+}
+
+func TestOrgUnitSelectorRejectsDeliveryUnit(t *testing.T) {
+	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
+
+	orgUnit, err := OrgUnit(cPlatRepo.Path(), testdata.DefaultTenant(), streams)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), testdata.DefaultTenant(), testdata.DefaultTenant()))
+	assert.Nil(t, orgUnit)
+}
+
+func TestOrgUnitSelectorNonExistingOrgUnit(t *testing.T) {
+	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
+	orgUnitName := fmt.Sprintf("%s-ou", t.Name())
+
+	orgUnit, err := OrgUnit(cPlatRepo.Path(), orgUnitName, streams)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), orgUnitName, orgUnitName))
+	assert.Nil(t, orgUnit)
+}
+
+func TestOrgUnitSelectorInvalidCPlatRepo(t *testing.T) {
+	cPlatRepoPath := t.TempDir()
+	configpath.SetCorectlHome(cPlatRepoPath)
+
+	orgUnit, err := OrgUnit(cPlatRepoPath, "parent", streams)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load tenant configuration in path %s/repositories/cplatform/tenants: stat .: no such file or directory", cPlatRepoPath))
+	assert.Nil(t, orgUnit)
+}
+
 func TestEnvironmentSelectorReturnsEnvironment(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
 

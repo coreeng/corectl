@@ -3,7 +3,6 @@ package create
 import (
 	"testing"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	. "github.com/onsi/ginkgo/v2"
@@ -92,15 +91,6 @@ var _ = Describe("AppCreateOpt", func() {
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(value).To(BeNil())
-			})
-		})
-	})
-
-	Describe("createPRWithUpdatedRepoForTenant", func() {
-		Context("when tenant is a delivery unit", func() {
-			It("should construct a delivery unit tenant", func() {
-				du := &coretnt.Tenant{Name: "test-du", Kind: "DeliveryUnit"}
-				Expect(du.Kind).To(Equal("DeliveryUnit"))
 			})
 		})
 	})

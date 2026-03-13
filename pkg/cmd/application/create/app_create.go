@@ -232,34 +232,17 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	selectedTenant, err := selector.Tenant(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant, opts.Streams)
+	ownerOrgUnit, err := selector.OrgUnit(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant, opts.Streams)
 	if err != nil {
 		return err
 	}
-	logger.Info().Msgf("tenant selected: %s", selectedTenant.Name)
-	if selectedTenant.Name == coretnt.RootName {
-		return fmt.Errorf("cannot create an application for the root tenant")
-	}
+	logger.Info().Msgf("org unit selected: %s", ownerOrgUnit.Name)
 
-	// If the selected tenant is an org unit, create a delivery unit under it.
-	var appTenant *coretnt.Tenant
-	var ownerOrgUnit *coretnt.Tenant
-	switch selectedTenant.Kind {
-	case "OrgUnit":
-		ownerOrgUnit = selectedTenant
-		appTenant, err = createDeliveryUnitForOrgUnit(opts, selectedTenant, duType)
-		if err != nil {
-			return fmt.Errorf("failed to create delivery unit: %w", err)
-		}
-		logger.Info().Msgf("Will create delivery unit '%s' owned by org unit '%s'", appTenant.Name, selectedTenant.Name)
-	case "DeliveryUnit":
-		if strings.TrimSpace(opts.Prefix) != "" {
-			return fmt.Errorf("--prefix can only be used when app create is creating a new delivery unit (select an org unit as --tenant)")
-		}
-		appTenant = selectedTenant
-	default:
-		return fmt.Errorf("unsupported tenant kind for app create: %s", selectedTenant.Kind)
+	appTenant, err := createDeliveryUnitForOrgUnit(opts, ownerOrgUnit, duType)
+	if err != nil {
+		return fmt.Errorf("failed to create delivery unit: %w", err)
 	}
+	logger.Info().Msgf("Will create delivery unit '%s' owned by org unit '%s'", appTenant.Name, ownerOrgUnit.Name)
 
 	existingEnvs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
@@ -292,15 +275,13 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 
 	var nextStepsMessage string
 	if createdAppResult.MonorepoMode {
-		if ownerOrgUnit != nil {
-			logger.Warn().Msgf("Creating PR with new delivery unit '%s' for org unit %s in platform repo (monorepo mode)",
-				appTenant.Name, ownerOrgUnit.Name)
-			tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerOrgUnit, createdAppResult)
-			if err != nil {
-				return err
-			}
-			logger.Warn().Msgf("Created PR with new delivery unit: %s", tenantUpdateResult.PRUrl)
+		logger.Warn().Msgf("Creating PR with new delivery unit '%s' for org unit %s in platform repo (monorepo mode)",
+			appTenant.Name, ownerOrgUnit.Name)
+		tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerOrgUnit, createdAppResult)
+		if err != nil {
+			return err
 		}
+		logger.Warn().Msgf("Created PR with new delivery unit: %s", tenantUpdateResult.PRUrl)
 
 		nextStepsMessage = fmt.Sprintf(
 			nextStepsMessageTemplateMonoRepo,
@@ -310,40 +291,21 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 			createdAppResult.RepositoryFullname.String(),
 		)
 	} else {
-		var tenantUpdateResult *tenant.CreateOrUpdateResult
-
-		// If we created a delivery unit from an org unit, create a combined PR with both the delivery unit and repo.
-		if ownerOrgUnit != nil {
-			logger.Warn().Msgf("Creating PR with new delivery unit '%s' and application %s for org unit %s in platform repo",
-				appTenant.Name, opts.Name, ownerOrgUnit.Name)
-			tenantUpdateResult, err = createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerOrgUnit, createdAppResult)
-			if err != nil {
-				return err
-			}
-			logger.Warn().Msgf("Created PR with new delivery unit and application: %s", tenantUpdateResult.PRUrl)
-		} else {
-			tenantUpdateResult, err = createPRWithUpdatedRepoForTenant(opts, cfg, githubClient, appTenant, createdAppResult)
-			if err != nil {
-				return err
-			}
+		logger.Warn().Msgf("Creating PR with new delivery unit '%s' and application %s for org unit %s in platform repo",
+			appTenant.Name, opts.Name, ownerOrgUnit.Name)
+		tenantUpdateResult, err := createPRWithNewTenantAndRepo(opts, cfg, githubClient, appTenant, ownerOrgUnit, createdAppResult)
+		if err != nil {
+			return err
 		}
+		logger.Warn().Msgf("Created PR with new delivery unit and application: %s", tenantUpdateResult.PRUrl)
 
-		if tenantUpdateResult != nil {
-			nextStepsMessage = fmt.Sprintf(
-				nextStepsMessageTemplateSingleRepo,
-				tenantUpdateResult.PRUrl,
-				createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-				createdAppResult.RepositoryFullname.String(),
-				createdAppResult.RepositoryFullname.String(),
-			)
-		} else {
-			nextStepsMessage = fmt.Sprintf(
-				nextStepsMessageTemplateSingleRepoSkippedTenant,
-				createdAppResult.RepositoryFullname.ActionsHttpUrl(),
-				createdAppResult.RepositoryFullname.String(),
-				createdAppResult.RepositoryFullname.String(),
-			)
-		}
+		nextStepsMessage = fmt.Sprintf(
+			nextStepsMessageTemplateSingleRepo,
+			tenantUpdateResult.PRUrl,
+			createdAppResult.RepositoryFullname.ActionsHttpUrl(),
+			createdAppResult.RepositoryFullname.String(),
+			createdAppResult.RepositoryFullname.String(),
+		)
 	}
 	logger.Warn().Msg(strings.TrimSpace(nextStepsMessage))
 
@@ -356,15 +318,6 @@ To complete application onboarding to the Core Platform you have to first merge 
 PR url: %s
 
 After the PR is merged, your application is ready to be deployed to the Core Platform!
-It will either happen with next commit or you can do it manually by triggering P2P workflow.
-To do it, use GitHub web-interface or GitHub CLI.
-Workflows link: %s
-GitHub CLI commands:
-  gh workflow list -R %s
-  gh workflow run <workflow-id> -R %s
-`
-	nextStepsMessageTemplateSingleRepoSkippedTenant = `
-Your application is ready to be deployed to the Core Platform!
 It will either happen with next commit or you can do it manually by triggering P2P workflow.
 To do it, use GitHub web-interface or GitHub CLI.
 Workflows link: %s
@@ -458,54 +411,6 @@ func deliveryUnitTypeFromTemplate(t *template.Spec) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown template kind: %s (expected 'app' or 'infra')", t.Kind)
 	}
-}
-
-func createPRWithUpdatedRepoForTenant(
-	opts *AppCreateOpt,
-	cfg *config.Config,
-	githubClient *github.Client,
-	appTenant *coretnt.Tenant,
-	createdAppResult application.CreateResult,
-) (*tenant.CreateOrUpdateResult, error) {
-	logger.Warn().Msgf("Creating PR with new application %s for tenant %s in platform repo",
-		opts.Name, appTenant.Name)
-
-	newRepo := createdAppResult.RepositoryFullname.HttpUrl()
-	if appTenant.Repo == newRepo {
-		logger.Warn().Msgf("Repository already set for tenant. Skipping.")
-		return nil, nil
-	}
-	if appTenant.Repo != "" && appTenant.Repo != newRepo {
-		return nil, fmt.Errorf("tenant '%s' already has a different repo set (%s)", appTenant.Name, appTenant.Repo)
-	}
-	appTenant.Repo = newRepo
-	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
-	logger.Warn().Msgf("ensuring tenant repository exists: %s", createdAppResult.RepositoryFullname.Name())
-	rootOwner := coretnt.RootTenant(configpath.GetCorectlCPlatformDir("tenants"))
-
-	tenantUpdateResult, err := tenant.CreateOrUpdate(
-		&tenant.CreateOrUpdateOp{
-			Tenant:            appTenant,
-			OwnerTenant:       rootOwner,
-			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
-			BranchName:        fmt.Sprintf("%s-set-repo-%s", appTenant.Name, createdAppResult.RepositoryFullname.Name()),
-			CommitMessage:     fmt.Sprintf("Set repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
-			PRName:            fmt.Sprintf("Set repository %s for tenant %s", createdAppResult.RepositoryFullname.Name(), appTenant.Name),
-			PRBody:            fmt.Sprintf("Setting repository for app %s (%s) on tenant '%s'", opts.Name, createdAppResult.RepositoryFullname.HttpUrl(), appTenant.Name),
-			GitAuth:           gitAuth,
-			DryRun:            opts.DryRun,
-		},
-		githubClient,
-	)
-	if err != nil {
-		logger.Error().Msgf("Failed to create PR for tenant to add a new application repository: %s", err)
-
-		return nil, err
-	}
-	logger.Warn().Msgf("Created PR with new application %s for tenant %s: %s",
-		opts.Name, appTenant.Name, tenantUpdateResult.PRUrl)
-
-	return &tenantUpdateResult, nil
 }
 
 func (opts *AppCreateOpt) createTemplateInput(existingTemplates []template.Spec) userio.InputSourceSwitch[string, *template.Spec] {
