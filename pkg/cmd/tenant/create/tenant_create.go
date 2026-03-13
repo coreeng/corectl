@@ -262,7 +262,8 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 
 	adminGroup := strings.TrimSpace(opt.AdminGroup)
 	readOnlyGroup := strings.TrimSpace(opt.ReadOnlyGroup)
-	if kind == "OrgUnit" {
+	switch kind {
+	case "OrgUnit":
 		adminGroupInput := opt.createAdminGroupInputSwitch()
 		adminGroup, err = adminGroupInput.GetValue(opt.Streams)
 		if err != nil {
@@ -273,7 +274,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		if err != nil {
 			return err
 		}
-	} else if kind == "DeliveryUnit" {
+	case "DeliveryUnit":
 		// For convenience, inherit groups from the owner org unit unless explicitly provided.
 		if ownerTenant != nil {
 			if adminGroup == "" {
