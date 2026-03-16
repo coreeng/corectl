@@ -29,6 +29,10 @@ jobs:
         run: |
           git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
           go mod download
+      - name: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
       - name: lint
         uses: golangci/golangci-lint-action@v9
         with:
