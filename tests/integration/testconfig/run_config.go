@@ -1,6 +1,9 @@
 package testconfig
 
-import "sync"
+import (
+	"strings"
+	"sync"
+)
 
 var (
 	TestRunId     string
@@ -9,7 +12,7 @@ var (
 
 func SetTestRunId(id string) {
 	testRunIdOnce.Do(func() {
-		TestRunId = id
+		TestRunId = strings.ToLower(id)
 	})
 }
 
