@@ -1,8 +1,9 @@
 package tenant
 
 import (
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"time"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -95,7 +96,7 @@ var _ = Describe("tenant", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(prFiles).To(HaveLen(1))
 			Expect(prFiles[0].GetStatus()).To(Equal("added"))
-			Expect(prFiles[0].GetFilename()).To(Equal("tenants/tenants/" + newOrgUnitName + ".ou.yaml"))
+			Expect(prFiles[0].GetFilename()).To(Equal("tenants/" + newOrgUnitName + ".ou.yaml"))
 		}, SpecTimeout(time.Minute))
 	})
 })
