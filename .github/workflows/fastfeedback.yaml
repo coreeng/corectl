@@ -29,6 +29,10 @@ jobs:
         run: |
           git config --global url."https://${GH_ACCESS_TOKEN}@github.com/coreeng".insteadOf "https://github.com/coreeng"
           go mod download
+      # Template render tests use go-jinja2 (via go-embed-python), which needs Python 3.13
+      # at runtime. Installing it on the runner ensures libpython3.13.so is available so
+      # the embedded renderer can run; without this, tests fail with "no such file or directory"
+      # for libpython3.13.so under /tmp/go-jinja2-embedded/.
       - name: setup-python
         uses: actions/setup-python@v5
         with:
