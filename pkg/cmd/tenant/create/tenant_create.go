@@ -70,7 +70,7 @@ func NewTenantCreateCmd(cfg *config.Config) *cobra.Command {
 		&opt.Prefix,
 		"prefix",
 		"",
-		"Optional dashboard-only hierarchy prefix (e.g. area/subarea)",
+		"Optional hierarchy prefix (e.g. area/subarea)",
 	)
 	tenantCreateCmd.Flags().StringVar(
 		&opt.Description,
@@ -135,7 +135,6 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	rootTenant := coretnt.RootTenant(tenantsPath)
 
 	envsDir := configpath.GetCorectlCPlatformDir("environments")
 	envFilePath := filepath.Join(envsDir, "environments.yaml")
@@ -200,7 +199,7 @@ func run(opt *TenantCreateOpt, cfg *config.Config) error {
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
 
-	_, err = createTenant(opt.DryRun, cfg, &t, rootTenant, existingTenants)
+	_, err = createTenant(opt.DryRun, cfg, &t, existingTenants)
 	return err
 }
 
@@ -208,22 +207,32 @@ func createTenant(
 	dryRun bool,
 	cfg *config.Config,
 	t *coretnt.Tenant,
-	ownerTenant *coretnt.Tenant,
 	allTenants []coretnt.Tenant,
 ) (tenant.CreateOrUpdateResult, error) {
 	logger.Warn().Msgf("Creating org unit %s in platform repository: %s", t.Name, cfg.Repositories.CPlatform.Value)
-	if err := tenant.ValidateNewTenant(allTenants, t); err != nil {
-		logger.Warn().Msgf("Unable to create org unit: %s", err)
+	tenantMap := map[string]*coretnt.Tenant{
+		t.Name: t,
+	}
+	for _, ten := range allTenants {
+		tenantMap[ten.Name] = &ten
+	}
+
+	if err := validateTenant(tenantMap, t); err != nil {
+
+		logger.Warn().Msgf("Unable to create such a tenant: %s", err)
+
 		return tenant.CreateOrUpdateResult{}, err
 	}
 
+	tenantsPath := configpath.GetCorectlCPlatformDir("tenants")
+	rootTenant := coretnt.RootTenant(tenantsPath)
 	githubClient := github.NewClient(nil).
 		WithAuthToken(cfg.GitHub.Token.Value)
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 	result, err := tenant.CreateOrUpdate(
 		&tenant.CreateOrUpdateOp{
 			Tenant:            t,
-			OwnerTenant:       ownerTenant,
+			OwnerTenant:       rootTenant,
 			CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 			BranchName:        fmt.Sprintf("new-ou-tenant-%s", t.Name),
 			CommitMessage:     fmt.Sprintf("Add new org unit: %s", t.Name),
@@ -239,6 +248,23 @@ func createTenant(
 		logger.Warn().Msgf("Created PR for new org unit %s: %s", t.Name, result.PRUrl)
 	}
 	return result, err
+}
+
+func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant) error {
+	validationResult := coretnt.ValidateTenants(tenantMap)
+	for _, warn := range validationResult.Warnings {
+		var tenantRelatedWarn coretnt.TenantRelatedError
+		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(t) {
+			logger.Error().Msg(warn.Error())
+		}
+	}
+	var tenantRelatedErr coretnt.TenantRelatedError
+	if len(validationResult.Errors) > 0 &&
+		errors.As(validationResult.Errors[0], &tenantRelatedErr) &&
+		tenantRelatedErr.IsRelatedToTenant(t) {
+		return tenantRelatedErr
+	}
+	return nil
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
