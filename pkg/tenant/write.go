@@ -119,19 +119,13 @@ func CreateOrUpdate(
 
 func approximateTenantFilePathForDryRun(op *CreateOrUpdateOp) (string, error) {
 	// Best-effort path approximation used only for dry-run git operations.
-	// The actual path is determined by core-platform's tenant.CreateOrUpdate.
+	// Matches layout used by core-platform: TenantsDir is repo/tenants, so paths are relative to repo root.
 	switch op.Tenant.Kind {
 	case "OrgUnit":
-		return fmt.Sprintf("tenants/tenants/%s.ou.yaml", op.Tenant.Name), nil
+		return filepath.Join("tenants", op.Tenant.Name+".ou.yaml"), nil
 	case "DeliveryUnit":
-		owner := op.Tenant.Owner
-		if owner == "" && op.OwnerTenant != nil {
-			owner = op.OwnerTenant.Name
-		}
-		if owner == "" {
-			return fmt.Sprintf("tenants/tenants/%s.du.yaml", op.Tenant.Name), nil
-		}
-		return fmt.Sprintf("tenants/tenants/%s/%s.du.yaml", owner, op.Tenant.Name), nil
+		// DeliveryUnit always has an owner (required by ADR).
+		return filepath.Join("tenants", op.Tenant.Owner, op.Tenant.Name+".du.yaml"), nil
 	default:
 		return "", fmt.Errorf("unknown tenant kind for dry-run: %s", op.Tenant.Kind)
 	}

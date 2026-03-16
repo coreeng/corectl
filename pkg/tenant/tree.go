@@ -58,10 +58,7 @@ func deriveTreeParentName(t coretnt.Tenant) string {
 		return coretnt.RootName
 	}
 	if t.Kind == "DeliveryUnit" {
-		if t.Owner != "" {
-			return t.Owner
-		}
-		return coretnt.RootName
+		return t.Owner
 	}
 	return coretnt.RootName
 }
