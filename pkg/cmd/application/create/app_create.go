@@ -483,8 +483,27 @@ func createDeliveryUnitForOrgUnit(
 		ReadOnlyGroup: orgUnit.ReadOnlyGroup,
 		CloudAccess:   make([]coretnt.CloudAccess, 0),
 	}
-	if err := tenant.ValidateNewTenant(existingTenants, du); err != nil {
-		return nil, err
+
+	// Validate the tenant
+	tenantMap := map[string]*coretnt.Tenant{
+		du.Name: du,
+	}
+	for _, t := range existingTenants {
+		tenantMap[t.Name] = &t
+	}
+
+	validationResult := coretnt.ValidateTenants(tenantMap)
+	for _, warn := range validationResult.Warnings {
+		var tenantRelatedWarn coretnt.TenantRelatedError
+		if errors.As(warn, &tenantRelatedWarn) && tenantRelatedWarn.IsRelatedToTenant(du) {
+			logger.Error().Msg(warn.Error())
+		}
+	}
+	var tenantRelatedErr coretnt.TenantRelatedError
+	if len(validationResult.Errors) > 0 &&
+		errors.As(validationResult.Errors[0], &tenantRelatedErr) &&
+		tenantRelatedErr.IsRelatedToTenant(du) {
+		return nil, tenantRelatedErr
 	}
 
 	return du, nil
