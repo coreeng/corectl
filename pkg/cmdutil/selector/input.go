@@ -10,21 +10,22 @@ import (
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
-	"github.com/coreeng/corectl/pkg/tenant"
 )
 
-func Tenant(_ string, overrideTenantName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
-	cPlatRepoPath := configpath.GetCorectlCPlatformDir("tenants")
+func DeliveryUnit(cPlatRepoPath string, overrideDeliveryUnitName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
 	existingTenants, err := coretnt.List(cPlatRepoPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't load tenant configuration in path %s: %w", cPlatRepoPath, err)
 	}
-	inputTenant := createTenantInput(overrideTenantName, existingTenants)
-	tenantOutput, err := inputTenant.GetValue(streams)
+	deliveryUnits := *sliceFilter(existingTenants, func(t coretnt.Tenant) bool {
+		return t.Kind == "DeliveryUnit"
+	})
+	inputDeliveryUnit := createDeliveryUnitInput(overrideDeliveryUnitName, deliveryUnits)
+	deliveryUnitOutput, err := inputDeliveryUnit.GetValue(streams)
 	if err != nil {
 		return nil, fmt.Errorf("config repo path %s: %w", cPlatRepoPath, err)
 	}
-	return tenantOutput, nil
+	return deliveryUnitOutput, nil
 }
 
 func OrgUnit(cPlatRepoPath string, overrideOrgUnitName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
@@ -127,39 +128,30 @@ func createEnvInputSwitch(defaultEnv string, environments []environment.Environm
 	}
 }
 
-func createTenantInput(defaultTenant string, existingTenants []coretnt.Tenant) *userio.InputSourceSwitch[string, *coretnt.Tenant] {
-	var validateFq = func(e string) (*coretnt.Tenant, error) {
+func createDeliveryUnitInput(defaultDeliveryUnit string, deliveryUnits []coretnt.Tenant) *userio.InputSourceSwitch[string, *coretnt.Tenant] {
+	validateFn := func(e string) (*coretnt.Tenant, error) {
 		inpName := strings.TrimSpace(e)
-		tenantIndex := slices.IndexFunc(existingTenants, func(t coretnt.Tenant) bool {
+		idx := slices.IndexFunc(deliveryUnits, func(t coretnt.Tenant) bool {
 			return t.Name == inpName
 		})
-		if tenantIndex < 0 {
-			return nil, fmt.Errorf("cannot find %s tenant, available tenants: %v", e, sliceMap(existingTenants, func(t coretnt.Tenant) string {
+		if idx < 0 {
+			return nil, fmt.Errorf("cannot find %s delivery unit, available delivery units: %v", e, sliceMap(deliveryUnits, func(t coretnt.Tenant) string {
 				return t.Name
 			}))
 		}
-		return &existingTenants[tenantIndex], nil
+		return &deliveryUnits[idx], nil
 	}
-
-	existingTenants = append(existingTenants, coretnt.Tenant{Name: coretnt.RootName})
-	rootNode, err := tenant.GetTenantTree(existingTenants, coretnt.RootName)
-
-	if err != nil {
-		panic(fmt.Sprintf("Failed to build tree of tenants: %s", err))
-	}
-	items, lines := tenant.RenderTenantTree(rootNode)
-
+	names := sliceMap(deliveryUnits, func(t coretnt.Tenant) string { return t.Name })
 	return &userio.InputSourceSwitch[string, *coretnt.Tenant]{
-		DefaultValue: userio.AsZeroable(defaultTenant),
+		DefaultValue: userio.AsZeroable(defaultDeliveryUnit),
 		InteractivePromptFn: func() (userio.InputPrompt[string], error) {
 			return &userio.SingleSelect{
-				Prompt:         "Tenant:",
-				Items:          items,
-				DisplayedItems: lines,
+				Prompt: "Delivery unit:",
+				Items:  names,
 			}, nil
 		},
-		ValidateAndMap: validateFq,
-		ErrMessage:     fmt.Sprintf("tenant %s invalid", defaultTenant),
+		ValidateAndMap: validateFn,
+		ErrMessage:     fmt.Sprintf("delivery unit %s invalid", defaultDeliveryUnit),
 	}
 }
 

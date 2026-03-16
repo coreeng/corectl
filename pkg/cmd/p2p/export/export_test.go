@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -58,39 +57,38 @@ func TestRunExportNonExistingAppRepo(t *testing.T) {
 	assert.ErrorContains(t, err, fmt.Sprintf("repository on path %s not found: repository does not exist", appRepoPath))
 }
 
-func TestRunExportNonExistingTenant(t *testing.T) {
-	tenantName := fmt.Sprintf("%s-tenant", t.Name())
+func TestRunExportNonExistingDeliveryUnit(t *testing.T) {
+	duName := fmt.Sprintf("%s-du", t.Name())
 	_ = testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()
 	cfg, err := config.DiscoverConfig()
 	assert.NoError(t, err)
 
 	err = run(&exportOpts{
-		tenant:          tenantName,
+		tenant:          duName,
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]",
-		configpath.GetCorectlCPlatformDir(), tenantName, tenantName))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: delivery unit %s invalid: cannot find %s delivery unit, available delivery units: [default-tenant]",
+		configpath.GetCorectlCPlatformDir(), duName, duName))
 }
 
-func TestFailureWithRootTenant(t *testing.T) {
-	tenantName := tenant.RootName
+func TestFailureWithOrgUnit(t *testing.T) {
 	_ = testLocalRepo(t, testdata.CPlatformEnvsPath()).Path()
 	cfg, err := config.DiscoverConfig()
 	assert.NoError(t, err)
 
 	err = run(&exportOpts{
-		tenant:          tenantName,
+		tenant:          "parent",
 		environmentName: testdata.DevEnvironment(),
 		repoPath:        testLocalRepo(t, testdata.CPlatformEnvsPath()).Path(),
 		shell:           "bash",
 		streams:         streams,
 	}, cfg)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("cannot connect to '%s' as that's the root tenant and cannot be used", tenant.RootName))
+	assert.ErrorContains(t, err, "cannot find parent delivery unit, available delivery units: [default-tenant]")
 }
 
 func TestRunExportNonExistingEnvironment(t *testing.T) {

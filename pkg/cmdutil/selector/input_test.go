@@ -21,33 +21,43 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestTenantSelectorReturnsTenant(t *testing.T) {
+func TestDeliveryUnitSelectorReturnsDeliveryUnit(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
 
-	tenant, err := Tenant(cPlatRepo.Path(), testdata.DefaultTenant(), streams)
+	du, err := DeliveryUnit(cPlatRepo.Path(), testdata.DefaultTenant(), streams)
 
 	assert.NoError(t, err)
-	assert.Equal(t, tenant.Name, testdata.DefaultTenant())
+	assert.Equal(t, testdata.DefaultTenant(), du.Name)
+	assert.Equal(t, "DeliveryUnit", du.Kind)
 }
 
-func TestTenantSelectorNonExistingTenant(t *testing.T) {
+func TestDeliveryUnitSelectorRejectsOrgUnit(t *testing.T) {
 	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
-	tenantName := fmt.Sprintf("%s-tenant", t.Name())
 
-	tenant, err := Tenant(cPlatRepo.Path(), fmt.Sprintf("%s-tenant", t.Name()), streams)
+	du, err := DeliveryUnit(cPlatRepo.Path(), "parent", streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: tenant %s invalid: cannot find %s tenant, available tenants: [default-tenant parent root]", cPlatRepo.Path(), tenantName, tenantName))
-	assert.Nil(t, tenant)
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: delivery unit parent invalid: cannot find parent delivery unit, available delivery units: [default-tenant]", cPlatRepo.Path()))
+	assert.Nil(t, du)
 }
 
-func TestTenantSelectorInvalidCPlatRepo(t *testing.T) {
-	cPlatRepoPath := t.TempDir()
+func TestDeliveryUnitSelectorNonExistingDeliveryUnit(t *testing.T) {
+	cPlatRepo := testLocalRepo(t, testdata.CPlatformEnvsPath())
+	duName := fmt.Sprintf("%s-du", t.Name())
+
+	du, err := DeliveryUnit(cPlatRepo.Path(), duName, streams)
+
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: delivery unit %s invalid: cannot find %s delivery unit, available delivery units: [default-tenant]", cPlatRepo.Path(), duName, duName))
+	assert.Nil(t, du)
+}
+
+func TestDeliveryUnitSelectorInvalidCPlatRepo(t *testing.T) {
+	cPlatRepoPath := t.TempDir() + "some-non-existent-path"
 	configpath.SetCorectlHome(cPlatRepoPath)
 
-	tenant, err := Tenant(cPlatRepoPath, testdata.DefaultTenant(), streams)
+	du, err := DeliveryUnit(cPlatRepoPath, testdata.DefaultTenant(), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load tenant configuration in path %s/repositories/cplatform/tenants: stat .: no such file or directory", cPlatRepoPath))
-	assert.Nil(t, tenant)
+	assert.ErrorContains(t, err, "stat .: no such file or directory")
+	assert.Nil(t, du)
 }
 
 func TestOrgUnitSelectorReturnsOrgUnit(t *testing.T) {
