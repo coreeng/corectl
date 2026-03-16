@@ -488,9 +488,7 @@ func createDeliveryUnitForOrgUnit(
 	tenantMap := map[string]*coretnt.Tenant{
 		du.Name: du,
 	}
-	for _, t := range existingTenants {
-		tenantMap[t.Name] = &t
-	}
+	addExistingTenants(tenantMap, existingTenants)
 
 	validationResult := coretnt.ValidateTenants(tenantMap)
 	for _, warn := range validationResult.Warnings {
@@ -540,4 +538,10 @@ func createPRWithNewTenantAndRepo(
 	}
 
 	return &result, nil
+}
+
+func addExistingTenants(tenantMap map[string]*coretnt.Tenant, tenants []coretnt.Tenant) {
+	for i := range tenants {
+		tenantMap[tenants[i].Name] = &tenants[i]
+	}
 }

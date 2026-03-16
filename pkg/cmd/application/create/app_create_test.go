@@ -3,6 +3,7 @@ package create
 import (
 	"testing"
 
+	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
 	. "github.com/onsi/ginkgo/v2"
@@ -121,5 +122,22 @@ var _ = Describe("AppCreateOpt", func() {
 			_, err := deliveryUnitTypeFromTemplate(s)
 			Expect(err).To(HaveOccurred())
 		})
+	})
+})
+
+var _ = Describe("addExistingTenants", func() {
+	It("adds pointers to each tenant in the slice", func() {
+		tenants := []coretnt.Tenant{
+			{Name: "ou-alpha"},
+			{Name: "ou-beta"},
+		}
+		tenantMap := map[string]*coretnt.Tenant{}
+
+		addExistingTenants(tenantMap, tenants)
+
+		Expect(tenantMap).To(HaveKey("ou-alpha"))
+		Expect(tenantMap).To(HaveKey("ou-beta"))
+		Expect(tenantMap["ou-alpha"]).To(BeIdenticalTo(&tenants[0]))
+		Expect(tenantMap["ou-beta"]).To(BeIdenticalTo(&tenants[1]))
 	})
 })

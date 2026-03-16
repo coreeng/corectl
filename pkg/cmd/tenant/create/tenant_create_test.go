@@ -22,6 +22,20 @@ func TestCreateNameInputSwitch_ValidName(t *testing.T) {
 	assert.Equal(t, "new-ou", result)
 }
 
+func TestAddExistingTenantsPreservesSlicePointers(t *testing.T) {
+	tenants := []coretnt.Tenant{
+		{Name: "ou-alpha"},
+		{Name: "ou-beta"},
+	}
+	tenantMap := map[string]*coretnt.Tenant{}
+
+	addExistingTenants(tenantMap, tenants)
+
+	require.Len(t, tenantMap, 2)
+	assert.Same(t, &tenants[0], tenantMap["ou-alpha"])
+	assert.Same(t, &tenants[1], tenantMap["ou-beta"])
+}
+
 func TestCreateNameInputSwitch_DuplicateName(t *testing.T) {
 	existing := []coretnt.Tenant{{Name: "existing-ou"}}
 	opt := &TenantCreateOpt{}

@@ -213,9 +213,7 @@ func createTenant(
 	tenantMap := map[string]*coretnt.Tenant{
 		t.Name: t,
 	}
-	for _, ten := range allTenants {
-		tenantMap[ten.Name] = &ten
-	}
+	addExistingTenants(tenantMap, allTenants)
 
 	if err := validateTenant(tenantMap, t); err != nil {
 
@@ -265,6 +263,12 @@ func validateTenant(tenantMap map[string]*coretnt.Tenant, t *coretnt.Tenant) err
 		return tenantRelatedErr
 	}
 	return nil
+}
+
+func addExistingTenants(tenantMap map[string]*coretnt.Tenant, tenants []coretnt.Tenant) {
+	for i := range tenants {
+		tenantMap[tenants[i].Name] = &tenants[i]
+	}
 }
 
 func (opt *TenantCreateOpt) createNameInputSwitch(existingTenants []coretnt.Tenant) userio.InputSourceSwitch[string, string] {
