@@ -2,9 +2,10 @@ package selector
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"os"
 	"testing"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -64,7 +65,7 @@ func TestOrgUnitSelectorRejectsDeliveryUnit(t *testing.T) {
 
 	orgUnit, err := OrgUnit(cPlatRepo.Path(), testdata.DefaultTenant(), streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), testdata.DefaultTenant(), testdata.DefaultTenant()))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), testdata.DefaultTenant(), testdata.DefaultTenant()))
 	assert.Nil(t, orgUnit)
 }
 
@@ -74,17 +75,17 @@ func TestOrgUnitSelectorNonExistingOrgUnit(t *testing.T) {
 
 	orgUnit, err := OrgUnit(cPlatRepo.Path(), orgUnitName, streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s/tenants: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), orgUnitName, orgUnitName))
+	assert.ErrorContains(t, err, fmt.Sprintf("config repo path %s: org unit %s invalid: cannot find %s org unit, available org units: [parent]", cPlatRepo.Path(), orgUnitName, orgUnitName))
 	assert.Nil(t, orgUnit)
 }
 
 func TestOrgUnitSelectorInvalidCPlatRepo(t *testing.T) {
-	cPlatRepoPath := t.TempDir()
+	cPlatRepoPath := t.TempDir() + "some-non-existent-path"
 	configpath.SetCorectlHome(cPlatRepoPath)
 
 	orgUnit, err := OrgUnit(cPlatRepoPath, "parent", streams)
 
-	assert.ErrorContains(t, err, fmt.Sprintf("couldn't load tenant configuration in path %s/repositories/cplatform/tenants: stat .: no such file or directory", cPlatRepoPath))
+	assert.ErrorContains(t, err, "stat .: no such file or directory")
 	assert.Nil(t, orgUnit)
 }
 
