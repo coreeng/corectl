@@ -2,9 +2,10 @@ package selector
 
 import (
 	"fmt"
-	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"slices"
 	"strings"
+
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
 	"github.com/coreeng/core-platform/pkg/environment"
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
@@ -26,8 +27,7 @@ func Tenant(_ string, overrideTenantName string, streams userio.IOStreams) (*cor
 	return tenantOutput, nil
 }
 
-func OrgUnit(_ string, overrideOrgUnitName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
-	cPlatRepoPath := configpath.GetCorectlCPlatformDir("tenants")
+func OrgUnit(cPlatRepoPath string, overrideOrgUnitName string, streams userio.IOStreams) (*coretnt.Tenant, error) {
 	existingTenants, err := coretnt.List(cPlatRepoPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't load tenant configuration in path %s: %w", cPlatRepoPath, err)
