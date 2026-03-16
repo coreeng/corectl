@@ -34,7 +34,7 @@ jobs:
       # the embedded renderer can run; without this, tests fail with "no such file or directory"
       # for libpython3.13.so under /tmp/go-jinja2-embedded/.
       - name: setup-python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
       - name: lint
