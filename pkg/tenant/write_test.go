@@ -186,3 +186,34 @@ cloudAccess: []
 		})
 	})
 })
+
+var _ = Describe("approximateTenantFilePathForDryRun", func() {
+	It("returns tenants/<name>.ou.yaml for OrgUnit", func() {
+		op := &CreateOrUpdateOp{
+			Tenant: &tenant.Tenant{Name: "my-ou", Kind: "OrgUnit"},
+		}
+		path, err := approximateTenantFilePathForDryRun(op)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(Equal(filepath.Join("tenants", "my-ou.ou.yaml")))
+	})
+
+	It("returns tenants/<owner>/<name>.du.yaml for DeliveryUnit", func() {
+		op := &CreateOrUpdateOp{
+			Tenant: &tenant.Tenant{Name: "my-du", Kind: "DeliveryUnit", Owner: "parent-ou"},
+		}
+		path, err := approximateTenantFilePathForDryRun(op)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(path).To(Equal(filepath.Join("tenants", "parent-ou", "my-du.du.yaml")))
+	})
+
+	It("returns error for unknown tenant kind", func() {
+		op := &CreateOrUpdateOp{
+			Tenant: &tenant.Tenant{Name: "x", Kind: "Unknown"},
+		}
+		path, err := approximateTenantFilePathForDryRun(op)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("unknown tenant kind for dry-run"))
+		Expect(err.Error()).To(ContainSubstring("Unknown"))
+		Expect(path).To(BeEmpty())
+	})
+})
