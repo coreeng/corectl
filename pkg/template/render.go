@@ -43,7 +43,13 @@ func Render(t *FulfilledTemplate, targetPath string) error {
 		return err
 	}
 	defer j2.Close()
-	defer j2.Cleanup()
+	// j2.Cleanup() is intentionally omitted. The library extracts Python to a
+	// content-addressed directory in os.TempDir() and uses a file lock during
+	// extraction, signalling that the directory is designed to be shared and
+	// reused. Calling Cleanup() (os.RemoveAll) on this shared cache is
+	// incorrect: concurrent callers would race to delete a directory others are
+	// still reading from. Leaving the files in /tmp is safe; the OS cleans them
+	// up on reboot.
 
 	vars := map[string]any{}
 	for _, arg := range t.Arguments {
