@@ -73,6 +73,15 @@ func run(opts *TenantSetRepoOpts, cfg *config.Config) error {
 		return fmt.Errorf("cannot set repository for org unit '%s': only delivery units can have a repository", t.Name)
 	}
 
+	// DU updates require OwnerTenant so the platform can resolve the on-disk path (tenants/<owner>/<name>.du.yaml).
+	ownerOU, err := tenant.FindByName(tenantsDir, t.Owner)
+	if err != nil {
+		return fmt.Errorf("failed to resolve owner org unit %q for delivery unit %s: %w", t.Owner, t.Name, err)
+	}
+	if ownerOU == nil {
+		return fmt.Errorf("owner org unit %q not found for delivery unit %s", t.Owner, t.Name)
+	}
+
 	opts.Streams.CurrentHandler.Info(fmt.Sprintf("setting repository: %s", opts.RepositoryUrl))
 	if !opts.DryRun {
 		t.Repo = opts.RepositoryUrl
@@ -90,6 +99,7 @@ func run(opts *TenantSetRepoOpts, cfg *config.Config) error {
 	opts.Streams.CurrentHandler.Info("creating GitHub PR")
 	result, err := corectltnt.CreateOrUpdate(&corectltnt.CreateOrUpdateOp{
 		Tenant:            t,
+		OwnerTenant:       ownerOU,
 		CplatformRepoPath: configpath.GetCorectlCPlatformDir(),
 		BranchName:        fmt.Sprintf("%s-set-repo-%s", t.Name, repoName.Name()),
 		CommitMessage:     fmt.Sprintf("Set repository %s for tenant %s", repoName.Name(), t.Name),
