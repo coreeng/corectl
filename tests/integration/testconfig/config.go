@@ -12,8 +12,10 @@ const (
 var Cfg = ConfigType{
 	GitHubOrg: testGitHubOrg,
 	// Integration tests assume ADR-65 OU/DU model.
-	// Use the existing top-level org unit from fixtures.
-	Tenant: "parent",
+	// Tenant is the OrgUnit used as the owner when creating applications.
+	// DeliveryUnit is an existing DU in the base cplatform repo used for p2p export tests.
+	Tenant:       "parent",
+	DeliveryUnit: "default-tenant",
 }
 
 type ConfigType struct {
@@ -21,6 +23,7 @@ type ConfigType struct {
 	GitHubToken         string
 	GitHubOrg           string
 	Tenant              string
+	DeliveryUnit        string
 	CPlatformRepoFullId git.GithubRepoFullId
 	TemplatesRepoFullId git.GithubRepoFullId
 }

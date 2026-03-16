@@ -78,33 +78,33 @@ var _ = Describe("export", Ordered, func() {
 				ContainSubstring("export REGION="),
 				ContainSubstring(env.Platform.(*environment.GCPVendor).Region),
 				ContainSubstring("export REGISTRY="),
-				ContainSubstring(fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, appName)),
+				ContainSubstring(fmt.Sprintf("%s-docker.pkg.dev/%s/tenant/%s", env.Platform.(*environment.GCPVendor).Region, env.Platform.(*environment.GCPVendor).ProjectId, testconfig.Cfg.DeliveryUnit)),
 				ContainSubstring("export BASE_DOMAIN="),
 				ContainSubstring(env.GetDefaultIngressDomain().Domain),
 				ContainSubstring("export REPO_PATH="),
 				ContainSubstring(appDir),
 				ContainSubstring("export TENANT_NAME="),
-				ContainSubstring(appName),
+				ContainSubstring(testconfig.Cfg.DeliveryUnit),
 				ContainSubstring("export VERSION="),
 				ContainSubstring(commitHash(appDir))))
 		}
 
 		Context("print out env variables", func() {
 			It("as export statements", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir)
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir)
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
 			})
 			It("with shorthand flags", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "-t", appName, "-e", testdata.DevEnvironment(), "-r", appDir)
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "-t", testconfig.Cfg.DeliveryUnit, "-e", testdata.DevEnvironment(), "-r", appDir)
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).ToNot(BeEmpty())
 			})
 
 			It("defaulting to local dir when no repoPath flag passed", func() {
-				output, err := corectl.RunInDir(appDir, "p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment())
+				output, err := corectl.RunInDir(appDir, "p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment())
 
 				Expect(err).NotTo(HaveOccurred())
 				assertExportStatements(output)
@@ -113,7 +113,7 @@ var _ = Describe("export", Ordered, func() {
 
 		Context("shell format support", func() {
 			It("exports for bash shell", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "bash")
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "bash")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring("export REGION="))
@@ -121,7 +121,7 @@ var _ = Describe("export", Ordered, func() {
 			})
 
 			It("exports for zsh shell", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "zsh")
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "zsh")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring("export REGION="))
@@ -129,7 +129,7 @@ var _ = Describe("export", Ordered, func() {
 			})
 
 			It("exports for fish shell", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "fish")
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "fish")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring("set -gx REGION"))
@@ -137,7 +137,7 @@ var _ = Describe("export", Ordered, func() {
 			})
 
 			It("exports for powershell", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "powershell")
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "powershell")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring("$Env:REGION"))
@@ -145,7 +145,7 @@ var _ = Describe("export", Ordered, func() {
 			})
 
 			It("exports for cmd shell", func() {
-				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "cmd")
+				output, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "cmd")
 
 				Expect(err).NotTo(HaveOccurred())
 				Expect(output).To(ContainSubstring("set REGION="))
@@ -153,7 +153,7 @@ var _ = Describe("export", Ordered, func() {
 			})
 
 			It("rejects unsupported shell", func() {
-				_, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", appName, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "unsupported")
+				_, err := corectl.Run("p2p", "export", "--non-interactive", "--tenant", testconfig.Cfg.DeliveryUnit, "--environment", testdata.DevEnvironment(), "--repoPath", appDir, "--shell", "unsupported")
 
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("unsupported shell type"))
