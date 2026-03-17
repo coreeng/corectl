@@ -99,7 +99,7 @@ NOTE:
 		"tenant",
 		"",
 		"",
-		"Tenant to configure for P2P",
+		"Org unit that will own the new delivery unit",
 	)
 	appCreateCmd.Flags().StringVar(
 		&opts.GitHubRepoName,
