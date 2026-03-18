@@ -10,7 +10,6 @@ import (
 	"github.com/coreeng/core-platform/pkg/environment"
 
 	corep2p "github.com/coreeng/core-platform/pkg/p2p"
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
@@ -84,13 +83,6 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	spinnerHandler := opts.Streams.Wizard("Configuring platform environments", "Configured platform environments")
 	defer spinnerHandler.Done()
 
-	t, err := tenant.FindByName(configpath.GetCorectlCPlatformDir("tenants"), opts.Tenant)
-	if err != nil {
-		return err
-	}
-	if t == nil {
-		return fmt.Errorf("tenant not found: %s", opts.Tenant)
-	}
 	environments, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
 		return err
@@ -113,7 +105,6 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	}
 	op := corep2p.SynchronizeOp{
 		RepositoryId:     &repoId,
-		Tenant:           t,
 		FastFeedbackEnvs: fastFeedbackEnvs,
 		ExtendedTestEnvs: extendedTestEnvs,
 		ProdEnvs:         prodEnvs,
