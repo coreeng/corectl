@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreeng/core-platform/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/selector"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
@@ -24,12 +23,9 @@ type exportOpts struct {
 }
 
 func (eo *exportOpts) processFlags(cPlatRepoPath string, dryRun bool) (*p2p.EnvVarContext, error) {
-	argTenant, err := selector.Tenant(cPlatRepoPath, eo.tenant, eo.streams)
+	argTenant, err := selector.DeliveryUnit(configpath.GetCorectlCPlatformDir("tenants"), eo.tenant, eo.streams)
 	if err != nil {
 		return nil, err
-	}
-	if argTenant.Name == tenant.RootName {
-		return nil, fmt.Errorf("cannot connect to '%s' as that's the root tenant and cannot be used", tenant.RootName)
 	}
 
 	argEnv, err := selector.Environment(cPlatRepoPath, eo.environmentName, argTenant.Environments, eo.streams)
@@ -115,7 +111,7 @@ func NewP2PExportCmd(cfg *config.Config) (*cobra.Command, error) {
 		"tenant",
 		"t",
 		"",
-		"Tenant to export variables for P2P",
+		"Delivery unit to export variables for P2P",
 	)
 	exportCommand.Flags().StringVarP(
 		&opts.repoPath,
