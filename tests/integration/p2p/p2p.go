@@ -97,12 +97,32 @@ var _ = Describe("p2p", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred())
 		}, NodeTimeout(time.Minute))
 
-		It("checks repository variables", func(ctx SpecContext) {
+		It("checks FAST_FEEDBACK repository variable", func(ctx SpecContext) {
 			_, _, err := githubClient.Actions.GetRepoVariable(
 				ctx,
 				cfg.GitHub.Organization.Value,
 				appRepo,
-				"TENANT_NAME",
+				"FAST_FEEDBACK",
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("checks EXTENDED_TEST repository variable", func(ctx SpecContext) {
+			_, _, err := githubClient.Actions.GetRepoVariable(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				appRepo,
+				"EXTENDED_TEST",
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("checks PROD repository variable", func(ctx SpecContext) {
+			_, _, err := githubClient.Actions.GetRepoVariable(
+				ctx,
+				cfg.GitHub.Organization.Value,
+				appRepo,
+				"PROD",
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})

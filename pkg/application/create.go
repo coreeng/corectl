@@ -438,43 +438,13 @@ func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepo
 func (svc *Service) synchronizeRepositoryWithRetry(op CreateOp, repoFullId git.GithubRepoFullId) error {
 	return git.RetryGitHubOperation(
 		func() error {
-			if err := p2p.CreateStageRepositoryConfig(
-				svc.GithubClient,
-				repoFullId,
-				p2p.FastFeedbackVar,
-				p2p.NewStageRepositoryConfig(op.FastFeedbackEnvs),
-			); err != nil {
-				return err
+			syncOp := p2p.SynchronizeOp{
+				RepositoryId:     &repoFullId,
+				FastFeedbackEnvs: op.FastFeedbackEnvs,
+				ExtendedTestEnvs: op.ExtendedTestEnvs,
+				ProdEnvs:         op.ProdEnvs,
 			}
-			if err := p2p.CreateStageRepositoryConfig(
-				svc.GithubClient,
-				repoFullId,
-				p2p.ExtendedTestVar,
-				p2p.NewStageRepositoryConfig(op.ExtendedTestEnvs),
-			); err != nil {
-				return err
-			}
-			if err := p2p.CreateStageRepositoryConfig(
-				svc.GithubClient,
-				repoFullId,
-				p2p.ProdVar,
-				p2p.NewStageRepositoryConfig(op.ProdEnvs),
-			); err != nil {
-				return err
-			}
-
-			var createdEnvs []string
-			for _, env := range slices.Concat(op.FastFeedbackEnvs, op.ExtendedTestEnvs, op.ProdEnvs) {
-				if slices.Contains(createdEnvs, env.Environment) {
-					continue
-				}
-				createdEnvs = append(createdEnvs, env.Environment)
-				envCopy := env
-				if err := p2p.CreateUpdateEnvironmentForRepository(svc.GithubClient, repoFullId, &envCopy); err != nil {
-					return err
-				}
-			}
-			return nil
+			return p2p.SynchronizeRepository(&syncOp, svc.GithubClient)
 		},
 		git.DefaultMaxRetries,
 		git.DefaultBaseDelay,
