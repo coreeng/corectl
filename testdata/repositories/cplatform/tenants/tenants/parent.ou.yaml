@@ -1,13 +1,11 @@
 ---
-name: default-tenant
-kind: app
-parent: parent
-description: "Default tenant to use in tests"
+name: parent
+kind: OrgUnit
+description: "Parent org unit"
 contactEmail: parent@prod.domain
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group@prod.domain
 readonlyGroup: readonly-group@prod.domain
 cloudAccess: []

@@ -96,20 +96,48 @@ var _ = Describe("AppCreateOpt", func() {
 		})
 	})
 
-	Describe("createPRWithUpdatedReposListForTenant", func() {
-		Context("when tenant is an app tenant", func() {
-			It("should accept app tenants without error on kind validation", func() {
-				// This test verifies that app tenants are allowed to have repos
-				// The function expects only app tenants now since team tenants
-				// are converted to app tenants in the main flow
-				appTenant := &coretnt.Tenant{
-					Name: "test-app-tenant",
-					Kind: "app",
-				}
-
-				// Verify the tenant kind is correct
-				Expect(appTenant.Kind).To(Equal("app"))
-			})
+	Describe("deliveryUnitTypeFromTemplate", func() {
+		It("defaults to application when template is nil", func() {
+			duType, err := deliveryUnitTypeFromTemplate(nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("application"))
 		})
+
+		It("maps app kind to application", func() {
+			s := &template.Spec{Kind: "app"}
+			duType, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("application"))
+		})
+
+		It("maps infra kind to infrastructure", func() {
+			s := &template.Spec{Kind: "infra"}
+			duType, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(duType).To(Equal("infrastructure"))
+		})
+
+		It("rejects unknown kinds", func() {
+			s := &template.Spec{Kind: "weird"}
+			_, err := deliveryUnitTypeFromTemplate(s)
+			Expect(err).To(HaveOccurred())
+		})
+	})
+})
+
+var _ = Describe("addExistingTenants", func() {
+	It("adds pointers to each tenant in the slice", func() {
+		tenants := []coretnt.Tenant{
+			{Name: "ou-alpha"},
+			{Name: "ou-beta"},
+		}
+		tenantMap := map[string]*coretnt.Tenant{}
+
+		addExistingTenants(tenantMap, tenants)
+
+		Expect(tenantMap).To(HaveKey("ou-alpha"))
+		Expect(tenantMap).To(HaveKey("ou-beta"))
+		Expect(tenantMap["ou-alpha"]).To(BeIdenticalTo(&tenants[0]))
+		Expect(tenantMap["ou-beta"]).To(BeIdenticalTo(&tenants[1]))
 	})
 })

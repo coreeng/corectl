@@ -111,6 +111,11 @@ func templatesIterator(templatesPath string) (func() (Spec, bool, error), func()
 }
 
 func fillDefaultSpecValues(s *Spec) {
+	if s.Kind == "" {
+		// Backwards compatibility: older templates in corectl tests do not specify kind.
+		s.Kind = "app"
+	}
+
 	for i := range s.Parameters {
 		if s.Parameters[i].Type == "" {
 			s.Parameters[i].Type = StringParamType

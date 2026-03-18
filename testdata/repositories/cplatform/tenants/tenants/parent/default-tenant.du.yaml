@@ -1,13 +1,13 @@
 ---
-name: parent
-kind: team
-parent: root
-description: "Parent tenant"
+name: default-tenant
+kind: DeliveryUnit
+type: application
+owner: parent
+description: "Default tenant to use in tests"
 contactEmail: parent@prod.domain
 environments:
   - dev
   - prod
-repos: []
 adminGroup: admin-group@prod.domain
 readonlyGroup: readonly-group@prod.domain
 cloudAccess: []
