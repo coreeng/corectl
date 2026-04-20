@@ -1,6 +1,6 @@
 module github.com/coreeng/corectl
 
-go 1.25.0
+go 1.26.2
 
 require (
 	cloud.google.com/go/container v1.49.0
