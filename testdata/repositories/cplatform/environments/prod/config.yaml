@@ -1,6 +1,7 @@
 release: "0.9.0"
 
 environment: "prod"
+tier: "prod"
 domain: "prod.domain"
 
 features:
