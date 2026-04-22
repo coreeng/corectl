@@ -4,8 +4,11 @@ import (
 	"testing"
 
 	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/template"
+	"github.com/coreeng/corectl/pkg/testutil/gittest"
+	"github.com/coreeng/corectl/testdata"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -139,5 +142,32 @@ var _ = Describe("addExistingTenants", func() {
 		Expect(tenantMap).To(HaveKey("ou-beta"))
 		Expect(tenantMap["ou-alpha"]).To(BeIdenticalTo(&tenants[0]))
 		Expect(tenantMap["ou-beta"]).To(BeIdenticalTo(&tenants[1]))
+	})
+})
+
+var _ = Describe("createDeliveryUnitForOrgUnit", func() {
+	It("inherits admin groups from the parent org unit", func() {
+		t := GinkgoT()
+
+		_, err := gittest.CreateTestCorectlConfig(t.TempDir())
+		Expect(err).NotTo(HaveOccurred())
+		_, _, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+			SourceDir:          testdata.CPlatformEnvsPath(),
+			TargetBareRepoDir:  t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlCPlatformDir(),
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		orgUnit, err := coretnt.FindByName(configpath.GetCorectlCPlatformDir("tenants"), "parent")
+		Expect(err).NotTo(HaveOccurred())
+		orgUnit.ProdAdminGroup = "prod-admin-group@prod.domain"
+		orgUnit.ProdReadOnlyGroup = "prod-readonly-group@prod.domain"
+
+		du, err := createDeliveryUnitForOrgUnit(&AppCreateOpt{Name: "new-app"}, orgUnit, "application")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(du.AdminGroup).To(Equal(orgUnit.AdminGroup))
+		Expect(du.ReadOnlyGroup).To(Equal(orgUnit.ReadOnlyGroup))
+		Expect(du.ProdAdminGroup).To(Equal(orgUnit.ProdAdminGroup))
+		Expect(du.ProdReadOnlyGroup).To(Equal(orgUnit.ProdReadOnlyGroup))
 	})
 })

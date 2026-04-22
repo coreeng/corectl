@@ -470,18 +470,20 @@ func createDeliveryUnitForOrgUnit(
 	}
 
 	du := &coretnt.Tenant{
-		Name:          duName,
-		Kind:          "DeliveryUnit",
-		Type:          duType,
-		Owner:         orgUnit.Name,
-		Prefix:        strings.TrimSpace(opts.Prefix),
-		Description:   opts.Description,
-		ContactEmail:  orgUnit.ContactEmail,
-		Environments:  orgUnit.Environments,
-		Repo:          "",
-		AdminGroup:    orgUnit.AdminGroup,
-		ReadOnlyGroup: orgUnit.ReadOnlyGroup,
-		CloudAccess:   make([]coretnt.CloudAccess, 0),
+		Name:              duName,
+		Kind:              "DeliveryUnit",
+		Type:              duType,
+		Owner:             orgUnit.Name,
+		Prefix:            strings.TrimSpace(opts.Prefix),
+		Description:       opts.Description,
+		ContactEmail:      orgUnit.ContactEmail,
+		Environments:      orgUnit.Environments,
+		Repo:              "",
+		AdminGroup:        orgUnit.AdminGroup,
+		ReadOnlyGroup:     orgUnit.ReadOnlyGroup,
+		ProdAdminGroup:    orgUnit.ProdAdminGroup,
+		ProdReadOnlyGroup: orgUnit.ProdReadOnlyGroup,
+		CloudAccess:       make([]coretnt.CloudAccess, 0),
 	}
 
 	// Validate the tenant
