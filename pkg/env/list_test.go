@@ -20,25 +20,27 @@ func TestAppendEnv(t *testing.T) {
 			name: "GCP environment",
 			env: environment.Environment{
 				Environment: "predev",
+				Tier:        environment.PreDevEnvironmentTier,
 				Platform: &environment.GCPVendor{
 					ProjectId: "gcp-predev-1234",
 				},
 			},
 			expected: `
-NAME    ID               CLOUDPLATFORM 
- predev  gcp-predev-1234  GCP`,
+			NAME    TIER     ID               CLOUDPLATFORM 
+			 predev  pre-dev  gcp-predev-1234  GCP`,
 		},
 		{
 			name: "AWS environment",
 			env: environment.Environment{
 				Environment: "production",
+				Tier:        environment.ProdEnvironmentTier,
 				Platform: &environment.AWSVendor{
 					AccountId: "aws-production-5678",
 				},
 			},
 			expected: `
-NAME        ID                   CLOUDPLATFORM 
- production  aws-production-5678  AWS`,
+			NAME        TIER  ID                   CLOUDPLATFORM 
+			 production  prod  aws-production-5678  AWS`,
 		},
 	}
 
@@ -60,6 +62,7 @@ NAME        ID                   CLOUDPLATFORM
 func TestAppendRow(t *testing.T) {
 	tests := []struct {
 		title    string
+		tier     string
 		platform string
 		name     string
 		id       string
@@ -67,29 +70,32 @@ func TestAppendRow(t *testing.T) {
 	}{
 		{
 			title:    "No rows",
+			tier:     "",
 			platform: "",
 			name:     "",
 			id:       "",
 			expected: `
-NAME  ID  CLOUDPLATFORM`,
+			NAME  TIER  ID  CLOUDPLATFORM`,
 		},
 		{
 			title:    "GCP rows",
+			tier:     "pre-dev",
 			platform: "GCP",
 			name:     "gcpdev-1234",
 			id:       "1234",
 			expected: `
-NAME         ID    CLOUDPLATFORM 
- gcpdev-1234  1234  GCP`,
+			NAME         TIER     ID    CLOUDPLATFORM 
+			 gcpdev-1234  pre-dev  1234  GCP`,
 		},
 		{
 			title:    "AWS rows",
+			tier:     "prod",
 			platform: "AWS",
 			name:     "awsprod-5678",
 			id:       "5678",
 			expected: `
-NAME          ID    CLOUDPLATFORM 
- awsprod-5678  5678  AWS`,
+			NAME          TIER  ID    CLOUDPLATFORM 
+			 awsprod-5678  prod  5678  AWS`,
 		},
 	}
 
@@ -102,7 +108,7 @@ NAME          ID    CLOUDPLATFORM
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
 			table := NewTable(streams, false)
-			table.AppendRow(tt.name, tt.id, tt.platform, "", "")
+			table.AppendRow(tt.name, tt.tier, tt.id, tt.platform, "", "")
 			compareOutput(t, table.Render(), tt.expected)
 		})
 	}
@@ -110,8 +116,7 @@ NAME          ID    CLOUDPLATFORM
 
 func compareOutput(t *testing.T, out string, expected string) {
 	out = strings.TrimSpace(out)
-	if strings.HasPrefix(expected, "\n") {
-		expected = strings.Replace(expected, "\n", "", 1)
-	}
+	expected = strings.ReplaceAll(expected, "\t", "")
+	expected = strings.TrimSpace(expected)
 	assert.Equal(t, expected, out)
 }

@@ -14,9 +14,9 @@ type TableEnv struct {
 func NewTable(streams userio.IOStreams, showProxy bool) TableEnv {
 	t := table.NewWriter()
 	if showProxy {
-		t.AppendHeader(table.Row{"Name", "ID", "CloudPlatform", "Proxy", "Pid"})
+		t.AppendHeader(table.Row{"Name", "Tier", "ID", "CloudPlatform", "Proxy", "Pid"})
 	} else {
-		t.AppendHeader(table.Row{"Name", "ID", "CloudPlatform"})
+		t.AppendHeader(table.Row{"Name", "Tier", "ID", "CloudPlatform"})
 	}
 	t.Style().Options.DrawBorder = false
 	t.Style().Options.SeparateColumns = false
@@ -28,12 +28,12 @@ func NewTable(streams userio.IOStreams, showProxy bool) TableEnv {
 	return TableEnv{table: t, showProxy: showProxy}
 }
 
-func (t TableEnv) AppendRow(name, id, platform, proxy, pid string) {
+func (t TableEnv) AppendRow(name, tier, id, platform, proxy, pid string) {
 
 	if t.showProxy {
-		t.table.AppendRows([]table.Row{{name, id, platform, proxy, pid}})
+		t.table.AppendRows([]table.Row{{name, tier, id, platform, proxy, pid}})
 	} else {
-		t.table.AppendRows([]table.Row{{name, id, platform}})
+		t.table.AppendRows([]table.Row{{name, tier, id, platform}})
 	}
 
 }
@@ -57,5 +57,5 @@ func (t TableEnv) AppendEnv(env environment.Environment, proxy string, pid strin
 		platform = "AWS"
 	}
 
-	t.AppendRow(env.Environment, id, platform, proxy, pid)
+	t.AppendRow(env.Environment, string(env.Tier), id, platform, proxy, pid)
 }
