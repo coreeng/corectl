@@ -1,6 +1,7 @@
 release: "0.9.0"
 
 environment: "dev"
+tier: "dev"
 domain: "dev.domain"
 
 features:
