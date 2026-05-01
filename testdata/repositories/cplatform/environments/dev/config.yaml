@@ -18,6 +18,8 @@ tests:
 
 platform:
   vendor: gcp
+  readonlyGroup: "core-platform-readonly@cecg.io"
+  internalServicesGroup: "core-platform-readonly@cecg.io"
   projectId: "projectId-dev"
   projectNumber: "111111111111"
   tenantInfraFolderId: "9999999999999"
