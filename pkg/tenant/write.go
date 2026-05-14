@@ -70,7 +70,15 @@ func CreateOrUpdate(
 		}); err != nil {
 			return result, err
 		}
-		relativeFilepath, err = filepath.Rel(op.CplatformRepoPath, *op.Tenant.SavedPath())
+		repoPath, err := filepath.EvalSymlinks(op.CplatformRepoPath)
+		if err != nil {
+			return result, err
+		}
+		savedPath, err := filepath.EvalSymlinks(*op.Tenant.SavedPath())
+		if err != nil {
+			return result, err
+		}
+		relativeFilepath, err = filepath.Rel(repoPath, savedPath)
 		if err != nil {
 			return result, err
 		}
