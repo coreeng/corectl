@@ -38,3 +38,17 @@ release:
     owner: coreeng
     name: corectl
   mode: append
+
+brews:
+  - name: corectl
+    repository:
+      owner: coreeng
+      name: homebrew-public
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    directory: .
+    homepage: "https://github.com/coreeng/corectl"
+    description: "Core Platform CLI"
+    commit_author:
+      name: goreleaser-bot
+      email: bot@coreeng.io
+    skip_upload: '{{ if .Env.HOMEBREW_TAP_GITHUB_TOKEN }}auto{{ else }}true{{ end }}'

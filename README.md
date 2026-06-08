@@ -8,6 +8,12 @@ Interested in learning more about CECG's Core Platform? Book a demo at [Core Pla
 
 # Downloading
 
+Install with Homebrew:
+
+```bash
+brew install coreeng/public/corectl
+```
+
 Releases for Linux and Mac are published in [releases](https://github.com/coreeng/corectl/releases/)
 Download and unzip your platform e.g for Mac with Apple chip download `corectl_Darwin_arm64.tar.gz`
 and add to your path.
