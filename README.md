@@ -8,7 +8,7 @@ Interested in learning more about CECG's Core Platform? Book a demo at [Core Pla
 
 # Downloading
 
-Install with Homebrew:
+On macOS, install with Homebrew:
 
 ```bash
 brew install coreeng/public/corectl
