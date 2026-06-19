@@ -41,6 +41,7 @@ type AppCreateOpt struct {
 	Config         string
 	DryRun         bool
 	Public         bool
+	CloudAccess    bool
 
 	Streams userio.IOStreams
 }
@@ -154,6 +155,12 @@ NOTE:
 		false,
 		"Create a public GitHub repository (default is private)",
 	)
+	appCreateCmd.Flags().BoolVar(
+		&opts.CloudAccess,
+		"cloud-access",
+		false,
+		"Configure GCP cloud access for the generated delivery unit",
+	)
 
 	config.RegisterBoolParameterAsFlag(
 		&cfg.Repositories.AllowDirty,
@@ -238,16 +245,16 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 	}
 	logger.Info().Msgf("org unit selected: %s", ownerOrgUnit.Name)
 
-	appTenant, err := createDeliveryUnitForOrgUnit(opts, ownerOrgUnit, duType)
-	if err != nil {
-		return fmt.Errorf("failed to create delivery unit: %w", err)
-	}
-	logger.Info().Msgf("Will create delivery unit '%s' owned by org unit '%s'", appTenant.Name, ownerOrgUnit.Name)
-
 	existingEnvs, err := environment.List(configpath.GetCorectlCPlatformDir("environments"))
 	if err != nil {
 		return err
 	}
+
+	appTenant, err := createDeliveryUnitForOrgUnit(opts, ownerOrgUnit, duType, cloudAccessEnvironments(cfg, existingEnvs))
+	if err != nil {
+		return fmt.Errorf("failed to create delivery unit: %w", err)
+	}
+	logger.Info().Msgf("Will create delivery unit '%s' owned by org unit '%s'", appTenant.Name, ownerOrgUnit.Name)
 
 	if err = userio.ValidateFilePath(opts.LocalPath, userio.FileValidatorOptions{
 		DirsOnly:   true,
@@ -394,6 +401,13 @@ func filterEnvsByNames(names []string, envs []environment.Environment) []environ
 	return result
 }
 
+func cloudAccessEnvironments(cfg *config.Config, envs []environment.Environment) []environment.Environment {
+	selectedEnvNames := append([]string{}, cfg.P2P.FastFeedback.DefaultEnvs.Value...)
+	selectedEnvNames = append(selectedEnvNames, cfg.P2P.ExtendedTest.DefaultEnvs.Value...)
+	selectedEnvNames = append(selectedEnvNames, cfg.P2P.Prod.DefaultEnvs.Value...)
+	return filterEnvsByNames(selectedEnvNames, envs)
+}
+
 func deliveryUnitTypeFromTemplate(t *template.Spec) (string, error) {
 	// Map software template kind to core-platform delivery unit type.
 	if t == nil {
@@ -449,6 +463,7 @@ func createDeliveryUnitForOrgUnit(
 	opts *AppCreateOpt,
 	orgUnit *coretnt.Tenant,
 	duType string,
+	existingEnvs []environment.Environment,
 ) (*coretnt.Tenant, error) {
 	duName := opts.Name
 	if orgUnit == nil {
@@ -456,6 +471,9 @@ func createDeliveryUnitForOrgUnit(
 	}
 	if orgUnit.Kind != "OrgUnit" {
 		return nil, fmt.Errorf("selected tenant '%s' is not an org unit", orgUnit.Name)
+	}
+	if opts.CloudAccess && duType != "application" {
+		return nil, fmt.Errorf("--cloud-access can only be used with application templates")
 	}
 
 	tenantsPath := configpath.GetCorectlCPlatformDir("tenants")
@@ -483,7 +501,7 @@ func createDeliveryUnitForOrgUnit(
 		ReadOnlyGroup:     orgUnit.ReadOnlyGroup,
 		ProdAdminGroup:    orgUnit.ProdAdminGroup,
 		ProdReadOnlyGroup: orgUnit.ProdReadOnlyGroup,
-		CloudAccess:       make([]coretnt.CloudAccess, 0),
+		CloudAccess:       cloudAccessForApp(opts, orgUnit, existingEnvs),
 	}
 
 	// Validate the tenant
@@ -507,6 +525,61 @@ func createDeliveryUnitForOrgUnit(
 	}
 
 	return du, nil
+}
+
+func p2pBaseNamespace(ownerName, appName string) string {
+	if ownerName == appName {
+		return appName
+	}
+	return ownerName + "-" + appName
+}
+
+func cloudAccessKubernetesServiceAccounts(
+	baseNamespace string,
+	serviceAccountName string,
+	tier environment.EnvironmentTier,
+) []string {
+	switch tier {
+	case environment.ProdEnvironmentTier:
+		return []string{
+			baseNamespace + "-prod/" + serviceAccountName,
+		}
+	default:
+		return []string{
+			baseNamespace + "-functional/" + serviceAccountName,
+			baseNamespace + "-nft/" + serviceAccountName,
+			baseNamespace + "-integration/" + serviceAccountName,
+			baseNamespace + "-extended/" + serviceAccountName,
+		}
+	}
+}
+
+func cloudAccessForApp(
+	opts *AppCreateOpt,
+	orgUnit *coretnt.Tenant,
+	envs []environment.Environment,
+) []coretnt.CloudAccess {
+	if !opts.CloudAccess {
+		return []coretnt.CloudAccess{}
+	}
+
+	baseNamespace := p2pBaseNamespace(orgUnit.Name, opts.Name)
+	cloudAccess := make([]coretnt.CloudAccess, 0, len(envs))
+
+	for _, env := range envs {
+		cloudAccess = append(cloudAccess, coretnt.CloudAccess{
+			Name:        "ca",
+			Provider:    "gcp",
+			Environment: env.Environment,
+			KubernetesServiceAccounts: cloudAccessKubernetesServiceAccounts(
+				baseNamespace,
+				opts.Name,
+				env.Tier,
+			),
+		})
+	}
+
+	return cloudAccess
 }
 
 func createPRWithNewTenantAndRepo(
