@@ -405,7 +405,17 @@ func cloudAccessEnvironments(cfg *config.Config, envs []environment.Environment)
 	selectedEnvNames := append([]string{}, cfg.P2P.FastFeedback.DefaultEnvs.Value...)
 	selectedEnvNames = append(selectedEnvNames, cfg.P2P.ExtendedTest.DefaultEnvs.Value...)
 	selectedEnvNames = append(selectedEnvNames, cfg.P2P.Prod.DefaultEnvs.Value...)
-	return filterEnvsByNames(selectedEnvNames, envs)
+	return filterGCPEnvs(filterEnvsByNames(selectedEnvNames, envs))
+}
+
+func filterGCPEnvs(envs []environment.Environment) []environment.Environment {
+	var result []environment.Environment
+	for _, env := range envs {
+		if env.Platform != nil && env.Platform.Type() == environment.GCPVendorType {
+			result = append(result, env)
+		}
+	}
+	return result
 }
 
 func deliveryUnitTypeFromTemplate(t *template.Spec) (string, error) {

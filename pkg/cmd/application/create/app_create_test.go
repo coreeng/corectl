@@ -237,22 +237,23 @@ var _ = Describe("cloudAccessForApp", func() {
 })
 
 var _ = Describe("cloudAccessEnvironments", func() {
-	It("excludes existing environments that are not selected in P2P defaults", func() {
+	It("excludes existing environments that are not selected in P2P defaults or are not GCP", func() {
 		cfg := config.NewConfig()
 		cfg.P2P.FastFeedback.DefaultEnvs.Value = []string{"gcp-dev"}
-		cfg.P2P.ExtendedTest.DefaultEnvs.Value = []string{"gcp-dev"}
+		cfg.P2P.ExtendedTest.DefaultEnvs.Value = []string{"gcp-dev", "aws-dev"}
 		cfg.P2P.Prod.DefaultEnvs.Value = []string{"gcp-prod"}
 		envs := []environment.Environment{
-			{Environment: "gcp-pre-dev", Tier: environment.PreDevEnvironmentTier},
-			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
-			{Environment: "gcp-prod", Tier: environment.ProdEnvironmentTier},
+			{Environment: "gcp-pre-dev", Tier: environment.PreDevEnvironmentTier, Platform: &environment.GCPVendor{}},
+			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier, Platform: &environment.GCPVendor{}},
+			{Environment: "aws-dev", Tier: environment.DevEnvironmentTier, Platform: &environment.AWSVendor{}},
+			{Environment: "gcp-prod", Tier: environment.ProdEnvironmentTier, Platform: &environment.GCPVendor{}},
 		}
 
 		result := cloudAccessEnvironments(cfg, envs)
 
 		Expect(result).To(Equal([]environment.Environment{
-			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
-			{Environment: "gcp-prod", Tier: environment.ProdEnvironmentTier},
+			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier, Platform: &environment.GCPVendor{}},
+			{Environment: "gcp-prod", Tier: environment.ProdEnvironmentTier, Platform: &environment.GCPVendor{}},
 		}))
 	})
 })
