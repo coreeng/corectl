@@ -147,16 +147,6 @@ var _ = Describe("addExistingTenants", func() {
 	})
 })
 
-var _ = Describe("p2pBaseNamespace", func() {
-	It("uses the app name when tenant and app are the same", func() {
-		Expect(p2pBaseNamespace("orders", "orders")).To(Equal("orders"))
-	})
-
-	It("uses tenant-app when tenant and app differ", func() {
-		Expect(p2pBaseNamespace("payments", "orders")).To(Equal("payments-orders"))
-	})
-})
-
 var _ = Describe("cloudAccessKubernetesServiceAccounts", func() {
 	It("returns service accounts for the requested subnamespaces", func() {
 		result := cloudAccessKubernetesServiceAccounts("payments-orders", "orders", []string{"functional", "nft", "integration"})
@@ -190,7 +180,7 @@ var _ = Describe("cloudAccessForApp", func() {
 			{Environment: "gcp-prod", Platform: &environment.GCPVendor{}},
 		}
 
-		result := cloudAccessForApp(opts, "payments", cfg, envs)
+		result := cloudAccessForApp(opts, cfg, envs)
 
 		Expect(result).To(Equal([]coretnt.CloudAccess{
 			{
@@ -198,9 +188,9 @@ var _ = Describe("cloudAccessForApp", func() {
 				Provider:    "gcp",
 				Environment: "gcp-dev",
 				KubernetesServiceAccounts: []string{
-					"payments-orders-functional/orders",
-					"payments-orders-nft/orders",
-					"payments-orders-integration/orders",
+					"orders-functional/orders",
+					"orders-nft/orders",
+					"orders-integration/orders",
 				},
 			},
 			{
@@ -208,7 +198,7 @@ var _ = Describe("cloudAccessForApp", func() {
 				Provider:    "gcp",
 				Environment: "gcp-stage",
 				KubernetesServiceAccounts: []string{
-					"payments-orders-extended/orders",
+					"orders-extended/orders",
 				},
 			},
 			{
@@ -216,7 +206,7 @@ var _ = Describe("cloudAccessForApp", func() {
 				Provider:    "gcp",
 				Environment: "gcp-prod",
 				KubernetesServiceAccounts: []string{
-					"payments-orders-prod/orders",
+					"orders-prod/orders",
 				},
 			},
 		}))
@@ -228,12 +218,12 @@ var _ = Describe("cloudAccessForApp", func() {
 			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
 		}
 
-		result := cloudAccessForApp(opts, "payments", nil, envs)
+		result := cloudAccessForApp(opts, nil, envs)
 
 		Expect(result).To(BeEmpty())
 	})
 
-	It("uses app-only namespaces when tenant and app names match", func() {
+	It("uses app-only namespaces", func() {
 		cfg := config.NewConfig()
 		cfg.P2P.FastFeedback.DefaultEnvs.Value = []string{"gcp-dev"}
 		opts := &AppCreateOpt{Name: "orders", CloudAccess: true}
@@ -241,7 +231,7 @@ var _ = Describe("cloudAccessForApp", func() {
 			{Environment: "gcp-dev", Platform: &environment.GCPVendor{}},
 		}
 
-		result := cloudAccessForApp(opts, "orders", cfg, envs)
+		result := cloudAccessForApp(opts, cfg, envs)
 
 		Expect(result[0].KubernetesServiceAccounts).To(Equal([]string{
 			"orders-functional/orders",
@@ -259,7 +249,7 @@ var _ = Describe("cloudAccessForApp", func() {
 			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier, Platform: &environment.GCPVendor{}},
 		}
 
-		result := cloudAccessForApp(opts, "payments", cfg, envs)
+		result := cloudAccessForApp(opts, cfg, envs)
 
 		Expect(result).To(Equal([]coretnt.CloudAccess{
 			{
@@ -267,10 +257,10 @@ var _ = Describe("cloudAccessForApp", func() {
 				Provider:    "gcp",
 				Environment: "gcp-dev",
 				KubernetesServiceAccounts: []string{
-					"payments-orders-functional/orders",
-					"payments-orders-nft/orders",
-					"payments-orders-integration/orders",
-					"payments-orders-extended/orders",
+					"orders-functional/orders",
+					"orders-nft/orders",
+					"orders-integration/orders",
+					"orders-extended/orders",
 				},
 			},
 		}))
@@ -286,7 +276,7 @@ var _ = Describe("cloudAccessForApp", func() {
 			{Environment: "aws-dev", Platform: &environment.AWSVendor{}},
 		}
 
-		result := cloudAccessForApp(opts, "payments", cfg, envs)
+		result := cloudAccessForApp(opts, cfg, envs)
 
 		Expect(result).To(HaveLen(1))
 		Expect(result[0].Environment).To(Equal("gcp-dev"))
@@ -373,6 +363,45 @@ var _ = Describe("createDeliveryUnitForOrgUnit", func() {
 				},
 			},
 		}))
+	})
+
+	It("limits cloud access to the selected org unit environments", func() {
+		t := GinkgoT()
+
+		_, err := gittest.CreateTestCorectlConfig(t.TempDir())
+		Expect(err).NotTo(HaveOccurred())
+		_, _, err = gittest.CreateBareAndLocalRepoFromDir(&gittest.CreateBareAndLocalRepoOp{
+			SourceDir:          testdata.CPlatformEnvsPath(),
+			TargetBareRepoDir:  t.TempDir(),
+			TargetLocalRepoDir: configpath.GetCorectlCPlatformDir(),
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		orgUnit, err := coretnt.FindByName(configpath.GetCorectlCPlatformDir("tenants"), "parent")
+		Expect(err).NotTo(HaveOccurred())
+		orgUnit.Environments = []string{"dev"}
+
+		cfg := config.NewConfig()
+		cfg.P2P.FastFeedback.DefaultEnvs.Value = []string{"dev"}
+		cfg.P2P.ExtendedTest.DefaultEnvs.Value = []string{"dev"}
+		cfg.P2P.Prod.DefaultEnvs.Value = []string{"prod"}
+		envs := []environment.Environment{
+			{Environment: "dev", Tier: environment.DevEnvironmentTier, Platform: &environment.GCPVendor{}},
+			{Environment: "prod", Tier: environment.ProdEnvironmentTier, Platform: &environment.GCPVendor{}},
+		}
+
+		du, err := createDeliveryUnitForOrgUnit(
+			&AppCreateOpt{Name: "new-app", CloudAccess: true},
+			orgUnit,
+			"application",
+			cfg,
+			envs,
+		)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(du.Environments).To(Equal([]string{"dev"}))
+		Expect(du.CloudAccess).To(HaveLen(1))
+		Expect(du.CloudAccess[0].Environment).To(Equal("dev"))
 	})
 
 	It("rejects cloud access for infrastructure delivery units", func() {
