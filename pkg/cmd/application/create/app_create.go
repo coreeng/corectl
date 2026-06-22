@@ -511,7 +511,7 @@ func createDeliveryUnitForOrgUnit(
 		ReadOnlyGroup:     orgUnit.ReadOnlyGroup,
 		ProdAdminGroup:    orgUnit.ProdAdminGroup,
 		ProdReadOnlyGroup: orgUnit.ProdReadOnlyGroup,
-		CloudAccess:       cloudAccessForApp(opts, orgUnit, existingEnvs),
+		CloudAccess:       cloudAccessForApp(opts, duName, existingEnvs),
 	}
 
 	// Validate the tenant
@@ -537,11 +537,11 @@ func createDeliveryUnitForOrgUnit(
 	return du, nil
 }
 
-func p2pBaseNamespace(ownerName, appName string) string {
-	if ownerName == appName {
+func p2pBaseNamespace(tenantName, appName string) string {
+	if tenantName == appName {
 		return appName
 	}
-	return ownerName + "-" + appName
+	return tenantName + "-" + appName
 }
 
 func cloudAccessKubernetesServiceAccounts(
@@ -566,14 +566,14 @@ func cloudAccessKubernetesServiceAccounts(
 
 func cloudAccessForApp(
 	opts *AppCreateOpt,
-	orgUnit *coretnt.Tenant,
+	tenantName string,
 	envs []environment.Environment,
 ) []coretnt.CloudAccess {
 	if !opts.CloudAccess {
 		return []coretnt.CloudAccess{}
 	}
 
-	baseNamespace := p2pBaseNamespace(orgUnit.Name, opts.Name)
+	baseNamespace := p2pBaseNamespace(tenantName, opts.Name)
 	cloudAccess := make([]coretnt.CloudAccess, 0, len(envs))
 
 	for _, env := range envs {

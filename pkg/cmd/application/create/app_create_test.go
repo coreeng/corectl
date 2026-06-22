@@ -148,11 +148,11 @@ var _ = Describe("addExistingTenants", func() {
 })
 
 var _ = Describe("p2pBaseNamespace", func() {
-	It("uses the app name when owner and app are the same", func() {
+	It("uses the app name when tenant and app are the same", func() {
 		Expect(p2pBaseNamespace("orders", "orders")).To(Equal("orders"))
 	})
 
-	It("uses owner-app when owner and app differ", func() {
+	It("uses tenant-app when tenant and app differ", func() {
 		Expect(p2pBaseNamespace("payments", "orders")).To(Equal("payments-orders"))
 	})
 })
@@ -192,13 +192,12 @@ var _ = Describe("cloudAccessKubernetesServiceAccounts", func() {
 var _ = Describe("cloudAccessForApp", func() {
 	It("creates GCP cloud access entries for each selected environment", func() {
 		opts := &AppCreateOpt{Name: "orders", CloudAccess: true}
-		orgUnit := &coretnt.Tenant{Name: "payments"}
 		envs := []environment.Environment{
 			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
 			{Environment: "gcp-prod", Tier: environment.ProdEnvironmentTier},
 		}
 
-		result := cloudAccessForApp(opts, orgUnit, envs)
+		result := cloudAccessForApp(opts, "payments", envs)
 
 		Expect(result).To(Equal([]coretnt.CloudAccess{
 			{
@@ -225,14 +224,29 @@ var _ = Describe("cloudAccessForApp", func() {
 
 	It("creates no entries when cloud access is disabled", func() {
 		opts := &AppCreateOpt{Name: "orders", CloudAccess: false}
-		orgUnit := &coretnt.Tenant{Name: "payments"}
 		envs := []environment.Environment{
 			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
 		}
 
-		result := cloudAccessForApp(opts, orgUnit, envs)
+		result := cloudAccessForApp(opts, "payments", envs)
 
 		Expect(result).To(BeEmpty())
+	})
+
+	It("uses app-only namespaces when tenant and app names match", func() {
+		opts := &AppCreateOpt{Name: "orders", CloudAccess: true}
+		envs := []environment.Environment{
+			{Environment: "gcp-dev", Tier: environment.DevEnvironmentTier},
+		}
+
+		result := cloudAccessForApp(opts, "orders", envs)
+
+		Expect(result[0].KubernetesServiceAccounts).To(Equal([]string{
+			"orders-functional/orders",
+			"orders-nft/orders",
+			"orders-integration/orders",
+			"orders-extended/orders",
+		}))
 	})
 })
 
@@ -318,10 +332,10 @@ var _ = Describe("createDeliveryUnitForOrgUnit", func() {
 				Provider:    "gcp",
 				Environment: "dev",
 				KubernetesServiceAccounts: []string{
-					"parent-new-app-functional/new-app",
-					"parent-new-app-nft/new-app",
-					"parent-new-app-integration/new-app",
-					"parent-new-app-extended/new-app",
+					"new-app-functional/new-app",
+					"new-app-nft/new-app",
+					"new-app-integration/new-app",
+					"new-app-extended/new-app",
 				},
 			},
 			{
@@ -329,7 +343,7 @@ var _ = Describe("createDeliveryUnitForOrgUnit", func() {
 				Provider:    "gcp",
 				Environment: "prod",
 				KubernetesServiceAccounts: []string{
-					"parent-new-app-prod/new-app",
+					"new-app-prod/new-app",
 				},
 			},
 		}))
