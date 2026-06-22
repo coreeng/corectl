@@ -23,6 +23,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName = mock.EndpointPattern{
+	Pattern: "/repositories/{repository_id}/environments/{environment_name}/variables",
+	Method:  "POST",
+}
+
 var _ = Describe("Create new application", func() {
 	t := GinkgoTB()
 
@@ -116,7 +121,7 @@ var _ = Describe("Create new application", func() {
 				createEnvCapture.Func(),
 			),
 			mock.WithRequestMatchHandler(
-				mock.PostRepositoriesEnvironmentsVariablesByRepositoryIdByEnvironmentName,
+				postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName,
 				createEnvVarCapture.Func(),
 			),
 		))
@@ -370,7 +375,7 @@ var _ = Describe("Create new application", func() {
 					createEnvCapture.Func(),
 				),
 				mock.WithRequestMatchHandler(
-					mock.PostRepositoriesEnvironmentsVariablesByRepositoryIdByEnvironmentName,
+					postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName,
 					createEnvVarCapture.Func(),
 				),
 			))
