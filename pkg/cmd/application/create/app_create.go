@@ -250,7 +250,7 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	appTenant, err := createDeliveryUnitForOrgUnit(opts, ownerOrgUnit, duType, cloudAccessEnvironments(cfg, existingEnvs))
+	appTenant, err := createDeliveryUnitForOrgUnit(opts, ownerOrgUnit, duType, cfg, existingEnvs)
 	if err != nil {
 		return fmt.Errorf("failed to create delivery unit: %w", err)
 	}
@@ -401,13 +401,6 @@ func filterEnvsByNames(names []string, envs []environment.Environment) []environ
 	return result
 }
 
-func cloudAccessEnvironments(cfg *config.Config, envs []environment.Environment) []environment.Environment {
-	selectedEnvNames := append([]string{}, cfg.P2P.FastFeedback.DefaultEnvs.Value...)
-	selectedEnvNames = append(selectedEnvNames, cfg.P2P.ExtendedTest.DefaultEnvs.Value...)
-	selectedEnvNames = append(selectedEnvNames, cfg.P2P.Prod.DefaultEnvs.Value...)
-	return filterGCPEnvs(filterEnvsByNames(selectedEnvNames, envs))
-}
-
 func filterGCPEnvs(envs []environment.Environment) []environment.Environment {
 	var result []environment.Environment
 	for _, env := range envs {
@@ -473,6 +466,7 @@ func createDeliveryUnitForOrgUnit(
 	opts *AppCreateOpt,
 	orgUnit *coretnt.Tenant,
 	duType string,
+	cfg *config.Config,
 	existingEnvs []environment.Environment,
 ) (*coretnt.Tenant, error) {
 	duName := opts.Name
@@ -511,7 +505,7 @@ func createDeliveryUnitForOrgUnit(
 		ReadOnlyGroup:     orgUnit.ReadOnlyGroup,
 		ProdAdminGroup:    orgUnit.ProdAdminGroup,
 		ProdReadOnlyGroup: orgUnit.ProdReadOnlyGroup,
-		CloudAccess:       cloudAccessForApp(opts, duName, existingEnvs),
+		CloudAccess:       cloudAccessForApp(opts, duName, cfg, existingEnvs),
 	}
 
 	// Validate the tenant
@@ -547,26 +541,19 @@ func p2pBaseNamespace(tenantName, appName string) string {
 func cloudAccessKubernetesServiceAccounts(
 	baseNamespace string,
 	serviceAccountName string,
-	tier environment.EnvironmentTier,
+	subnamespaces []string,
 ) []string {
-	switch tier {
-	case environment.ProdEnvironmentTier:
-		return []string{
-			baseNamespace + "-prod/" + serviceAccountName,
-		}
-	default:
-		return []string{
-			baseNamespace + "-functional/" + serviceAccountName,
-			baseNamespace + "-nft/" + serviceAccountName,
-			baseNamespace + "-integration/" + serviceAccountName,
-			baseNamespace + "-extended/" + serviceAccountName,
-		}
+	result := make([]string, 0, len(subnamespaces))
+	for _, subnamespace := range subnamespaces {
+		result = append(result, baseNamespace+"-"+subnamespace+"/"+serviceAccountName)
 	}
+	return result
 }
 
 func cloudAccessForApp(
 	opts *AppCreateOpt,
 	tenantName string,
+	cfg *config.Config,
 	envs []environment.Environment,
 ) []coretnt.CloudAccess {
 	if !opts.CloudAccess {
@@ -574,19 +561,46 @@ func cloudAccessForApp(
 	}
 
 	baseNamespace := p2pBaseNamespace(tenantName, opts.Name)
-	cloudAccess := make([]coretnt.CloudAccess, 0, len(envs))
+	gcpEnvsByName := map[string]environment.Environment{}
+	for _, env := range filterGCPEnvs(envs) {
+		gcpEnvsByName[env.Environment] = env
+	}
 
-	for _, env := range envs {
-		cloudAccess = append(cloudAccess, coretnt.CloudAccess{
-			Name:        "ca",
-			Provider:    "gcp",
-			Environment: env.Environment,
-			KubernetesServiceAccounts: cloudAccessKubernetesServiceAccounts(
-				baseNamespace,
-				opts.Name,
-				env.Tier,
-			),
-		})
+	cloudAccessByEnv := map[string]*coretnt.CloudAccess{}
+	var envOrder []string
+	addStageCloudAccess := func(envNames []string, subnamespaces []string) {
+		for _, envName := range envNames {
+			_, ok := gcpEnvsByName[envName]
+			if !ok {
+				continue
+			}
+
+			cloudAccess, ok := cloudAccessByEnv[envName]
+			if !ok {
+				cloudAccess = &coretnt.CloudAccess{
+					Name:        "ca",
+					Provider:    "gcp",
+					Environment: envName,
+				}
+				cloudAccessByEnv[envName] = cloudAccess
+				envOrder = append(envOrder, envName)
+			}
+
+			for _, serviceAccount := range cloudAccessKubernetesServiceAccounts(baseNamespace, opts.Name, subnamespaces) {
+				if !slices.Contains(cloudAccess.KubernetesServiceAccounts, serviceAccount) {
+					cloudAccess.KubernetesServiceAccounts = append(cloudAccess.KubernetesServiceAccounts, serviceAccount)
+				}
+			}
+		}
+	}
+
+	addStageCloudAccess(cfg.P2P.FastFeedback.DefaultEnvs.Value, []string{"functional", "nft", "integration"})
+	addStageCloudAccess(cfg.P2P.ExtendedTest.DefaultEnvs.Value, []string{"extended"})
+	addStageCloudAccess(cfg.P2P.Prod.DefaultEnvs.Value, []string{"prod"})
+
+	cloudAccess := make([]coretnt.CloudAccess, 0, len(envOrder))
+	for _, envName := range envOrder {
+		cloudAccess = append(cloudAccess, *cloudAccessByEnv[envName])
 	}
 
 	return cloudAccess
