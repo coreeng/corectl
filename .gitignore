@@ -4,3 +4,4 @@ corectl*.log
 dist/
 .vscode
 .idea
+.worktrees/
