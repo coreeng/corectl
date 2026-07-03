@@ -28,6 +28,11 @@ var postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName = mock.
 	Method:  "POST",
 }
 
+var putReposBranchesProtectionByOwnerByRepoByBranch = mock.EndpointPattern{
+	Pattern: "/repos/{owner}/{repo}/branches/{branch}/protection",
+	Method:  "PUT",
+}
+
 var _ = Describe("Create new application", func() {
 	t := GinkgoTB()
 
@@ -44,13 +49,14 @@ var _ = Describe("Create new application", func() {
 		devEnv        environment.Environment
 		prodEnv       environment.Environment
 
-		createRepoCapture    *httpmock.HttpCaptureHandler[github.Repository]
-		createRepoVarCapture *httpmock.HttpCaptureHandler[httpmock.ActionVariableRequest]
-		createEnvCapture     *httpmock.HttpCaptureHandler[httpmock.CreateUpdateEnvRequest]
-		createEnvVarCapture  *httpmock.HttpCaptureHandler[httpmock.ActionEnvVariableRequest]
-		githubClient         *github.Client
-		renderer             *render.StubTemplateRenderer
-		service              *Service
+		createRepoCapture       *httpmock.HttpCaptureHandler[github.Repository]
+		createRepoVarCapture    *httpmock.HttpCaptureHandler[httpmock.ActionVariableRequest]
+		createEnvCapture        *httpmock.HttpCaptureHandler[httpmock.CreateUpdateEnvRequest]
+		createEnvVarCapture     *httpmock.HttpCaptureHandler[httpmock.ActionEnvVariableRequest]
+		branchProtectionCapture *httpmock.HttpCaptureHandler[github.ProtectionRequest]
+		githubClient            *github.Client
+		renderer                *render.StubTemplateRenderer
+		service                 *Service
 	)
 	BeforeEach(OncePerOrdered, func() {
 		newRepoId = 1234
@@ -106,6 +112,9 @@ var _ = Describe("Create new application", func() {
 		createRepoVarCapture = httpmock.NewCreateActionVariablesCapture()
 		createEnvCapture = httpmock.NewCreateUpdateEnvCapture()
 		createEnvVarCapture = httpmock.NewCreateActionEnvVariablesCapture()
+		branchProtectionCapture = httpmock.NewCaptureHandler[github.ProtectionRequest](
+			&github.Protection{},
+		)
 
 		githubClient = github.NewClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
@@ -123,6 +132,10 @@ var _ = Describe("Create new application", func() {
 			mock.WithRequestMatchHandler(
 				postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName,
 				createEnvVarCapture.Func(),
+			),
+			mock.WithRequestMatchHandler(
+				putReposBranchesProtectionByOwnerByRepoByBranch,
+				branchProtectionCapture.Func(),
 			),
 		))
 		Expect(cplatformServerRepo)
@@ -188,6 +201,30 @@ var _ = Describe("Create new application", func() {
 				return v.Org == githubOrg &&
 					v.RepoName == newAppName
 			})))
+		})
+		It("protected default branch in new repo", func() {
+			Expect(branchProtectionCapture.Requests).To(HaveLen(1))
+			request := branchProtectionCapture.Requests[0]
+			Expect(request.EnforceAdmins).To(BeTrue())
+			Expect(request.RequiredStatusChecks).NotTo(BeNil())
+			Expect(request.RequiredStatusChecks.Strict).To(BeFalse())
+			Expect(request.RequiredStatusChecks.Contexts).NotTo(BeNil())
+			Expect(*request.RequiredStatusChecks.Contexts).To(BeEmpty())
+			Expect(request.RequiredPullRequestReviews).NotTo(BeNil())
+			Expect(request.RequiredPullRequestReviews.DismissStaleReviews).To(BeTrue())
+			Expect(request.RequiredPullRequestReviews.RequireCodeOwnerReviews).To(BeFalse())
+			Expect(request.RequiredPullRequestReviews.RequiredApprovingReviewCount).To(Equal(1))
+			Expect(request.RequiredPullRequestReviews.RequireLastPushApproval).NotTo(BeNil())
+			Expect(*request.RequiredPullRequestReviews.RequireLastPushApproval).To(BeTrue())
+			Expect(request.Restrictions).To(BeNil())
+			Expect(request.RequireLinearHistory).NotTo(BeNil())
+			Expect(*request.RequireLinearHistory).To(BeFalse())
+			Expect(request.AllowForcePushes).NotTo(BeNil())
+			Expect(*request.AllowForcePushes).To(BeFalse())
+			Expect(request.AllowDeletions).NotTo(BeNil())
+			Expect(*request.AllowDeletions).To(BeFalse())
+			Expect(request.RequiredConversationResolution).NotTo(BeNil())
+			Expect(*request.RequiredConversationResolution).To(BeTrue())
 		})
 		It("created environments in new repo", func() {
 			Expect(createEnvCapture.Requests).To(ConsistOf(
@@ -341,6 +378,35 @@ var _ = Describe("Create new application", func() {
 
 	})
 
+	Context("with branch protection skipped", Ordered, func() {
+		BeforeAll(func() {
+			renderer = &render.StubTemplateRenderer{
+				Renderer: &render.FlagsAwareTemplateRenderer{},
+			}
+			service = NewService(renderer, githubClient, false)
+			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = service.Create(CreateOp{
+				Name:                 "new-app-name",
+				GitHubRepoName:       "",
+				OrgName:              "github-org-name",
+				LocalPath:            t.TempDir(),
+				Tenant:               defaultTenant,
+				FastFeedbackEnvs:     []environment.Environment{devEnv},
+				ExtendedTestEnvs:     []environment.Environment{devEnv},
+				ProdEnvs:             []environment.Environment{prodEnv},
+				Template:             templateToUse,
+				SkipBranchProtection: true,
+			})
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("does not protect the default branch", func() {
+			Expect(branchProtectionCapture.Requests).To(BeEmpty())
+		})
+	})
+
 	Context("from template with public visibility", Ordered, func() {
 		var (
 			createPublicRepoCapture *httpmock.HttpCaptureHandler[github.Repository]
@@ -377,6 +443,10 @@ var _ = Describe("Create new application", func() {
 				mock.WithRequestMatchHandler(
 					postRepositoriesEnvironmentsVariablesByRepositoryIDByEnvironmentName,
 					createEnvVarCapture.Func(),
+				),
+				mock.WithRequestMatchHandler(
+					putReposBranchesProtectionByOwnerByRepoByBranch,
+					branchProtectionCapture.Func(),
 				),
 			))
 
