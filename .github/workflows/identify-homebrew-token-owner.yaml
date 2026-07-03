@@ -1,0 +1,17 @@
+name: Identify Homebrew Token Owner
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  identify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: identify-homebrew-token-owner
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          gh api /user --jq '"HOMEBREW_TAP_GITHUB_TOKEN owner: \(.login) (\(.type), id=\(.id))"'
