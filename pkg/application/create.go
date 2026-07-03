@@ -39,19 +39,20 @@ func NewService(templateRenderer render.TemplateRenderer, githubClient *github.C
 }
 
 type CreateOp struct {
-	Name             string
-	GitHubRepoName   string
-	Description      string
-	OrgName          string
-	LocalPath        string
-	Tenant           *coretnt.Tenant
-	FastFeedbackEnvs []environment.Environment
-	ExtendedTestEnvs []environment.Environment
-	ProdEnvs         []environment.Environment
-	Template         *template.Spec
-	GitAuth          git.AuthMethod
-	Config           string
-	Public           bool
+	Name                 string
+	GitHubRepoName       string
+	Description          string
+	OrgName              string
+	LocalPath            string
+	Tenant               *coretnt.Tenant
+	FastFeedbackEnvs     []environment.Environment
+	ExtendedTestEnvs     []environment.Environment
+	ProdEnvs             []environment.Environment
+	Template             *template.Spec
+	GitAuth              git.AuthMethod
+	Config               string
+	Public               bool
+	SkipBranchProtection bool
 }
 
 type CreateResult struct {
@@ -133,6 +134,11 @@ func (svc *Service) handleSingleRepo(op CreateOp, localRepo *git.LocalRepository
 		Auth: op.GitAuth,
 	}); err != nil {
 		return result, err
+	}
+	if !op.SkipBranchProtection {
+		if err := svc.protectDefaultBranch(op, repoFullId); err != nil {
+			return result, err
+		}
 	}
 
 	return CreateResult{
@@ -416,6 +422,50 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		repo.CloneURL = github.String(fmt.Sprintf("https://github.com/%s/%s.git", *repo.Owner.Login, *repo.Name))
 		return &repo, nil
 	}
+}
+
+func (svc *Service) protectDefaultBranch(op CreateOp, repoFullId git.GithubRepoFullId) error {
+	logger.Info().With(
+		zap.String("name", op.Name),
+		zap.String("org", repoFullId.Organization()),
+		zap.String("repo", repoFullId.Name()),
+		zap.String("branch", git.MainBranch),
+		zap.Bool("dry_run", svc.DryRun),
+	).Msg("github: protecting default branch")
+
+	if svc.DryRun {
+		return nil
+	}
+
+	disabled := false
+	enabled := true
+	contexts := []string{}
+	lastPushApproval := true
+	_, _, err := svc.GithubClient.Repositories.UpdateBranchProtection(
+		context.Background(),
+		repoFullId.Organization(),
+		repoFullId.Name(),
+		git.MainBranch,
+		&github.ProtectionRequest{
+			RequiredStatusChecks: &github.RequiredStatusChecks{
+				Strict:   false,
+				Contexts: &contexts,
+			},
+			EnforceAdmins: true,
+			RequiredPullRequestReviews: &github.PullRequestReviewsEnforcementRequest{
+				DismissStaleReviews:          true,
+				RequireCodeOwnerReviews:      false,
+				RequiredApprovingReviewCount: 1,
+				RequireLastPushApproval:      &lastPushApproval,
+			},
+			Restrictions:                   nil,
+			RequireLinearHistory:           &disabled,
+			AllowForcePushes:               &disabled,
+			AllowDeletions:                 &disabled,
+			RequiredConversationResolution: &enabled,
+		},
+	)
+	return err
 }
 
 func (svc *Service) synchronizeRepository(op CreateOp, repoFullId git.GithubRepoFullId) error {

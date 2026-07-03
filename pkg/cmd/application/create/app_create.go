@@ -29,19 +29,20 @@ import (
 )
 
 type AppCreateOpt struct {
-	Name           string
-	LocalPath      string
-	FromTemplate   string
-	Tenant         string
-	GitHubRepoName string
-	Description    string
-	Prefix         string
-	ArgsFile       string
-	Args           []string
-	Config         string
-	DryRun         bool
-	Public         bool
-	CloudAccess    bool
+	Name                 string
+	LocalPath            string
+	FromTemplate         string
+	Tenant               string
+	GitHubRepoName       string
+	Description          string
+	Prefix               string
+	ArgsFile             string
+	Args                 []string
+	Config               string
+	DryRun               bool
+	Public               bool
+	CloudAccess          bool
+	SkipBranchProtection bool
 
 	Streams userio.IOStreams
 }
@@ -160,6 +161,12 @@ NOTE:
 		"cloud-access",
 		false,
 		"Configure GCP cloud access for the generated delivery unit",
+	)
+	appCreateCmd.Flags().BoolVar(
+		&opts.SkipBranchProtection,
+		"skip-branch-protection",
+		false,
+		"Skip applying default branch protection to the created GitHub repository",
 	)
 
 	config.RegisterBoolParameterAsFlag(
@@ -370,19 +377,20 @@ func createNewApp(
 		newAppOrg = cfg.GitHub.Organization.Value
 	}
 	createOp := application.CreateOp{
-		Name:             opts.Name,
-		GitHubRepoName:   opts.GitHubRepoName,
-		Description:      opts.Description,
-		OrgName:          newAppOrg,
-		LocalPath:        opts.LocalPath,
-		Tenant:           appTenant,
-		FastFeedbackEnvs: fastFeedbackEnvs,
-		ExtendedTestEnvs: extendedTestEnvs,
-		ProdEnvs:         prodEnvs,
-		Template:         fromTemplate,
-		GitAuth:          gitAuth,
-		Config:           opts.Config,
-		Public:           opts.Public,
+		Name:                 opts.Name,
+		GitHubRepoName:       opts.GitHubRepoName,
+		Description:          opts.Description,
+		OrgName:              newAppOrg,
+		LocalPath:            opts.LocalPath,
+		Tenant:               appTenant,
+		FastFeedbackEnvs:     fastFeedbackEnvs,
+		ExtendedTestEnvs:     extendedTestEnvs,
+		ProdEnvs:             prodEnvs,
+		Template:             fromTemplate,
+		GitAuth:              gitAuth,
+		Config:               opts.Config,
+		Public:               opts.Public,
+		SkipBranchProtection: opts.SkipBranchProtection,
 	}
 	if err := service.ValidateCreate(createOp); err != nil {
 		return application.CreateResult{}, err
