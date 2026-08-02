@@ -10,7 +10,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/shirou/gopsutil/v3/process"
 )

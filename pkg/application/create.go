@@ -10,9 +10,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/coreeng/core-platform/pkg/p2p"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/p2p"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"

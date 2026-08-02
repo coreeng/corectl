@@ -3,7 +3,7 @@ package tenant
 import (
 	"bytes"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

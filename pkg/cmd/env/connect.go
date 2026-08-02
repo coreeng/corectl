@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/command"

@@ -3,7 +3,7 @@ package tenant
 import (
 	"testing"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/stretchr/testify/assert"
 )
 

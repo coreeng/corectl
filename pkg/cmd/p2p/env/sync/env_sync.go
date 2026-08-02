@@ -7,9 +7,9 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
-	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
 
-	corep2p "github.com/coreeng/core-platform/pkg/p2p"
+	corep2p "github.com/coreeng/core-platform-infra/pkg/p2p"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"

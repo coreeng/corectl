@@ -3,7 +3,7 @@ package tree
 import (
 	"fmt"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
