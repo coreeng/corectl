@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
-	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/testdata"

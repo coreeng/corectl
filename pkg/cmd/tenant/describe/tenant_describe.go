@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
-	"github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/config"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/spf13/cobra"

@@ -2,8 +2,8 @@ package p2p
 
 import (
 	"context"
-	"github.com/coreeng/core-platform/pkg/environment"
-	"github.com/coreeng/core-platform/pkg/p2p"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/p2p"
 	"github.com/google/go-github/v60/github"
 	"slices"
 )

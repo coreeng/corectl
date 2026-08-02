@@ -1,7 +1,7 @@
 package env
 
 import (
-	"github.com/coreeng/core-platform/pkg/environment"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/jedib0t/go-pretty/v6/table"
 )

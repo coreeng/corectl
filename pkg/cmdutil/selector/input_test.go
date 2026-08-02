@@ -7,7 +7,7 @@ import (
 
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"

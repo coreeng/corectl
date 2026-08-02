@@ -9,8 +9,8 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/cmd/template/render"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"

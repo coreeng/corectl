@@ -5,7 +5,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"path/filepath"
 
-	"github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/google/go-github/v60/github"

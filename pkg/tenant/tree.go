@@ -3,7 +3,7 @@ package tenant
 import (
 	"fmt"
 
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 )
 
 type Node struct {

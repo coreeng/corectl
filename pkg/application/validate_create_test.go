@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/coreeng/core-platform/pkg/environment"
-	coretnt "github.com/coreeng/core-platform/pkg/tenant"
+	"github.com/coreeng/core-platform-infra/pkg/environment"
+	coretnt "github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/application"
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
