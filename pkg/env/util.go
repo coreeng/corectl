@@ -12,7 +12,7 @@ import (
 
 	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
 type ProcessDetails struct {
