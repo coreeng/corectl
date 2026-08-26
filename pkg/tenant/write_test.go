@@ -12,7 +12,7 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -47,7 +47,7 @@ cloudAccess: []
 		commitMsg           string
 		newPrName           string
 		newPrHtmlUrl        string
-		createPrCapture     *httpmock.HttpCaptureHandler[github.NewPullRequest]
+		createPrCapture     *httpmock.HttpCaptureHandler[github.CreatePullRequest]
 		githubClient        *github.Client
 	)
 	BeforeEach(OncePerOrdered, func() {
@@ -89,17 +89,18 @@ cloudAccess: []
 		commitMsg = "New tenant create msg"
 		newPrName = "New PR"
 		newPrHtmlUrl = "https://github.com/org/repo/pull/1"
-		createPrCapture = httpmock.NewCaptureHandler[github.NewPullRequest](
+		createPrCapture = httpmock.NewCaptureHandler[github.CreatePullRequest](
 			&github.PullRequest{
 				HTMLURL: &newPrHtmlUrl,
 			},
 		)
-		githubClient = github.NewClient(mock.NewMockedHTTPClient(
+		githubClient, err = github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
 				mock.PostReposPullsByOwnerByRepo,
 				createPrCapture.Func(),
 			),
-		))
+		)))
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	When("creating a new tenant", Ordered, func() {
@@ -127,8 +128,8 @@ cloudAccess: []
 			Expect(createPrCapture.Requests).To(HaveLen(1))
 			newPrRequest := createPrCapture.Requests[0]
 			Expect(*newPrRequest.Title).To(Equal(newPrName))
-			Expect(*newPrRequest.Head).To(Equal(branchName))
-			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
+			Expect(newPrRequest.Head).To(Equal(branchName))
+			Expect(newPrRequest.Base).To(Equal(git.MainBranch))
 		})
 		It("leave local repository clean", func() {
 			localChangesPresent, err := cplatformLocalRepo.IsLocalChangesPresent()

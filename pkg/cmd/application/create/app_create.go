@@ -24,7 +24,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/tenant"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/spf13/cobra"
 )
 
@@ -270,8 +270,10 @@ func run(opts *AppCreateOpt, cfg *config.Config) error {
 		return err
 	}
 
-	githubClient := github.NewClient(nil).
-		WithAuthToken(cfg.GitHub.Token.Value)
+	githubClient, err := github.NewClient(github.WithAuthToken(cfg.GitHub.Token.Value))
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
 
 	newAppOrg := ""
 	if isMonorepo {

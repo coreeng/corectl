@@ -1,8 +1,11 @@
 package testconfig
 
-import "github.com/google/go-github/v60/github"
+import "github.com/google/go-github/v90/github"
 
 func NewGitHubClient() *github.Client {
-	return github.NewClient(nil).
-		WithAuthToken(Cfg.GitHubToken)
+	client, err := github.NewClient(github.WithAuthToken(Cfg.GitHubToken))
+	if err != nil {
+		panic(err)
+	}
+	return client
 }

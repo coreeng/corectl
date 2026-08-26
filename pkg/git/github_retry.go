@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"go.uber.org/zap"
 )
 

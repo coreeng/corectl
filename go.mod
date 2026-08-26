@@ -14,6 +14,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.9.1
 	github.com/go-git/go-git/v5 v5.19.2
 	github.com/google/go-github/v60 v60.0.0
+	github.com/google/go-github/v90 v90.0.0
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/kluctl/go-jinja2 v0.0.0-20241217133422-164d7f6ac307
 	github.com/mattn/go-isatty v0.0.24

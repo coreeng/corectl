@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 
 	//nolint:staticcheck
 	. "github.com/onsi/gomega"

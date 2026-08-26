@@ -10,7 +10,7 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,23 +37,25 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 			ReadOnlyGroup: "readonly-group",
 		}
 		existingRepositoryResponse = &github.Repository{
-			ID:   github.Int64(1234),
-			Name: github.String("new-app"),
+			ID:   github.Ptr(int64(1234)),
+			Name: github.Ptr("new-app"),
 			Owner: &github.User{
-				Login: github.String("test-org"),
+				Login: github.Ptr("test-org"),
 			},
-			CloneURL: github.String("https://github.com/test-org/new-app.git"),
+			CloneURL: github.Ptr("https://github.com/test-org/new-app.git"),
 		}
 	)
 
 	DescribeTable("single app:",
 		func(op application.CreateOp, expectError bool, errorMsg string, setupMockedClient func() *http.Client) {
 			mockedClient := setupMockedClient()
+			githubClient, err := github.NewClient(github.WithHTTPClient(mockedClient))
+			Expect(err).NotTo(HaveOccurred())
 			svc = &application.Service{
-				GithubClient: github.NewClient(mockedClient),
+				GithubClient: githubClient,
 			}
 
-			err := svc.ValidateCreate(op)
+			err = svc.ValidateCreate(op)
 
 			if expectError {
 				Expect(err).To(HaveOccurred())
@@ -183,11 +185,11 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 					)
 				}
 
-				svc = &application.Service{
-					GithubClient: github.NewClient(clientMock),
-				}
+				githubClient, err := github.NewClient(github.WithHTTPClient(clientMock))
+				Expect(err).NotTo(HaveOccurred())
+				svc = &application.Service{GithubClient: githubClient}
 
-				err := svc.ValidateCreate(op)
+				err = svc.ValidateCreate(op)
 				Expect(err).NotTo(HaveOccurred())
 			},
 			Entry("when repository doesn't exist", false),
@@ -203,12 +205,12 @@ var _ = Describe("ValidateCreate", Ordered, func() {
 				GitHubRepoName: "custom-repo-name",
 			}
 
-			testSvc := &application.Service{
-				GithubClient: github.NewClient(mock.NewMockedHTTPClient()),
-			}
+			githubClient, err := github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient()))
+			Expect(err).NotTo(HaveOccurred())
+			testSvc := &application.Service{GithubClient: githubClient}
 
 			// Should pass validation (no repo check for monorepo)
-			err := testSvc.ValidateCreate(op)
+			err = testSvc.ValidateCreate(op)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

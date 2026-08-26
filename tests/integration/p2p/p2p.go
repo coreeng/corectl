@@ -12,7 +12,7 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/thanhpk/randstr"
 
 	//nolint:staticcheck
@@ -27,7 +27,6 @@ var _ = Describe("p2p", Ordered, func() {
 		corectl      *testconfig.CorectlClient
 		cfg          *config.Config
 		githubClient *github.Client
-		tmpRepo      *github.Repository
 		devEnv       environment.Environment
 		envVars      = []string{"BASE_DOMAIN", "DPLATFORM", "INTERNAL_SERVICES_DOMAIN", "PROJECT_ID", "PROJECT_NUMBER"}
 	)
@@ -62,7 +61,7 @@ var _ = Describe("p2p", Ordered, func() {
 			tenant = testdata.DefaultTenant()
 			deleteBranchOnMerge := true
 			visibility := "private"
-			tmpRepo, _, err = githubClient.Repositories.Create(
+			_, _, err = githubClient.Repositories.Create(
 				ctx,
 				cfg.GitHub.Organization.Value,
 				&github.Repository{
@@ -131,7 +130,8 @@ var _ = Describe("p2p", Ordered, func() {
 			for _, envVar := range envVars {
 				_, _, err := githubClient.Actions.GetEnvVariable(
 					ctx,
-					int(tmpRepo.GetID()),
+					cfg.GitHub.Organization.Value,
+					appRepo,
 					devEnv.Environment,
 					envVar,
 				)

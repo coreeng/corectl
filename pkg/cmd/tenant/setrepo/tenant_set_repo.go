@@ -9,7 +9,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	corectltnt "github.com/coreeng/corectl/pkg/tenant"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/spf13/cobra"
 )
 
@@ -92,8 +92,10 @@ func run(opts *TenantSetRepoOpts, cfg *config.Config) error {
 		return fmt.Errorf("couldn't derive repository name from url: %w", err)
 	}
 
-	githubClient := github.NewClient(nil).
-		WithAuthToken(cfg.GitHub.Token.Value)
+	githubClient, err := github.NewClient(github.WithAuthToken(cfg.GitHub.Token.Value))
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
 	gitAuth := git.UrlTokenAuthMethod(cfg.GitHub.Token.Value)
 
 	opts.Streams.CurrentHandler.Info("creating GitHub PR")

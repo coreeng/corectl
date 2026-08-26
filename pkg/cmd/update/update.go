@@ -21,7 +21,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio/confirmation"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/version"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/otiai10/copy"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -40,6 +40,13 @@ type CoreCtlAsset struct {
 	Version   string
 	Url       string
 	Changelog string
+}
+
+func newGitHubClient(token string) (*github.Client, error) {
+	if token == "" {
+		return github.NewClient()
+	}
+	return github.NewClient(github.WithAuthToken(token))
 }
 
 func updateAvailable(githubClient *github.Client) (bool, string, error) {
@@ -127,9 +134,10 @@ func CheckForUpdates(cfg *config.Config, cmd *cobra.Command) {
 			return
 		}
 
-		githubClient := github.NewClient(nil)
-		if githubToken != "" {
-			githubClient = githubClient.WithAuthToken(githubToken)
+		githubClient, err := newGitHubClient(githubToken)
+		if err != nil {
+			logger.Warn().With(zap.Error(err)).Msg("could not create GitHub client")
+			return
 		}
 		available, version, err := updateAvailable(githubClient)
 		if err != nil {
@@ -230,9 +238,9 @@ func update(opts UpdateOpts) error {
 	}
 
 	logger.Warn().Msg("Checking for updates")
-	githubClient := github.NewClient(nil)
-	if opts.githubToken != "" {
-		githubClient = githubClient.WithAuthToken(opts.githubToken)
+	githubClient, err := newGitHubClient(opts.githubToken)
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
 	}
 
 	// fetch the target release metadata
@@ -290,7 +298,7 @@ func update(opts UpdateOpts) error {
 			logger.Warn().Msgf("Showing Changelogs for %d new releases:", len(outstandingReleases))
 		}
 		for _, release := range outstandingReleases {
-			var changelog = fmt.Sprintf("# Changelog for %s:\n%s", *release.TagName, *release.Body)
+			var changelog = fmt.Sprintf("# Changelog for %s:\n%s", release.TagName, *release.Body)
 			out, err := glamour.Render(changelog, "dark")
 			if err == nil {
 				_, _ = opts.streams.GetOutput().Write([]byte(out))
@@ -327,7 +335,6 @@ func update(opts UpdateOpts) error {
 		}
 	}
 
-	var err error
 	wizard.SetTask(fmt.Sprintf("Downloading release %s", asset.Version), fmt.Sprintf("Downloaded release %s", asset.Version))
 	data, err := downloadCorectlAsset(asset)
 	if err != nil {
@@ -406,7 +413,7 @@ func getReleaseCorectlAsset(release *github.RepositoryRelease) (*CoreCtlAsset, e
 			logger.Debug().With(zap.String("asset", assetName)).Msg("github: found release asset with matching architecture & os")
 			return &CoreCtlAsset{
 				Url:       *asset.BrowserDownloadURL,
-				Version:   *release.TagName,
+				Version:   release.TagName,
 				Changelog: *release.Body,
 			}, nil
 		}
@@ -436,7 +443,7 @@ func listOutstandingReleases(client *github.Client, version string, opts *ListOu
 		}
 		for _, release := range releases {
 			// stop listing once we hit the current version
-			if *release.TagName == version {
+			if release.TagName == version {
 				return releasesSince, nil
 			}
 			releasesSince = append(releasesSince, release)

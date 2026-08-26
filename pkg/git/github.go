@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"go.uber.org/zap"
 )
 
@@ -51,10 +51,10 @@ func DeriveRepositoryFullnameFromUrl(githubRepoUrl string) (RepositoryFullname, 
 }
 
 func CreateGitHubPR(client *github.Client, title string, body string, branchName string, repoName string, organization string, dryRun bool) (*github.PullRequest, error) {
-	pr_title := github.String(title)
-	pr_body := github.String(body)
-	branch := github.String(MainBranch)
-	head := github.String(branchName)
+	pr_title := github.Ptr(title)
+	pr_body := github.Ptr(body)
+	branch := github.Ptr(MainBranch)
+	head := github.Ptr(branchName)
 	logger.Info().With(
 		zap.String("name", repoName),
 		zap.String("branch_name", *branch),
@@ -68,22 +68,22 @@ func CreateGitHubPR(client *github.Client, title string, body string, branchName
 			context.Background(),
 			organization,
 			repoName,
-			&github.NewPullRequest{
-				Base:  branch,
-				Head:  head,
+			github.CreatePullRequest{
+				Base:  *branch,
+				Head:  *head,
 				Title: pr_title,
 				Body:  pr_body,
 			})
 		return pullRequest, err
 	} else {
-		id := github.Int64(1234)
+		id := github.Ptr(int64(1234))
 		return &github.PullRequest{
 			ID:      id,
 			Title:   pr_title,
 			Base:    &github.PullRequestBranch{Label: branch},
 			Head:    &github.PullRequestBranch{Label: head},
 			Body:    pr_body,
-			HTMLURL: github.String(fmt.Sprintf("https://github.com/%s/%s/pull/%d", organization, repoName, *id)),
+			HTMLURL: github.Ptr(fmt.Sprintf("https://github.com/%s/%s/pull/%d", organization, repoName, *id)),
 		}, nil
 	}
 }

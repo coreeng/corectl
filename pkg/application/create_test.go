@@ -17,7 +17,7 @@ import (
 	"github.com/coreeng/corectl/pkg/testutil/gittest"
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
 	"github.com/coreeng/corectl/testdata"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -116,7 +116,7 @@ var _ = Describe("Create new application", func() {
 			&github.Protection{},
 		)
 
-		githubClient = github.NewClient(mock.NewMockedHTTPClient(
+		githubClient, err = github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
 				mock.PostOrgsReposByOrg,
 				createRepoCapture.Func(),
@@ -137,7 +137,8 @@ var _ = Describe("Create new application", func() {
 				putReposBranchesProtectionByOwnerByRepoByBranch,
 				branchProtectionCapture.Func(),
 			),
-		))
+		)))
+		Expect(err).NotTo(HaveOccurred())
 		Expect(cplatformServerRepo)
 		Expect(templatesServerRepo)
 	})
@@ -427,7 +428,7 @@ var _ = Describe("Create new application", func() {
 					CloneURL: &newAppCloneUrl,
 				})
 
-			publicGithubClient := github.NewClient(mock.NewMockedHTTPClient(
+			publicGithubClient, err := github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
 					mock.PostOrgsReposByOrg,
 					createPublicRepoCapture.Func(),
@@ -448,7 +449,8 @@ var _ = Describe("Create new application", func() {
 					putReposBranchesProtectionByOwnerByRepoByBranch,
 					branchProtectionCapture.Func(),
 				),
-			))
+			)))
+			Expect(err).NotTo(HaveOccurred())
 
 			service = NewService(renderer, publicGithubClient, false)
 			templateToUse, err := template.FindByName(configpath.GetCorectlTemplatesDir(), testdata.BlankTemplate())
@@ -775,7 +777,7 @@ var _ = Describe("Create new application", func() {
 			createResult       CreateResult
 			createOp           CreateOp
 			getRepoCapture     *httpmock.HttpCaptureHandler[any]
-			createPrCapture    *httpmock.HttpCaptureHandler[github.NewPullRequest]
+			createPrCapture    *httpmock.HttpCaptureHandler[github.CreatePullRequest]
 			appName            = "new-app-name"
 			newPrHtmlUrl       = "https://github.com/org/repo/pull/1"
 		)
@@ -818,13 +820,13 @@ var _ = Describe("Create new application", func() {
 			}
 			getRepoCapture = httpmock.NewCaptureHandler[any](response)
 
-			createPrCapture = httpmock.NewCaptureHandler[github.NewPullRequest](
+			createPrCapture = httpmock.NewCaptureHandler[github.CreatePullRequest](
 				&github.PullRequest{
 					HTMLURL: &newPrHtmlUrl,
 				},
 			)
 
-			githubClient = github.NewClient(mock.NewMockedHTTPClient(
+			githubClient, err = github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 				mock.WithRequestMatchHandler(
 					mock.GetReposByOwnerByRepo,
 					getRepoCapture.Func(),
@@ -833,7 +835,8 @@ var _ = Describe("Create new application", func() {
 					mock.PostReposPullsByOwnerByRepo,
 					createPrCapture.Func(),
 				),
-			))
+			)))
+			Expect(err).NotTo(HaveOccurred())
 
 			renderer = &render.StubTemplateRenderer{
 				Renderer: &render.FlagsAwareTemplateRenderer{},
@@ -936,8 +939,8 @@ var _ = Describe("Create new application", func() {
 			newPrRequest := createPrCapture.Requests[0]
 			Expect(*newPrRequest.Title).To(Equal("Add new-app-name application"))
 			Expect(*newPrRequest.Body).To(Equal("Adding `new-app-name` application"))
-			Expect(*newPrRequest.Head).To(Equal("add-" + appName))
-			Expect(*newPrRequest.Base).To(Equal(git.MainBranch))
+			Expect(newPrRequest.Head).To(Equal("add-" + appName))
+			Expect(newPrRequest.Base).To(Equal(git.MainBranch))
 		})
 	})
 

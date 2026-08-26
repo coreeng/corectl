@@ -16,7 +16,7 @@ import (
 	"github.com/coreeng/corectl/testdata"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 
 	//nolint:staticcheck
 	. "github.com/onsi/ginkgo/v2"
@@ -66,9 +66,8 @@ var _ = Describe("application", Ordered, func() {
 
 	Context("create", Ordered, func() {
 		var (
-			newAppName   string
-			newAppRepoId int64
-			appDir       string
+			newAppName string
+			appDir     string
 		)
 
 		BeforeAll(func(ctx SpecContext) {
@@ -101,7 +100,7 @@ var _ = Describe("application", Ordered, func() {
 
 		It("created a new repository for the new app", func(ctx SpecContext) {
 			// Use retry logic to handle potential propagation delays
-			newAppRepo, _, err := git.RetryGitHubAPI(
+			_, _, err := git.RetryGitHubAPI(
 				func() (*github.Repository, *github.Response, error) {
 					return githubClient.Repositories.Get(
 						ctx,
@@ -113,7 +112,6 @@ var _ = Describe("application", Ordered, func() {
 				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			newAppRepoId = newAppRepo.GetID()
 		}, NodeTimeout(time.Minute))
 
 		It("correctly configured action variables for new repository", func(ctx SpecContext) {
@@ -145,7 +143,8 @@ var _ = Describe("application", Ordered, func() {
 			for _, env := range []environment.Environment{devEnv, prodEnv} {
 				envVars, _, err := githubClient.Actions.ListEnvVariables(
 					ctx,
-					int(newAppRepoId),
+					cfg.GitHub.Organization.Value,
+					newAppName,
 					env.Environment,
 					&github.ListOptions{},
 				)
@@ -468,7 +467,6 @@ var _ = Describe("application", Ordered, func() {
 		var (
 			teamTenantName string
 			newAppName     string
-			newAppRepoId   int64
 			appDir         string
 		)
 
@@ -505,7 +503,7 @@ var _ = Describe("application", Ordered, func() {
 		}, NodeTimeout(time.Minute))
 
 		It("created a new repository for the new app", func(ctx SpecContext) {
-			newAppRepo, _, err := git.RetryGitHubAPI(
+			_, _, err := git.RetryGitHubAPI(
 				func() (*github.Repository, *github.Response, error) {
 					return githubClient.Repositories.Get(
 						ctx,
@@ -517,7 +515,6 @@ var _ = Describe("application", Ordered, func() {
 				git.DefaultBaseDelay,
 			)
 			Expect(err).NotTo(HaveOccurred())
-			newAppRepoId = newAppRepo.GetID()
 		}, NodeTimeout(time.Minute))
 
 		It("correctly configured action variables for new repository", func(ctx SpecContext) {
@@ -549,7 +546,8 @@ var _ = Describe("application", Ordered, func() {
 			for _, env := range []environment.Environment{devEnv, prodEnv} {
 				envVars, _, err := githubClient.Actions.ListEnvVariables(
 					ctx,
-					int(newAppRepoId),
+					cfg.GitHub.Organization.Value,
+					newAppName,
 					env.Environment,
 					&github.ListOptions{},
 				)
@@ -634,8 +632,8 @@ var _ = Describe("application", Ordered, func() {
 
 func createMonorepoRepositoryRemoteAndLocal(githubClient *github.Client, ctx context.Context, cfg *config.Config, monorepoName string, monorepoDir string) {
 	_, _, err := githubClient.Repositories.Create(ctx, cfg.GitHub.Organization.Value, &github.Repository{
-		Name:       github.String(monorepoName),
-		Visibility: github.String("private"),
+		Name:       github.Ptr(monorepoName),
+		Visibility: github.Ptr("private"),
 	})
 	Expect(err).NotTo(HaveOccurred())
 
@@ -648,7 +646,7 @@ func createMonorepoRepositoryRemoteAndLocal(githubClient *github.Client, ctx con
 				monorepoName,
 				"README.md",
 				&github.RepositoryContentFileOptions{
-					Message: github.String("Initial commit"),
+					Message: github.Ptr("Initial commit"),
 					Content: []byte("# Monorepo\n\nThis is a test monorepo."),
 				},
 			)

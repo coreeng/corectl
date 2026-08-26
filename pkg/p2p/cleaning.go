@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/coreeng/core-platform-infra/pkg/environment"
 	"github.com/coreeng/core-platform-infra/pkg/p2p"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"slices"
 )
 
