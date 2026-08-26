@@ -1,4 +1,4 @@
-FROM golang:1.26.4
+FROM golang:1.27.0
 
 # hadolint ignore=DL3008
 RUN apt-get update \
