@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/coreeng/corectl/pkg/testutil/httpmock"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -44,21 +44,22 @@ var _ = Describe("corectl update", func() {
 		githubErrorString = "api error"
 
 		latestReleaseTag = "v100.0.0"
-		latestRelease = &github.RepositoryRelease{TagName: github.String(latestReleaseTag)}
+		latestRelease = &github.RepositoryRelease{TagName: latestReleaseTag}
 		getLatestReleaseCapture = httpmock.NewCaptureHandler[github.RepositoryRelease](latestRelease)
 
 		specificReleaseTag = "v0.0.1"
-		specificRelease = &github.RepositoryRelease{TagName: github.String(specificReleaseTag)}
+		specificRelease = &github.RepositoryRelease{TagName: specificReleaseTag}
 		getSpecificReleaseCapture = httpmock.NewCaptureHandler[github.RepositoryRelease](specificRelease)
 
 		recentReleases = []*github.RepositoryRelease{
-			&github.RepositoryRelease{TagName: github.String("v0.0.2")},
-			&github.RepositoryRelease{TagName: github.String("v0.0.3")},
+			{TagName: "v0.0.2"},
+			{TagName: "v0.0.3"},
 			latestRelease,
 		}
 		getListReleasesCapture = httpmock.NewCaptureHandler[[]github.RepositoryRelease](recentReleases)
 
-		githubClient = github.NewClient(mock.NewMockedHTTPClient(
+		var err error
+		githubClient, err = github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
 				mock.GetReposReleasesLatestByOwnerByRepo,
 				getLatestReleaseCapture.Func(),
@@ -71,7 +72,8 @@ var _ = Describe("corectl update", func() {
 				mock.GetReposReleasesByOwnerByRepo,
 				getListReleasesCapture.Func(),
 			),
-		))
+		)))
+		Expect(err).NotTo(HaveOccurred())
 
 		errorResponse := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			mock.WriteError(
@@ -81,7 +83,7 @@ var _ = Describe("corectl update", func() {
 			)
 		})
 
-		githubErrorClient = github.NewClient(mock.NewMockedHTTPClient(
+		githubErrorClient, err = github.NewClient(github.WithHTTPClient(mock.NewMockedHTTPClient(
 			mock.WithRequestMatchHandler(
 				mock.GetReposReleasesLatestByOwnerByRepo,
 				errorResponse,
@@ -94,7 +96,8 @@ var _ = Describe("corectl update", func() {
 				mock.GetReposReleasesByOwnerByRepo,
 				errorResponse,
 			),
-		))
+		)))
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Context("git.GetLatestCorectlRelease", Ordered, func() {

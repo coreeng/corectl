@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/coreeng/corectl/pkg/cmdutil/config"
+	"github.com/coreeng/corectl/pkg/cmdutil/configpath"
 	"github.com/coreeng/corectl/pkg/logger"
 	"github.com/coreeng/corectl/pkg/shell"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
@@ -18,6 +20,13 @@ import (
 )
 
 var _ = Describe("update", Ordered, func() {
+	BeforeAll(func() {
+		configpath.SetCorectlHome(GinkgoT().TempDir())
+		cfg := config.NewConfig()
+		cfg.GitHub.Token.Value = testconfig.Cfg.GitHubToken
+		Expect(cfg.Save()).To(Succeed())
+	})
+
 	updateCmd := func(args []string) (string, string, error) {
 		tmpFile, err := os.CreateTemp("", "corectl-update-test")
 		Expect(err).ShouldNot(HaveOccurred())

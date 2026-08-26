@@ -14,7 +14,8 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/p2p"
-	"github.com/google/go-github/v60/github"
+	github60 "github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/spf13/cobra"
 )
 
@@ -62,8 +63,10 @@ func NewP2PSyncCmd(cfg *config.Config) (*cobra.Command, error) {
 }
 
 func run(opts *EnvCreateOpts, cfg *config.Config) error {
-	githubClient := github.NewClient(nil).
-		WithAuthToken(cfg.GitHub.Token.Value)
+	githubClient, err := github.NewClient(github.WithAuthToken(cfg.GitHub.Token.Value))
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
 
 	// Use retry logic to handle potential propagation delays
 	repository, _, err := git.RetryGitHubAPI(
@@ -112,7 +115,7 @@ func run(opts *EnvCreateOpts, cfg *config.Config) error {
 	// Use retry logic for repository synchronization to handle propagation delays
 	err = git.RetryGitHubOperation(
 		func() error {
-			return corep2p.SynchronizeRepository(&op, githubClient)
+			return corep2p.SynchronizeRepository(&op, github60.NewClient(githubClient.Client()))
 		},
 		git.DefaultMaxRetries,
 		git.DefaultBaseDelay,

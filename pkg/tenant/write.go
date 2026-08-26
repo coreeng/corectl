@@ -8,7 +8,7 @@ import (
 	"github.com/coreeng/core-platform-infra/pkg/tenant"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )

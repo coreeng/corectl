@@ -8,7 +8,7 @@ import (
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/thanhpk/randstr"
 
 	//nolint:staticcheck

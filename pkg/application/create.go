@@ -20,7 +20,8 @@ import (
 	"github.com/coreeng/corectl/pkg/template"
 	"github.com/coreeng/corectl/pkg/undo"
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/google/go-github/v60/github"
+	github60 "github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"go.uber.org/zap"
 )
 
@@ -400,12 +401,12 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		visibility = "public"
 	}
 	repo := github.Repository{
-		ID:                  github.Int64(1234),
+		ID:                  github.Ptr(int64(1234)),
 		Name:                &repoName,
 		DeleteBranchOnMerge: &deleteBranchOnMerge,
 		Visibility:          &visibility,
 		Owner: &github.User{
-			Login: github.String(op.OrgName),
+			Login: github.Ptr(op.OrgName),
 		},
 	}
 	if op.Description != "" {
@@ -419,7 +420,7 @@ func (svc *Service) createGithubRepository(op CreateOp) (*github.Repository, err
 		)
 		return githubRepo, err
 	} else {
-		repo.CloneURL = github.String(fmt.Sprintf("https://github.com/%s/%s.git", *repo.Owner.Login, *repo.Name))
+		repo.CloneURL = github.Ptr(fmt.Sprintf("https://github.com/%s/%s.git", *repo.Owner.Login, *repo.Name))
 		return &repo, nil
 	}
 }
@@ -494,7 +495,7 @@ func (svc *Service) synchronizeRepositoryWithRetry(op CreateOp, repoFullId git.G
 				ExtendedTestEnvs: op.ExtendedTestEnvs,
 				ProdEnvs:         op.ProdEnvs,
 			}
-			return p2p.SynchronizeRepository(&syncOp, svc.GithubClient)
+			return p2p.SynchronizeRepository(&syncOp, github60.NewClient(svc.GithubClient.Client()))
 		},
 		git.DefaultMaxRetries,
 		git.DefaultBaseDelay,

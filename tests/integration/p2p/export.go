@@ -14,7 +14,7 @@ import (
 	"github.com/coreeng/corectl/tests/integration/testconfig"
 	"github.com/coreeng/corectl/tests/integration/testsetup"
 	gogit "github.com/go-git/go-git/v5"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/thanhpk/randstr"
 
 	//nolint:staticcheck

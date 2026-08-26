@@ -14,7 +14,7 @@ import (
 	"github.com/coreeng/corectl/pkg/cmdutil/userio"
 	"github.com/coreeng/corectl/pkg/git"
 	"github.com/coreeng/corectl/pkg/logger"
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
@@ -131,7 +131,10 @@ func run(cmd *cobra.Command, opt *ConfigInitOpt, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
-	githubClient := github.NewClient(nil).WithAuthToken(githubToken)
+	githubClient, err := github.NewClient(github.WithAuthToken(githubToken))
+	if err != nil {
+		return fmt.Errorf("failed to create GitHub client: %w", err)
+	}
 
 	// If the user passed the `--file` argument, read the init config from this file.
 	// Otherwise, fetch the init config from the `corectl.yaml` file in the environments repo.
