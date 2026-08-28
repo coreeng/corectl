@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DiscoveryPath           = "/.well-known/core-platform-cli"
+	DiscoveryPath           = "/api/corectl/discovery"
 	DeviceAuthorizationPath = "/api/auth/device/code"
 	DeviceTokenPath         = "/api/auth/device/token"
 	ClustersPath            = "/api/clusters"
