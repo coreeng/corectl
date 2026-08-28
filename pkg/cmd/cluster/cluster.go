@@ -25,9 +25,13 @@ func listCmd(runtime *platformruntime.Runtime) *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("list Portal clusters: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "ID\tNAME\tSTATUS\tGENERATION")
+		if _, err := fmt.Fprintln(cmd.OutOrStdout(), "ID\tNAME\tSTATUS\tGENERATION"); err != nil {
+			return err
+		}
 		for _, item := range clusters {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n", item.ID, item.Name, item.Status, item.Generation)
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\t%s\n", item.ID, item.Name, item.Status, item.Generation); err != nil {
+				return err
+			}
 		}
 		return nil
 	}}
@@ -49,8 +53,8 @@ func connectCmd(runtime *platformruntime.Runtime) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Connected cluster %s with context %s\n", remote.ID, contextName)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Connected cluster %s with context %s\n", remote.ID, contextName)
+		return err
 	}}
 	cmd.Flags().StringVar(&sourceContext, "context", "", "Existing kubeconfig context that directly reaches this cluster (required on first use and generation changes)")
 	cmd.Flags().BoolVar(&switchContext, "switch-context", true, "Switch the current kubeconfig context to the managed context")
@@ -70,13 +74,13 @@ func installCmd(runtime *platformruntime.Runtime) *cobra.Command {
 			return fmt.Errorf("request Portal installation plan: %w", err)
 		}
 		if plan.ClusterID != args[0] {
-			return fmt.Errorf("Portal installation plan is for cluster %q, not %q", plan.ClusterID, args[0])
+			return fmt.Errorf("portal installation plan is for cluster %q, not %q", plan.ClusterID, args[0])
 		}
 		if err := runtime.Installer.Install(cmd.Context(), plan, kubeContext, timeout); err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Installed cluster agent for %s\n", args[0])
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Installed cluster agent for %s\n", args[0])
+		return err
 	}}
 	cmd.Flags().StringVar(&kubeContext, "context", "", "Kubeconfig context to install into")
 	_ = cmd.MarkFlagRequired("context")

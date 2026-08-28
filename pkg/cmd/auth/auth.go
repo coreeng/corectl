@@ -24,20 +24,22 @@ func LoginCmd(runtime *platformruntime.Runtime) *cobra.Command {
 			return fmt.Errorf("discover Portal CLI endpoints: %w", err)
 		}
 		if discovery.ClientID == "" {
-			return fmt.Errorf("Portal CLI discovery did not provide client_id")
+			return fmt.Errorf("portal CLI discovery did not provide client_id")
 		}
 		authorization, err := client.AuthorizeDevice(cmd.Context(), discovery.DeviceAuthorizationEndpoint, discovery)
 		if err != nil {
 			return fmt.Errorf("start device authorization: %w", err)
 		}
 		if authorization.DeviceCode == "" || authorization.UserCode == "" || authorization.VerificationURI == "" || authorization.ExpiresIn <= 0 {
-			return fmt.Errorf("Portal returned an incomplete device authorization")
+			return fmt.Errorf("portal returned an incomplete device authorization")
 		}
 		verificationURL := authorization.VerificationURIComplete
 		if verificationURL == "" {
 			verificationURL = authorization.VerificationURI
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Open %s and enter code %s\n", authorization.VerificationURI, authorization.UserCode)
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Open %s and enter code %s\n", authorization.VerificationURI, authorization.UserCode); err != nil {
+			return err
+		}
 		if verificationURL != "" && runtime.OpenURL != nil {
 			_ = runtime.OpenURL(verificationURL)
 		}
@@ -64,7 +66,7 @@ func LoginCmd(runtime *platformruntime.Runtime) *cobra.Command {
 				return fmt.Errorf("complete device authorization: %w", err)
 			}
 			if token.AccessToken == "" {
-				return fmt.Errorf("Portal device token response did not include an access token")
+				return fmt.Errorf("portal device token response did not include an access token")
 			}
 			expiresAt := time.Time{}
 			if token.ExpiresIn > 0 {
@@ -73,8 +75,8 @@ func LoginCmd(runtime *platformruntime.Runtime) *cobra.Command {
 			if err := runtime.Tokens.Set(selected.Origin, coreauth.Token{AccessToken: token.AccessToken, RefreshToken: token.RefreshToken, TokenType: token.TokenType, ExpiresAt: expiresAt}); err != nil {
 				return fmt.Errorf("store token in OS keychain: %w", err)
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s\n", selected.Name)
-			return nil
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "Logged in to %s\n", selected.Name)
+			return err
 		}
 	}}
 }
@@ -93,10 +95,10 @@ func LogoutCmd(runtime *platformruntime.Runtime) *cobra.Command {
 			return fmt.Errorf("delete token from OS keychain: %w", err)
 		}
 		if remoteErr != nil {
-			return fmt.Errorf("Portal logout failed after removing the local credential: %w", remoteErr)
+			return fmt.Errorf("portal logout failed after removing the local credential: %w", remoteErr)
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", selected.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "Logged out of %s\n", selected.Name)
+		return err
 	}}
 }
 
@@ -121,7 +123,7 @@ func WhoamiCmd(runtime *platformruntime.Runtime) *cobra.Command {
 		if identity == "" {
 			identity = user.ID
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\n", identity, selected.Name)
-		return nil
+		_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\n", identity, selected.Name)
+		return err
 	}}
 }

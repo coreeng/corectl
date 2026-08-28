@@ -14,8 +14,8 @@ func NewCmd(runtime *platformruntime.Runtime) *cobra.Command {
 		if err := runtime.Instances.Add(args[0], instanceURL); err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Added instance %s\n", args[0])
-		return nil
+		_, err := fmt.Fprintf(cmd.OutOrStdout(), "Added instance %s\n", args[0])
+		return err
 	}}
 	addCmd.Flags().StringVar(&instanceURL, "url", "", "Portal URL for the Core Platform instance")
 	_ = addCmd.MarkFlagRequired("url")
@@ -35,7 +35,9 @@ func NewCmd(runtime *platformruntime.Runtime) *cobra.Command {
 				if item.Name == current.Name {
 					marker = "*"
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "%s %s\t%s\n", marker, item.Name, item.Origin)
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s %s\t%s\n", marker, item.Name, item.Origin); err != nil {
+					return err
+				}
 			}
 			return nil
 		}},
@@ -44,22 +46,22 @@ func NewCmd(runtime *platformruntime.Runtime) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\n", selected.Name, selected.Origin)
-			return nil
+			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\n", selected.Name, selected.Origin)
+			return err
 		}},
 		&cobra.Command{Use: "use <name>", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			if err := runtime.Instances.Use(args[0]); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Using instance %s\n", args[0])
-			return nil
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "Using instance %s\n", args[0])
+			return err
 		}},
 		&cobra.Command{Use: "remove <name>", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			if err := runtime.Instances.Remove(args[0]); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Removed instance %s\n", args[0])
-			return nil
+			_, err := fmt.Fprintf(cmd.OutOrStdout(), "Removed instance %s\n", args[0])
+			return err
 		}},
 	)
 	return cmd

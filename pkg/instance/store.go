@@ -57,8 +57,10 @@ func NormalizeOrigin(raw string) (string, error) {
 			u.Host = strings.TrimSuffix(u.Host, ":")
 		}
 	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1")) {
-		return "", errors.New("instance URL must use HTTPS (HTTP is allowed for localhost)")
+	if u.Scheme != "https" {
+		if u.Scheme != "http" || (u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1") {
+			return "", errors.New("instance URL must use HTTPS (HTTP is allowed for localhost)")
+		}
 	}
 	if u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 		return "", errors.New("instance URL must be an origin without a path, query, fragment, or credentials")

@@ -261,7 +261,7 @@ func (c *Client) do(ctx context.Context, method, endpoint string, body, result a
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		apiErr := &APIError{StatusCode: resp.StatusCode}
 		_ = json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(apiErr)
@@ -287,7 +287,7 @@ func resolve(origin, endpoint string) (string, error) {
 	}
 	target := base.ResolveReference(relative)
 	if target.Scheme != base.Scheme || target.Host != base.Host {
-		return "", errors.New("Portal discovery endpoint must use the selected instance origin")
+		return "", errors.New("portal discovery endpoint must use the selected instance origin")
 	}
 	return target.String(), nil
 }

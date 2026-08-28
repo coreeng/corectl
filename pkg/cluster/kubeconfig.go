@@ -36,7 +36,7 @@ func NewConnector(store *instance.Store) *Connector {
 
 func (c *Connector) Connect(ctx context.Context, selected instance.Instance, remote portal.Cluster, sourceContext string, switchContext bool) (string, error) {
 	if remote.KubeSystemNamespaceUID == "" || remote.Generation == "" {
-		return "", fmt.Errorf("Portal cluster %q is missing its fingerprint or generation", remote.ID)
+		return "", fmt.Errorf("portal cluster %q is missing its fingerprint or generation", remote.ID)
 	}
 	binding, bound, err := c.Store.Binding(selected.Origin, remote.ID)
 	if err != nil {

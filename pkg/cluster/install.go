@@ -38,13 +38,13 @@ func (h HelmInstaller) Install(ctx context.Context, plan portal.InstallationPlan
 	if plan.Release.Name == "" || plan.Release.Namespace == "" || plan.Release.Version == "" ||
 		plan.API.BaseURL == "" || plan.Enrollment.Token == "" ||
 		plan.Chart.Reference == "" || plan.Chart.Version == "" {
-		return fmt.Errorf("Portal installation plan is incomplete")
+		return fmt.Errorf("portal installation plan is incomplete")
 	}
 	if plan.ManagementEnabled && (plan.ControlEnrollment == nil || plan.ControlEnrollment.Token == "") {
-		return fmt.Errorf("Portal managed installation plan has no Control Agent enrollment token")
+		return fmt.Errorf("portal managed installation plan has no Control Agent enrollment token")
 	}
 	if !strings.HasPrefix(plan.Chart.Reference, "oci://") {
-		return fmt.Errorf("Portal chart reference %q is not OCI", plan.Chart.Reference)
+		return fmt.Errorf("portal chart reference %q is not OCI", plan.Chart.Reference)
 	}
 	ref, err := exactChartReference(plan.Chart)
 	if err != nil {
@@ -72,10 +72,10 @@ func (h HelmInstaller) Install(ctx context.Context, plan portal.InstallationPlan
 		if pulled.Manifest != nil {
 			actual = pulled.Manifest.Digest
 		}
-		return fmt.Errorf("Helm chart digest mismatch: got %q, expected %q", actual, plan.Chart.Digest)
+		return fmt.Errorf("helm chart digest mismatch: got %q, expected %q", actual, plan.Chart.Digest)
 	}
 	if pulled.Chart == nil || pulled.Chart.Meta == nil || pulled.Chart.Meta.Version != plan.Chart.Version {
-		return fmt.Errorf("Helm chart metadata does not match requested version %q", plan.Chart.Version)
+		return fmt.Errorf("helm chart metadata does not match requested version %q", plan.Chart.Version)
 	}
 	chart, err := loader.LoadArchive(bytes.NewReader(pulled.Chart.Data))
 	if err != nil {
@@ -153,7 +153,7 @@ func exactChartReference(chart portal.Chart) (string, error) {
 		return "", fmt.Errorf("invalid Portal OCI chart reference %q: %w", chart.Reference, err)
 	}
 	if parsed.Reference != "" && parsed.Reference != chart.Version && parsed.Reference != chart.Digest {
-		return "", fmt.Errorf("Portal chart reference selector %q conflicts with version %q and digest %q", parsed.Reference, chart.Version, chart.Digest)
+		return "", fmt.Errorf("portal chart reference selector %q conflicts with version %q and digest %q", parsed.Reference, chart.Version, chart.Digest)
 	}
 	selector := chart.Version
 	separator := ":"
