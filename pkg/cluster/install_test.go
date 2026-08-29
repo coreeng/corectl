@@ -49,6 +49,30 @@ func TestVerifyInstallTargetRejectsDifferentClusterFingerprint(t *testing.T) {
 	require.ErrorContains(t, err, "expected Portal fingerprint")
 }
 
+func TestVerifyInstallTargetContactsClusterWithoutPortalFingerprint(t *testing.T) {
+	contacted := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contacted = true
+		require.Equal(t, "/api/v1/namespaces/kube-system", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprint(w, `{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"kube-system","uid":"actual"}}`)
+	}))
+	defer server.Close()
+	path := filepath.Join(t.TempDir(), "config")
+	config := clientcmdapi.NewConfig()
+	config.Clusters["cluster"] = &clientcmdapi.Cluster{Server: server.URL}
+	config.AuthInfos["user"] = &clientcmdapi.AuthInfo{}
+	config.Contexts["source"] = &clientcmdapi.Context{Cluster: "cluster", AuthInfo: "user"}
+	require.NoError(t, clientcmd.WriteToFile(*config, path))
+	flags := genericclioptions.NewConfigFlags(false)
+	flags.KubeConfig = &path
+	contextName := "source"
+	flags.Context = &contextName
+
+	require.NoError(t, verifyInstallTarget(context.Background(), flags, ""))
+	require.True(t, contacted)
+}
+
 func TestExactChartReferenceUsesPortalVersionWithoutDigest(t *testing.T) {
 	chart := portal.Chart{Reference: "oci://ghcr.io/coreeng/charts/core-platform-cluster-system", Version: "1.2.3"}
 	ref, err := exactChartReference(chart)

@@ -24,24 +24,36 @@ import (
 const DefaultInstallTimeout = 10 * time.Minute
 
 type Installer interface {
-	Install(ctx context.Context, plan portal.InstallationPlan, kubeContext string, timeout time.Duration) error
+	Verify(ctx context.Context, expectedFingerprint, kubeContext string) error
+	Apply(ctx context.Context, plan portal.InstallationPlan, kubeContext string, timeout time.Duration) error
 }
 
 type HelmInstaller struct {
 	Kubeconfig string
 }
 
-func (h HelmInstaller) Install(ctx context.Context, plan portal.InstallationPlan, kubeContext string, timeout time.Duration) error {
+func (h HelmInstaller) Verify(ctx context.Context, expectedFingerprint, kubeContext string) error {
+	if kubeContext == "" {
+		return fmt.Errorf("kubeconfig context is required")
+	}
+	flags := genericclioptions.NewConfigFlags(false)
+	flags.Context = &kubeContext
+	if h.Kubeconfig != "" {
+		flags.KubeConfig = &h.Kubeconfig
+	}
+	return verifyInstallTarget(ctx, flags, expectedFingerprint)
+}
+
+func (h HelmInstaller) Apply(ctx context.Context, plan portal.InstallationPlan, kubeContext string, timeout time.Duration) error {
 	if kubeContext == "" {
 		return fmt.Errorf("kubeconfig context is required")
 	}
 	if plan.Release.Name == "" || plan.Release.Namespace == "" || plan.Release.Version == "" ||
-		plan.API.BaseURL == "" || plan.Enrollment.Token == "" ||
-		plan.Chart.Reference == "" || plan.Chart.Version == "" {
+		plan.API.BaseURL == "" || plan.Chart.Reference == "" || plan.Chart.Version == "" {
 		return fmt.Errorf("portal installation plan is incomplete")
 	}
-	if plan.ManagementEnabled && (plan.ControlEnrollment == nil || plan.ControlEnrollment.Token == "") {
-		return fmt.Errorf("portal managed installation plan has no Control Agent enrollment token")
+	if err := validateEnrollments(plan); err != nil {
+		return err
 	}
 	if !strings.HasPrefix(plan.Chart.Reference, "oci://") {
 		return fmt.Errorf("portal chart reference %q is not OCI", plan.Chart.Reference)
@@ -102,6 +114,9 @@ func (h HelmInstaller) Install(ctx context.Context, plan portal.InstallationPlan
 		if !errors.Is(err, driver.ErrReleaseNotFound) {
 			return fmt.Errorf("inspect Helm release %s: %w", plan.Release.Name, err)
 		}
+		if plan.Operation != "install" && plan.Operation != "repair" {
+			return fmt.Errorf("%s requires existing Helm release %s", plan.Operation, plan.Release.Name)
+		}
 		install := action.NewInstall(configuration)
 		install.SetRegistryClient(registryClient)
 		install.ReleaseName = plan.Release.Name
@@ -125,10 +140,33 @@ func (h HelmInstaller) Install(ctx context.Context, plan portal.InstallationPlan
 	return nil
 }
 
-func verifyInstallTarget(ctx context.Context, flags *genericclioptions.ConfigFlags, expectedFingerprint string) error {
-	if expectedFingerprint == "" {
-		return nil
+func validateEnrollments(plan portal.InstallationPlan) error {
+	valid := func(enrollment *portal.EnrollmentMetadata, role string) bool {
+		return enrollment != nil && enrollment.Role == role && enrollment.Token != "" && enrollment.AttemptID != ""
 	}
+	switch plan.Operation {
+	case "install", "repair":
+		if !valid(plan.Enrollment, "runtime-agent") {
+			return fmt.Errorf("portal %s plan has no Runtime Agent enrollment", plan.Operation)
+		}
+		if plan.ManagementEnabled && !valid(plan.ControlEnrollment, "control-agent") {
+			return fmt.Errorf("portal managed %s plan has no Control Agent enrollment", plan.Operation)
+		}
+	case "convert":
+		if plan.Enrollment != nil || !plan.ManagementEnabled || !valid(plan.ControlEnrollment, "control-agent") {
+			return fmt.Errorf("portal conversion plan is incomplete")
+		}
+	case "upgrade":
+		if plan.Enrollment != nil || plan.ControlEnrollment != nil {
+			return fmt.Errorf("portal upgrade plan unexpectedly contains enrollment material")
+		}
+	default:
+		return fmt.Errorf("unsupported cluster operation %q", plan.Operation)
+	}
+	return nil
+}
+
+func verifyInstallTarget(ctx context.Context, flags *genericclioptions.ConfigFlags, expectedFingerprint string) error {
 	restConfig, err := flags.ToRESTConfig()
 	if err != nil {
 		return fmt.Errorf("load Kubernetes context for fingerprint verification: %w", err)
@@ -140,6 +178,9 @@ func verifyInstallTarget(ctx context.Context, flags *genericclioptions.ConfigFla
 	namespace, err := client.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("read kube-system for fingerprint verification: %w", err)
+	}
+	if expectedFingerprint == "" {
+		return nil
 	}
 	if string(namespace.UID) != expectedFingerprint {
 		return fmt.Errorf("installation context points to kube-system UID %q, expected Portal fingerprint %q", namespace.UID, expectedFingerprint)

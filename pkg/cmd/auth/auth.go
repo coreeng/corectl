@@ -37,7 +37,7 @@ func LoginCmd(runtime *platformruntime.Runtime) *cobra.Command {
 		if verificationURL == "" {
 			verificationURL = authorization.VerificationURI
 		}
-		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Open %s and enter code %s\n", authorization.VerificationURI, authorization.UserCode); err != nil {
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Open %s and confirm code %s\n", verificationURL, authorization.UserCode); err != nil {
 			return err
 		}
 		if verificationURL != "" && runtime.OpenURL != nil {

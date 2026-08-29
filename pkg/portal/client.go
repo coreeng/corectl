@@ -104,13 +104,14 @@ type EnrollmentMetadata struct {
 }
 
 type InstallationPlan struct {
+	Operation                   string              `json:"operation"`
 	ClusterID                   string              `json:"clusterId"`
 	Generation                  Generation          `json:"generation"`
 	ClusterFingerprint          string              `json:"clusterFingerprint"`
 	API                         APIMetadata         `json:"api"`
 	Release                     ReleaseMetadata     `json:"release"`
 	Chart                       Chart               `json:"chart"`
-	Enrollment                  EnrollmentMetadata  `json:"enrollment"`
+	Enrollment                  *EnrollmentMetadata `json:"enrollment"`
 	ControlEnrollment           *EnrollmentMetadata `json:"controlEnrollment"`
 	ManagementBootstrapRequired bool                `json:"managementBootstrapRequired"`
 	ManagementEnabled           bool                `json:"managementEnabled"`
@@ -128,18 +129,33 @@ func (p InstallationPlan) Values() map[string]any {
 		},
 		"runtimeAgent": map[string]any{
 			"api":   map[string]any{"url": p.API.BaseURL},
-			"agent": map[string]any{"enrollmentToken": p.Enrollment.Token},
 			"image": map[string]any{"tag": p.Release.Version},
 		},
 	}
-	if p.ManagementEnabled && p.ControlEnrollment != nil {
-		values["controlAgent"] = map[string]any{
+	if p.Enrollment != nil {
+		values["runtimeAgent"].(map[string]any)["agent"] = map[string]any{"enrollmentToken": p.Enrollment.Token}
+	}
+	if p.ManagementEnabled {
+		control := map[string]any{
 			"api":   map[string]any{"url": p.API.BaseURL},
-			"agent": map[string]any{"enrollmentToken": p.ControlEnrollment.Token},
 			"image": map[string]any{"tag": p.Release.Version},
 		}
+		if p.ControlEnrollment != nil {
+			control["agent"] = map[string]any{"enrollmentToken": p.ControlEnrollment.Token}
+		}
+		values["controlAgent"] = control
 	}
 	return values
+}
+
+type EnrollmentAttemptStatus struct {
+	Status     string `json:"status"`
+	ConsumedAt string `json:"consumedAt"`
+}
+
+type AgentReport struct {
+	Fresh      bool
+	ReportedAt string
 }
 
 type APIError struct {
@@ -227,10 +243,66 @@ func (c *Client) Cluster(ctx context.Context, id string) (Cluster, error) {
 }
 
 func (c *Client) InstallationPlan(ctx context.Context, id string) (InstallationPlan, error) {
+	return c.ClusterPlan(ctx, id, "install")
+}
+
+func (c *Client) ClusterPlan(ctx context.Context, id, operation string) (InstallationPlan, error) {
 	var result InstallationPlan
-	path := "/api/admin/connected-clusters/" + url.PathEscape(id) + "/installation-plan"
+	endpoint := map[string]string{
+		"install": "installation-plan",
+		"convert": "conversion-plan",
+		"upgrade": "upgrade-plan",
+		"repair":  "repair-plan",
+	}[operation]
+	if endpoint == "" {
+		return result, fmt.Errorf("unsupported cluster operation %q", operation)
+	}
+	path := "/api/admin/connected-clusters/" + url.PathEscape(id) + "/" + endpoint
 	err := c.do(ctx, http.MethodPost, path, struct{}{}, &result)
 	return result, err
+}
+
+func (c *Client) EnrollmentAttemptStatus(ctx context.Context, clusterID, role, attemptID string) (EnrollmentAttemptStatus, error) {
+	var result EnrollmentAttemptStatus
+	path := "/api/admin/connected-clusters/" + url.PathEscape(clusterID) + "/agents/" + url.PathEscape(role) +
+		"/enrollment-attempts/" + url.PathEscape(attemptID)
+	err := c.do(ctx, http.MethodGet, path, nil, &result)
+	return result, err
+}
+
+func (c *Client) AgentReport(ctx context.Context, clusterID, role string) (AgentReport, error) {
+	if role != "runtime-agent" && role != "control-agent" {
+		return AgentReport{}, fmt.Errorf("unsupported agent role %q", role)
+	}
+	var result struct {
+		ClusterRuntime *agentRuntime `json:"clusterRuntime"`
+		ClusterControl *agentRuntime `json:"clusterControl"`
+	}
+	path := "/api/infrastructure/environment/" + url.PathEscape(clusterID) + "?runtimeDetail=summary"
+	if err := c.do(ctx, http.MethodGet, path, nil, &result); err != nil {
+		var apiErr *APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+			return AgentReport{}, nil
+		}
+		return AgentReport{}, err
+	}
+	runtime := result.ClusterRuntime
+	if role == "control-agent" {
+		runtime = result.ClusterControl
+	}
+	if runtime == nil {
+		return AgentReport{}, nil
+	}
+	return AgentReport{Fresh: runtime.Freshness.Heartbeat.Status == "fresh", ReportedAt: runtime.Freshness.Heartbeat.ReportedAt}, nil
+}
+
+type agentRuntime struct {
+	Freshness struct {
+		Heartbeat struct {
+			Status     string `json:"status"`
+			ReportedAt string `json:"reportedAt"`
+		} `json:"heartbeat"`
+	} `json:"freshness"`
 }
 
 func (c *Client) do(ctx context.Context, method, endpoint string, body, result any) error {

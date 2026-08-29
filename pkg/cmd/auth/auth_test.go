@@ -38,7 +38,13 @@ func TestLoginUsesDiscoveryAndStoresTokenForSelectedOrigin(t *testing.T) {
 				TokenEndpoint:               server.URL + portal.DeviceTokenPath,
 			})
 		case portal.DeviceAuthorizationPath:
-			_ = json.NewEncoder(w).Encode(portal.DeviceAuthorization{DeviceCode: "device", UserCode: "ABCD", VerificationURI: server.URL + "/activate", ExpiresIn: 60})
+			_ = json.NewEncoder(w).Encode(portal.DeviceAuthorization{
+				DeviceCode:              "device",
+				UserCode:                "ABCD",
+				VerificationURI:         server.URL + "/activate",
+				VerificationURIComplete: server.URL + "/activate?user_code=ABCD",
+				ExpiresIn:               60,
+			})
 		case portal.DeviceTokenPath:
 			_ = json.NewEncoder(w).Encode(portal.DeviceToken{AccessToken: "access", TokenType: "Bearer", ExpiresIn: 3600})
 		default:
@@ -67,7 +73,8 @@ func TestLoginUsesDiscoveryAndStoresTokenForSelectedOrigin(t *testing.T) {
 	cmd.SetOut(output)
 
 	require.NoError(t, cmd.Execute())
-	require.Equal(t, server.URL+"/activate", opened)
+	require.Equal(t, server.URL+"/activate?user_code=ABCD", opened)
 	require.Equal(t, "access", tokens.tokens[server.URL].AccessToken)
+	require.Contains(t, output.String(), "Open "+server.URL+"/activate?user_code=ABCD and confirm code ABCD")
 	require.Contains(t, output.String(), "Logged in to test")
 }

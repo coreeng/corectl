@@ -78,7 +78,7 @@ func TestManagedInstallationPlanBuildsControlAgentValues(t *testing.T) {
 		ClusterID:                   "managed",
 		API:                         APIMetadata{BaseURL: "https://portal.example/api"},
 		Release:                     ReleaseMetadata{Version: "v1.2.3"},
-		Enrollment:                  EnrollmentMetadata{Token: "runtime-token"},
+		Enrollment:                  &EnrollmentMetadata{Token: "runtime-token"},
 		ControlEnrollment:           &EnrollmentMetadata{Token: "control-token"},
 		ManagementBootstrapRequired: true,
 		ManagementEnabled:           true,
@@ -89,4 +89,59 @@ func TestManagedInstallationPlanBuildsControlAgentValues(t *testing.T) {
 	require.Equal(t, true, values["management"].(map[string]any)["bootstrapOnly"])
 	require.Equal(t, "https://portal.example/api", control["api"].(map[string]any)["url"])
 	require.Equal(t, "control-token", control["agent"].(map[string]any)["enrollmentToken"])
+}
+
+func TestClusterPlanRoutesOperationsAndParsesNullableEnrollments(t *testing.T) {
+	wantedPaths := []string{
+		"/api/admin/connected-clusters/one/installation-plan",
+		"/api/admin/connected-clusters/one/conversion-plan",
+		"/api/admin/connected-clusters/one/upgrade-plan",
+		"/api/admin/connected-clusters/one/repair-plan",
+	}
+	operationByPath := map[string]string{
+		wantedPaths[0]: "install",
+		wantedPaths[1]: "convert",
+		wantedPaths[2]: "upgrade",
+		wantedPaths[3]: "repair",
+	}
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		paths = append(paths, r.URL.Path)
+		_ = json.NewEncoder(w).Encode(InstallationPlan{Operation: operationByPath[r.URL.Path], ClusterID: "one"})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client(), "secret")
+	for _, operation := range []string{"install", "convert", "upgrade", "repair"} {
+		plan, err := client.ClusterPlan(context.Background(), "one", operation)
+		require.NoError(t, err)
+		require.Equal(t, operation, plan.Operation)
+		require.Nil(t, plan.Enrollment)
+		require.Nil(t, plan.ControlEnrollment)
+	}
+	require.Equal(t, wantedPaths, paths)
+
+	_, err := client.ClusterPlan(context.Background(), "one", "unknown")
+	require.ErrorContains(t, err, "unsupported cluster operation")
+}
+
+func TestAgentReportReadsRuntimeAndControlHeartbeat(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/api/infrastructure/environment/one", r.URL.Path)
+		require.Equal(t, "summary", r.URL.Query().Get("runtimeDetail"))
+		_, _ = w.Write([]byte(`{
+			"clusterRuntime":{"freshness":{"heartbeat":{"status":"fresh","reportedAt":"2026-08-29T10:00:00Z"}}},
+			"clusterControl":{"freshness":{"heartbeat":{"status":"stale","reportedAt":"2026-08-29T09:00:00Z"}}}
+		}`))
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client(), "secret")
+	runtime, err := client.AgentReport(context.Background(), "one", "runtime-agent")
+	require.NoError(t, err)
+	require.Equal(t, AgentReport{Fresh: true, ReportedAt: "2026-08-29T10:00:00Z"}, runtime)
+	control, err := client.AgentReport(context.Background(), "one", "control-agent")
+	require.NoError(t, err)
+	require.Equal(t, AgentReport{Fresh: false, ReportedAt: "2026-08-29T09:00:00Z"}, control)
 }
