@@ -8,6 +8,7 @@ import (
 	clusterpkg "github.com/coreeng/corectl/pkg/cluster"
 	"github.com/coreeng/corectl/pkg/cmd/platformruntime"
 	"github.com/coreeng/corectl/pkg/portal"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -65,8 +66,16 @@ func connectCmd(runtime *platformruntime.Runtime) *cobra.Command {
 
 func operationCmd(runtime *platformruntime.Runtime, operation string) *cobra.Command {
 	var kubeContext string
+	var operationID string
 	var timeout time.Duration
-	cmd := &cobra.Command{Use: operation + " <id>", Short: operationDescription(operation), Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	cmd := &cobra.Command{Use: operation + " <id>", Short: operationDescription(operation), Args: func(cmd *cobra.Command, args []string) error {
+		if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+			return err
+		}
+		var err error
+		operationID, err = canonicalOperationID(operationID)
+		return err
+	}, RunE: func(cmd *cobra.Command, args []string) error {
 		client, _, err := runtime.AuthenticatedClient()
 		if err != nil {
 			return err
@@ -84,7 +93,7 @@ func operationCmd(runtime *platformruntime.Runtime, operation string) *cobra.Com
 		if err != nil {
 			return err
 		}
-		plan, err := client.ClusterPlan(ctx, remote.ID, operation)
+		plan, err := client.ClusterPlan(ctx, remote.ID, operation, operationID)
 		if err != nil {
 			return fmt.Errorf("request Portal %s plan: %w", operation, err)
 		}
@@ -107,8 +116,22 @@ func operationCmd(runtime *platformruntime.Runtime, operation string) *cobra.Com
 	}}
 	cmd.Flags().StringVar(&kubeContext, "context", "", "Existing kubeconfig context that directly reaches this cluster")
 	_ = cmd.MarkFlagRequired("context")
+	if operation != "upgrade" {
+		cmd.Flags().StringVar(&operationID, "operation-id", "", "Portal operation correlation ID")
+	}
 	cmd.Flags().DurationVar(&timeout, "timeout", clusterpkg.DefaultInstallTimeout, "Wait timeout for Helm and Portal confirmation")
 	return cmd
+}
+
+func canonicalOperationID(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	parsed, err := uuid.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("invalid --operation-id: %w", err)
+	}
+	return parsed.String(), nil
 }
 
 func validatePlan(remote portal.Cluster, plan portal.InstallationPlan, operation string) error {

@@ -92,6 +92,7 @@ func TestManagedInstallationPlanBuildsControlAgentValues(t *testing.T) {
 }
 
 func TestClusterPlanRoutesOperationsAndParsesNullableEnrollments(t *testing.T) {
+	const operationID = "f48ad8f8-78c6-4b24-8af3-aef034851515"
 	wantedPaths := []string{
 		"/api/admin/connected-clusters/one/installation-plan",
 		"/api/admin/connected-clusters/one/conversion-plan",
@@ -107,6 +108,11 @@ func TestClusterPlanRoutesOperationsAndParsesNullableEnrollments(t *testing.T) {
 	var paths []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
+		if operationByPath[r.URL.Path] == "upgrade" {
+			require.NotContains(t, r.URL.Query(), "operationId")
+		} else {
+			require.Equal(t, operationID, r.URL.Query().Get("operationId"))
+		}
 		paths = append(paths, r.URL.Path)
 		_ = json.NewEncoder(w).Encode(InstallationPlan{Operation: operationByPath[r.URL.Path], ClusterID: "one"})
 	}))
@@ -114,7 +120,7 @@ func TestClusterPlanRoutesOperationsAndParsesNullableEnrollments(t *testing.T) {
 
 	client := New(server.URL, server.Client(), "secret")
 	for _, operation := range []string{"install", "convert", "upgrade", "repair"} {
-		plan, err := client.ClusterPlan(context.Background(), "one", operation)
+		plan, err := client.ClusterPlan(context.Background(), "one", operation, operationID)
 		require.NoError(t, err)
 		require.Equal(t, operation, plan.Operation)
 		require.Nil(t, plan.Enrollment)
@@ -122,8 +128,21 @@ func TestClusterPlanRoutesOperationsAndParsesNullableEnrollments(t *testing.T) {
 	}
 	require.Equal(t, wantedPaths, paths)
 
-	_, err := client.ClusterPlan(context.Background(), "one", "unknown")
+	_, err := client.ClusterPlan(context.Background(), "one", "unknown", operationID)
 	require.ErrorContains(t, err, "unsupported cluster operation")
+}
+
+func TestClusterPlanOmitsEmptyOperationID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.NotContains(t, r.URL.Query(), "operationId")
+		_ = json.NewEncoder(w).Encode(InstallationPlan{Operation: "install", ClusterID: "one"})
+	}))
+	defer server.Close()
+
+	client := New(server.URL, server.Client(), "secret")
+	_, err := client.ClusterPlan(context.Background(), "one", "install", "")
+
+	require.NoError(t, err)
 }
 
 func TestAgentReportReadsRuntimeAndControlHeartbeat(t *testing.T) {

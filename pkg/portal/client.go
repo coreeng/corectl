@@ -243,10 +243,10 @@ func (c *Client) Cluster(ctx context.Context, id string) (Cluster, error) {
 }
 
 func (c *Client) InstallationPlan(ctx context.Context, id string) (InstallationPlan, error) {
-	return c.ClusterPlan(ctx, id, "install")
+	return c.ClusterPlan(ctx, id, "install", "")
 }
 
-func (c *Client) ClusterPlan(ctx context.Context, id, operation string) (InstallationPlan, error) {
+func (c *Client) ClusterPlan(ctx context.Context, id, operation, operationID string) (InstallationPlan, error) {
 	var result InstallationPlan
 	endpoint := map[string]string{
 		"install": "installation-plan",
@@ -258,6 +258,9 @@ func (c *Client) ClusterPlan(ctx context.Context, id, operation string) (Install
 		return result, fmt.Errorf("unsupported cluster operation %q", operation)
 	}
 	path := "/api/admin/connected-clusters/" + url.PathEscape(id) + "/" + endpoint
+	if operationID != "" && operation != "upgrade" {
+		path += "?" + url.Values{"operationId": {operationID}}.Encode()
+	}
 	err := c.do(ctx, http.MethodPost, path, struct{}{}, &result)
 	return result, err
 }
