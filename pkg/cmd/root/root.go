@@ -5,7 +5,11 @@ import (
 	"os"
 	"strings"
 
+	authcmd "github.com/coreeng/corectl/pkg/cmd/auth"
+	clustercmd "github.com/coreeng/corectl/pkg/cmd/cluster"
 	"github.com/coreeng/corectl/pkg/cmd/env"
+	instancecmd "github.com/coreeng/corectl/pkg/cmd/instance"
+	"github.com/coreeng/corectl/pkg/cmd/platformruntime"
 	"github.com/coreeng/corectl/pkg/logger"
 	"go.uber.org/zap"
 
@@ -31,6 +35,10 @@ func isCompletion() bool {
 }
 
 func NewRootCmd(cfg *config.Config) *cobra.Command {
+	return NewRootCmdWithRuntime(cfg, platformruntime.Default())
+}
+
+func NewRootCmdWithRuntime(cfg *config.Config, runtime *platformruntime.Runtime) *cobra.Command {
 	var logLevel string
 	var nonInteractive bool
 
@@ -49,7 +57,7 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 					update.CheckForUpdates(cfg, cmd)
 				}
 				cmdPath := cmd.CommandPath()
-				if !cfg.IsPersisted() && !strings.HasPrefix(cmdPath, "corectl config") && cmdName != version.CmdName {
+				if !cfg.IsPersisted() && requiresLegacyConfig(cmdPath) && cmdName != version.CmdName {
 					styles := userio.NewNonInteractiveStyles()
 					streams := userio.NewIOStreamsWithInteractive(
 						os.Stdin,
@@ -81,6 +89,12 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 		"l",
 		"warn",
 		"Log level - set up console log level. Default: warn. Accepted values: debug|info|warn|error",
+	)
+	rootCmd.PersistentFlags().StringVar(
+		&runtime.InstanceName,
+		"instance",
+		"",
+		"Core Platform instance name (defaults to the current instance)",
 	)
 
 	rootCmd.PersistentFlags().BoolVar(
@@ -119,6 +133,20 @@ func NewRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd.AddCommand(template.NewTemplateCmd(cfg))
 	rootCmd.AddCommand(update.UpdateCmd(cfg))
 	rootCmd.AddCommand(version.VersionCmd(cfg))
+	rootCmd.AddCommand(instancecmd.NewCmd(runtime))
+	rootCmd.AddCommand(authcmd.LoginCmd(runtime))
+	rootCmd.AddCommand(authcmd.LogoutCmd(runtime))
+	rootCmd.AddCommand(authcmd.WhoamiCmd(runtime))
+	rootCmd.AddCommand(clustercmd.NewCmd(runtime))
 
 	return rootCmd
+}
+
+func requiresLegacyConfig(commandPath string) bool {
+	for _, prefix := range []string{"corectl instance", "corectl login", "corectl logout", "corectl whoami", "corectl cluster"} {
+		if strings.HasPrefix(commandPath, prefix) {
+			return false
+		}
+	}
+	return !strings.HasPrefix(commandPath, "corectl config")
 }
